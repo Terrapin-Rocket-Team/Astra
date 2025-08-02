@@ -100,7 +100,7 @@
         },
         {
             "name": "SdFat",
-            "version": "https: //github.com/greiman/SdFat.git#2.3.0",
+            "version": "https://github.com/greiman/SdFat.git#2.3.0",
             "platforms": ["espressif32", "ststm32"]
         }
     ],
