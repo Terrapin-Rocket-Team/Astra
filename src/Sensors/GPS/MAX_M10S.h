@@ -8,7 +8,6 @@
 
 namespace mmfs
 {
-
     class MAX_M10S : public GPS
     {
     private:

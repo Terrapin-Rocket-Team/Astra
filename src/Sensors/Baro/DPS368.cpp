@@ -24,7 +24,8 @@ bool DPS368::init()
     return initialized = true;
 }
 
-bool DPS368::read(){
+bool DPS368::read()
+{
     sensors_event_t temp_event, pressure_event;
 
     /* getEvents returns true or false depending on whether the sensors were successfully read or not */
