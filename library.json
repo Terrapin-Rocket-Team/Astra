@@ -57,10 +57,6 @@
             "version": "1.6.3"
         },
         {
-            "name": "SparkFun u-blox GNSS v3",
-            "version": "3.1.5"
-        },
-        {
             "name": "RTClib",
             "owner": "adafruit"
         },
@@ -109,6 +105,10 @@
         {
             "name": "MMC56x3",
             "version": "https://github.com/adafruit/Adafruit_MMC56x3.git"
+        },
+        {
+            "name": "GNSS v2",
+            "version": "https://github.com/sparkfun/SparkFun_u-blox_GNSS_Arduino_Library.git"
         }
     ],
     "frameworks": "arduino",
