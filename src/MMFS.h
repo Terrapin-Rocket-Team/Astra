@@ -24,9 +24,15 @@
 // GPSs
 #include "Sensors/GPS/MAX_M10S.h"
 #include "Sensors/GPS/MockGPS.h"
+#include "Sensors/GPS/SAM_M8Q.h"
 
 #include "Sensors/Accel/BMI088Accel.h"
+#include "Sensors/Accel/ADXL375.h"
+#include "Sensors/Accel/H3LIS331DL.h"
+
 #include "Sensors/Mag/LIS3MDL.h"
+#include "Sensors/Mag/MMC5633.h"
+
 #include "Sensors/Gyro/BMI088Gyro.h"
 
 
