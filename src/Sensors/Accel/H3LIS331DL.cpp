@@ -14,7 +14,7 @@ bool H3LIS331DL::init()
     accel.setFullScale(LIS331::HIGH_RANGE);
     int16_t x = 0, y = 0, z = 0;
     accel.readAxes(x, y, z);
-    return !(x == y == z == 0);
+    return !(x == 0 && 0 == y && z == 0);
 }
 
 bool H3LIS331DL::read()

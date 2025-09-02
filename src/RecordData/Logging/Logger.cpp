@@ -5,11 +5,11 @@
 #include "../../Sensors/GPS/GPS.h"
 #include <Arduino.h>
 
-#ifdef NATIVE
-#include "MockLoggingBackend.h"
+#if defined(NATIVE) || defined(STM32)
+#include "LoggingBackend/MockLoggingBackend.h"
 #else
-#include "LoggingBackend/LoggingBackendSdFat.h"
-#include "LoggingBackend/LoggingBackendLittleFS.h"
+// #include "LoggingBackend/LoggingBackendSdFat.h"
+// #include "LoggingBackend/LoggingBackendLittleFS.h"
 #endif // NATIVE
 
 #ifdef ARDUINO
@@ -20,26 +20,30 @@ using namespace mmfs;
 
 static const char *logTypeStrings[] = {"LOG", "ERROR", "WARNING", "INFO", "CUSTOM"};
 
+// HardwareSerial hw(
+//     PB7, PB6);
+
 #pragma region Constructor and Initialization
 // Constructor for Logger class
 Logger::Logger()
 {
-    Serial.begin(115200);
+    // hw.begin(115200);
+    // hw.println("test");
     setLogPrefixFormatting("$time - [$logType] ");
     setCustomLogPrefix("$time - [CUSTOM] ");
 
-#ifdef NATIVE // Use a mock backend for unit tests.
+#if defined(NATIVE) || defined(STM32) // Use a mock backend for unit tests.
     backend = new LoggingBackendMock();
     backend->begin();
 #else
-    // backend = new LoggingBackendLittleFS();
-    // if (!backend->begin())
-    // {
-    //     delete backend;
-    backend = new LoggingBackendSdFat();
+    backend = new LoggingBackendLittleFS();
     if (!backend->begin())
-        Serial.println("Failed to start any long-term memory device.");
-    // }
+    {
+        delete backend;
+        backend = new LoggingBackendSdFat();
+        if (!backend->begin())
+            hw.println("Failed to start any long-term memory device.");
+    }
 #endif // NATIVE
 
     // find a unique file name
@@ -71,7 +75,7 @@ Logger::Logger()
     snprintf(preFlightFileName, len, "%s", fileName);
 
 #ifndef NATIVE // This is a workaround because testing this logger is hard when it's writing its own variable data to the log file
-    recordLogData(INFO_, 100, "This flight is running MMFS v%s", APP_VERSION);
+    // recordLogData(INFO_, 100, "This flight is running MMFS v%s", APP_VERSION);
 #endif
 }
 
@@ -97,6 +101,7 @@ bool Logger::init(DataReporter **dataReporters, int numReporters)
     this->dataReporters = dataReporters;
     this->numReporters = numReporters;
     return ready = backend->isAvailable();
+    // return false;
 }
 
 #pragma endregion Constructor and Initialization
@@ -122,6 +127,7 @@ void Logger::recordFlightData()
         preFlightFile->println(dest);
         preFlightFile->save();
     }
+    // Serial.println(dest);
 }
 
 #pragma endregion Flight Data Logging
@@ -130,6 +136,7 @@ void Logger::recordFlightData()
 
 void Logger::recordLogData(const char *msg, Dest dest, LogType type)
 {
+    if(!ready) return;
     int prefixLen = 0;
     if (type == CUSTOM_)
     {
@@ -143,6 +150,7 @@ void Logger::recordLogData(const char *msg, Dest dest, LogType type)
     {
         Serial.println(msg);
     }
+    delay(1);
     if ((dest == BOTH || dest == TO_FILE) && ready)
     {
         if (const char *i = strstr(msg, "\n")) // find the first newline
@@ -308,7 +316,7 @@ void Logger::setLogPrefixFormatting(const char *prefix)
 {
     if (ready)
     {
-        recordLogData(ERROR_, "Attempted to set log prefix formatting after Logger already initalized!");
+        // recordLogData(ERROR_, "Attempted to set log prefix formatting after Logger already initalized!");
         return;
     }
     unsigned int idxTime = -1;
@@ -319,7 +327,7 @@ void Logger::setLogPrefixFormatting(const char *prefix)
         idxLogType = t - prefix;
     if (idxTime == (unsigned int)-1 || idxLogType == (unsigned int)-1)
     {
-        recordLogData(ERROR_, "Attempted to set a log prefix format without $time or $logType!");
+        // recordLogData(ERROR_, "Attempted to set a log prefix format without $time or $logType!");
         return;
     }
 
@@ -403,7 +411,7 @@ void Logger::writeCsvHeader()
 {
     if (!ready)
     {
-        Serial.println("No long-term storage found. Cannot write CSV header.");
+        // Serial.println("No long-term storage found. Cannot write CSV header.");
         return;
     }
     char header[5000]; // 2000 is arbitrary, but should be enough for basically any header

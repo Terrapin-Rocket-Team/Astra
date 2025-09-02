@@ -1,5 +1,5 @@
-#ifndef ADXL375_H
-#define ADXL375_H
+#ifndef H3LIS331DL_H
+#define H3LIS331DL_H
 #include <Wire.h>
 #include <Sensors/Accel/Accel.h>
 #include <SparkFun_LIS331.h>

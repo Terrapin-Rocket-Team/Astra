@@ -85,7 +85,10 @@
         },
         {
             "name": "LittleFS",
-            "version": "https://github.com/PaulStoffregen/LittleFS.git#a061862589841627424170a12a246ce5660a4f0a"
+            "version": "https://github.com/PaulStoffregen/LittleFS.git#a061862589841627424170a12a246ce5660a4f0a",
+            "platforms": [
+                "teensy"
+            ]
         },
         {
             "name": "RadioMessage",
@@ -94,14 +97,6 @@
         {
             "name": "BMI088",
             "version": "https://github.com/redstonee/bmi088-arduino-esp32.git"
-        },
-        {
-            "name": "SdFat",
-            "version": "https://github.com/greiman/SdFat.git#2.3.0",
-            "platforms": [
-                "espressif32",
-                "ststm32"
-            ]
         },
         {
             "name": "ADXL375",

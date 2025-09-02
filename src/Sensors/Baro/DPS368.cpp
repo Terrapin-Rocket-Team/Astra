@@ -10,7 +10,7 @@ bool DPS368::init()
 {
     if (!dps.begin_I2C(addr, bus))
     {
-        printf("Failed to initialize DPS368 sensor\n");
+        // printf("Failed to initialize DPS368 sensor\n");
         return initialized = false;
     }
 

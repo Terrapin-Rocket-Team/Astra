@@ -1,7 +1,7 @@
 #ifndef LOGGING_BACKEND_MOCK_H
 #define LOGGING_BACKEND_MOCK_H
 
-#include "../../src/RecordData/Logging/LoggingBackend/LoggingBackend.h"
+#include "LoggingBackend.h"
 #include <algorithm>
 namespace mmfs
 {
@@ -10,6 +10,7 @@ namespace mmfs
 
 #include <cstring>
 #include <cstdint>
+#include <stdio.h>
 
 #define MOCK_FILE_SIZE 4096 // Adjust as needed
 

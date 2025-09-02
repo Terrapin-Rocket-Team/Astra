@@ -4,28 +4,23 @@
 namespace mmfs
 {
 
-    MAX_M10S::MAX_M10S(const char *name, TwoWire *wire, uint8_t address) : GPS(name), m10s(), wire(wire), address(address)
-    {
-
-    }
-
-    MAX_M10S::MAX_M10S(TwoWire *wire, uint8_t address) : GPS("MAX-M10S"), m10s(), wire(wire), address(address)
+    MAX_M10S::MAX_M10S(const char *name, TwoWire& wire, uint8_t address) : GPS(name), m10s(), wire(&wire), address(address)
     {
 
     }
 
     bool MAX_M10S::init()
     {
-        // m10s.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
-
-        int count = 0;
-        while (m10s.begin(*wire, address) == false && count < 3) // Connect to the u-blox module using Wire port
-        {
-            // Serial.println(F("u-blox GNSS not detected at default I2C address. Retrying..."));
-            delay(250);
-            count++;
-        }
+        m10s.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
+        Serial.println((int) wire);
+        Serial.println((int)&Wire);
+        Serial.println((int) address);
+        Wire.setClock(100000);
+        delay(300);
         if (!m10s.begin(*wire, address))
+            initialized = false;
+        
+        if(!m10s.isConnected())
             return initialized = false;
 
         m10s.setI2COutput(COM_TYPE_UBX);            // Set the I2C port to output UBX only (turn off NMEA noise)

@@ -1,5 +1,5 @@
-#ifndef ADXL375_H
-#define ADXL375_H
+#ifndef MMC5633_H
+#define MMC5633_H
 #include <Adafruit_MMC56x3.h>
 #include <Wire.h>
 #include "Mag.h"

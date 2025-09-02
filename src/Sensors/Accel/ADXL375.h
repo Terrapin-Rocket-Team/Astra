@@ -8,7 +8,7 @@ using namespace mmfs;
 class ADXL375 : public Accel
 {
 public:
-    ADXL375(const char *name = "ADXL375", TwoWire &bus = Wire2, uint8_t address = 0x1D);
+    ADXL375(const char *name = "ADXL375", TwoWire &bus = Wire, uint8_t address = 0x1D);
 
     bool init() override;
     bool read() override;

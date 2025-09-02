@@ -11,9 +11,10 @@ MMFSSystem::MMFSSystem(MMFSConfig *config) : config(config)
 }
 void MMFSSystem::init()
 {
+    Serial.print("test");
     getLogger().recordCrashReport();
     getLogger().recordLogData(INFO_, "Initializing MMFS.");
-    Wire.begin();
+    Wire.begin(PB9, PB8);
     // BlinkBuzz first
     int pins = 0;
     for (int i = 0; i < 50; i++)
