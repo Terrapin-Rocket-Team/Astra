@@ -11,7 +11,6 @@ MMFSSystem::MMFSSystem(MMFSConfig *config) : config(config)
 }
 void MMFSSystem::init()
 {
-    Serial.print("test");
     getLogger().recordCrashReport();
     getLogger().recordLogData(INFO_, "Initializing MMFS.");
     Wire.begin(PB9, PB8);

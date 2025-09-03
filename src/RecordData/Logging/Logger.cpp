@@ -117,17 +117,17 @@ void Logger::recordFlightData()
 
     char dest[1500];
     DataFormatter::toCSVRow(dest, 1500, dataReporters, numReporters);
-    if (mode == FLIGHT)
-    {
-        flightDataFile->println(dest);
-        flightDataFile->save();
-    }
-    else
-    {
-        preFlightFile->println(dest);
-        preFlightFile->save();
-    }
-    // Serial.println(dest);
+    // if (mode == FLIGHT)
+    // {
+    //     flightDataFile->println(dest);
+    //     flightDataFile->save();
+    // }
+    // else
+    // {
+    //     preFlightFile->println(dest);
+    //     preFlightFile->save();
+    // }
+    Serial.println(strlen(dest));
 }
 
 #pragma endregion Flight Data Logging
@@ -136,7 +136,8 @@ void Logger::recordFlightData()
 
 void Logger::recordLogData(const char *msg, Dest dest, LogType type)
 {
-    if(!ready) return;
+    if (!ready)
+        return;
     int prefixLen = 0;
     if (type == CUSTOM_)
     {
@@ -150,30 +151,30 @@ void Logger::recordLogData(const char *msg, Dest dest, LogType type)
     {
         Serial.println(msg);
     }
-    delay(1);
-    if ((dest == BOTH || dest == TO_FILE) && ready)
+    if ((/*dest == BOTH ||*/ dest == TO_FILE) && ready)
     {
-        if (const char *i = strstr(msg, "\n")) // find the first newline
-        {
-            int cursor = 0;
-            int lenToWrite = i - msg + 1; // length of the string to write
-            logFile->write(msg + cursor, lenToWrite);
-            cursor += lenToWrite;
-            for (i = msg; (i = strstr(i, "\n")) != nullptr; i++) // loop through the string until we find a newline
-            {
-                for (int j = 0; j < prefixLen; j++)
-                {
-                    logFile->write(" ", 1);
-                }
-                int lenToWrite = i - msg + 1; // length of the string to write
-                logFile->write(msg + cursor, lenToWrite);
-                cursor += lenToWrite;
-            }
-        }
-        else
-            logFile->println(msg);
+        Serial.println(msg);
+        // if (const char *i = strstr(msg, "\n")) // find the first newline
+        // {
+        //     int cursor = 0;
+        //     int lenToWrite = i - msg + 1; // length of the string to write
+        //     logFile->write(msg + cursor, lenToWrite);
+        //     cursor += lenToWrite;
+        //     for (i = msg; (i = strstr(i, "\n")) != nullptr; i++) // loop through the string until we find a newline
+        //     {
+        //         for (int j = 0; j < prefixLen; j++)
+        //         {
+        //             logFile->write(" ", 1);
+        //         }
+        //         int lenToWrite = i - msg + 1; // length of the string to write
+        //         logFile->write(msg + cursor, lenToWrite);
+        //         cursor += lenToWrite;
+        //     }
+        // }
+        // else
+        //     logFile->println(msg);
 
-        logFile->save();
+        // logFile->save();
     }
     getEventManager().invoke(LogData{"LOG_DATA"_i, dest, type, msg});
 }
@@ -418,6 +419,7 @@ void Logger::writeCsvHeader()
     DataFormatter::getCSVHeader(header, sizeof(header), dataReporters, numReporters);
     flightDataFile->println(header);
     preFlightFile->println(header);
+    Serial.println(header);
 }
 #ifdef NATIVE
 static Logger *testLogger = nullptr;
