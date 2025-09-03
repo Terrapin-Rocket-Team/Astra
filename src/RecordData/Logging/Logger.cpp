@@ -127,7 +127,7 @@ void Logger::recordFlightData()
     //     preFlightFile->println(dest);
     //     preFlightFile->save();
     // }
-    Serial.println(strlen(dest));
+    Serial.println(dest);
 }
 
 #pragma endregion Flight Data Logging
