@@ -44,9 +44,9 @@ public:
 
         // In the constructor, define the columns you want logged:
         // addColumn(PackedType, pointerToVar, "Label in CSV")
-        addColumn(INT, &altitude, "Altitude");
+        addColumn("%d", &altitude, "Altitude");
         addColumn(FLOAT, &velocity, "Velocity");
-        addColumn(DOUBLE_HP, &latitude, "Latitude"); // (1)!
+        addColumn("%0.7f", &latitude, "Latitude"); // (1)!
     }
 
     // Add your own update step here to modify the data.
@@ -54,7 +54,7 @@ public:
 ```
 {.annotate}
 
-1. Use `DOUBLE` for 3 decimal point precision, or `DOUBLE_HP` if you want 7 points of precision. In this example, 3 decimal points of latitude is only accurate to about 100 meters, so we record all 7 for better location precision.
+1. Use `"%0.3f"` for 3 decimal point precision, or `"%0.7f"` if you want 7 points of precision. In this example, 3 decimal points of latitude is only accurate to about 100 meters, so we record all 7 for better location precision.
 
 ### **Adding Columns**
 

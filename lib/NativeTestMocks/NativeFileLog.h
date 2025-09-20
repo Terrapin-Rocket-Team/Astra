@@ -1,10 +1,10 @@
 #pragma once
 #include <fstream>
 #include <string>
-#include "../../src/RecordData/Logging/ILogSink.h"
+#include <vector>
+#include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
 
-using namespace mmfs;
-class NativeFileLog : public ILogSink
+class NativeFileLog : public mmfs::ILogSink
 {
     std::string path_;
     std::ofstream ofs_;
@@ -12,11 +12,34 @@ class NativeFileLog : public ILogSink
 
 public:
     explicit NativeFileLog(std::string path) : path_(std::move(path)) {}
+    ~NativeFileLog() override { end(); }
+
+    NativeFileLog(const NativeFileLog &) = delete;
+    NativeFileLog &operator=(const NativeFileLog &) = delete;
+    NativeFileLog(NativeFileLog &&other) noexcept
+        : path_(std::move(other.path_)), ofs_(std::move(other.ofs_)), started_(other.started_)
+    {
+        other.started_ = false;
+    }
+    NativeFileLog &operator=(NativeFileLog &&other) noexcept
+    {
+        if (this != &other)
+        {
+            end();
+            path_ = std::move(other.path_);
+            ofs_ = std::move(other.ofs_);
+            started_ = other.started_;
+            other.started_ = false;
+        }
+        return *this;
+    }
 
     bool begin() override
     {
-        // open in binary append; create if not exists
         ofs_.open(path_, std::ios::binary | std::ios::out | std::ios::app);
+        // Optional: speed up large writes in native tests
+        static std::vector<char> buf(256 * 1024);
+        ofs_.rdbuf()->pubsetbuf(buf.data(), buf.size());
         started_ = ofs_.is_open();
         return started_;
     }
@@ -29,10 +52,7 @@ public:
         return true;
     }
 
-    bool ok() override
-    {
-        return started_ && ofs_.good();
-    }
+    bool ok() const override { return started_ && ofs_.good(); }
 
     void flush() override
     {
@@ -56,5 +76,5 @@ public:
         return ofs_.good() ? n : 0;
     }
 
-    using Print::write;
+    using Print::write; // keep other Print overloads visible
 };

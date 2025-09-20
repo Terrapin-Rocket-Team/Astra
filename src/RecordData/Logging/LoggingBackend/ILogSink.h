@@ -15,7 +15,7 @@ namespace mmfs
     public:
         virtual bool begin() = 0;
         virtual bool end() = 0;
-        virtual bool ok() = 0;
+        virtual bool ok() const = 0;
         virtual size_t write(uint8_t) override = 0;
         using Print::write;
         // flush() inherited from print, as are all print() and write() variants.
@@ -39,7 +39,7 @@ namespace mmfs
             s.end();
             return true;
         }
-        bool ok() override { return s; }
+        bool ok() const override { return s; }
         size_t write(uint8_t b) override { return s.write(b); }
     };
 
@@ -58,7 +58,7 @@ namespace mmfs
         {
             return true;
         }
-        bool ok() override { return true; }
+        bool ok() const override { return true; }
         size_t write(uint8_t b) override { return p.write(b); }
     };
 };

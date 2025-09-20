@@ -10,11 +10,11 @@ GPS::GPS(const char *name) : Sensor("GPS", name)
     min = 0;
     sec = 0;
     strcpy(tod, "00:00:00");
-    addColumn(DOUBLE_HP, &position.x(), "Lat (deg)");
-    addColumn(DOUBLE_HP, &position.y(), "Lon (deg)");
-    addColumn(DOUBLE, &position.z(), "Alt (m)");
-    addColumn(INT, &fixQual, "Fix Quality");
-    addColumn(STRING, tod, "Time of Day");
+    addColumn("%0.7f", &position.x(), "Lat (deg)");
+    addColumn("%0.7f", &position.y(), "Lon (deg)");
+    addColumn("%0.3f", &position.z(), "Alt (m)");
+    addColumn("%d", &fixQual, "Fix Quality");
+    addColumn("%s", tod, "Time of Day");
     hasFirstFix = false;
     hasFix = false;
 }

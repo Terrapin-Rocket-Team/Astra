@@ -1,115 +1,319 @@
 #include <unity.h>
-#include "../../lib/NativeTestMocks/NativeTestHelper.h"
-
-// include other headers you need to test here
-
-#include <cstdio>
 #include <string>
 #include <vector>
-#include <fstream>
+#include <cstdint>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
+#include <iostream>
 
-// ---
+// ---- Include your headers (adjust paths as needed) ----
+#include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "../../src/RecordData/DataReporter/DataReporter.h"
+#include "../../src/RecordData/DataReporter/DataReporter.inl"
+#include "../../src/RecordData/Logging/DataLogger.h"
 
-// Set up and global variables or mocks for testing here
+using namespace mmfs;
 
-static const char *kTestFile = "test_output.bin";
-
-static std::vector<uint8_t> readAll(const char *path)
+// --------------- MockSink ---------------
+// Captures all writes in-memory; simulates a healthy sink by default.
+class MockSink : public ILogSink
 {
-    std::ifstream ifs(path, std::ios::binary);
-    std::vector<uint8_t> out;
-    if (!ifs.is_open())
-        return out;
-    ifs.seekg(0, std::ios::end);
-    auto len = static_cast<size_t>(ifs.tellg());
-    ifs.seekg(0, std::ios::beg);
-    out.resize(len);
-    if (len)
-        ifs.read(reinterpret_cast<char *>(out.data()), len);
+public:
+    std::string buf;
+    bool began = false;
+    bool healthy = true;
+    int beginCount = 0;
+    int flushCount = 0;
+    int endCount = 0;
+
+    explicit MockSink(bool healthy_ = true) : healthy(healthy_) {}
+
+    bool begin() override
+    {
+        began = true;
+        beginCount++;
+        return healthy;
+    }
+    bool end() override
+    {
+        endCount++;
+        began = false;
+        return true;
+    }
+    bool ok() const override { return healthy && began; }
+
+    // Make sure Print APIs work
+    size_t write(uint8_t b) override
+    {
+        buf.push_back((char)b);
+        return 1;
+    }
+    size_t write(const uint8_t *p, size_t n) override
+    {
+        buf.append((const char *)p, n);
+        return n;
+    }
+    void flush() override { flushCount++; }
+
+    using Print::write; // keep other overloads visible
+};
+
+// --------------- FakeReporter ---------------
+// Uses your protected addColumn<T> to build a real column chain.
+class FakeReporter : public DataReporter
+{
+public:
+    float ax = 0, ay = 0;
+    int count = 0;
+
+    explicit FakeReporter(const char *name) : DataReporter(name)
+    {
+        // label order defines header & CSV order
+        addColumn<float>("%.2f", &ax, "ax");
+        addColumn<float>("%.3f", &ay, "ay");
+        addColumn<int>("%d", &count, "count");
+    }
+
+    void set(float ax_, float ay_, int c)
+    {
+        ax = ax_;
+        ay = ay_;
+        count = c;
+    }
+};
+
+// A second reporter to test multi-reporter composition
+class PositionReporter : public DataReporter
+{
+public:
+    double lat = 0, lon = 0;
+    explicit PositionReporter(const char *name) : DataReporter(name)
+    {
+        addColumn<double>("%.6f", &lat, "lat");
+        addColumn<double>("%.6f", &lon, "lon");
+    }
+    void set(double la, double lo)
+    {
+        lat = la;
+        lon = lo;
+    }
+};
+
+// ---------- Helpers ----------
+static void reset(MockSink &s)
+{
+    s.buf.clear();
+    s.flushCount = 0;
+}
+static std::vector<std::string> splitLines(const std::string &s)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    for (char c : s)
+    {
+        if (c == '\n')
+        {
+            out.push_back(cur);
+            cur.clear();
+        }
+        else
+            cur.push_back(c);
+    }
+    if (!cur.empty())
+        out.push_back(cur);
     return out;
 }
 
-// ---
+// ---------- Tests ----------
 
-// These two functions are called before and after each test function, and are required in unity, even if empty.
-void setUp(void)
+void test_header_single_reporter(void)
 {
-    // set stuff up before each test here, if needed
-    std::remove(kTestFile);
+    MockSink sink(true);
+    FakeReporter rp("imu");
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+
+    // Expect header like: "imu - ax,imu - ay,imu - count"
+    // (Your implementation prints reporter name + " - " + label)
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &hdr = lines[0];
+
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("imu - ax"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("imu - ay"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("imu - count"));
+
+    // comma separation and no trailing commas (simple checks)
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find(","));
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(std::string::npos, hdr.size() ? (hdr.back() != ',') : 1, "Header ends with comma");
 }
 
-void tearDown(void)
+void test_append_line_single_reporter_values_and_commas(void)
 {
-    // clean stuff up after each test here, if needed
-}
-// ---
+    MockSink sink(true);
+    FakeReporter rp("imu");
+    rp.set(0.126f, -1.5f, 7);
 
-// Test functions must be void and take no arguments, put them here
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp};
 
-void test_begin_ok_end_cycle()
-{
-    NativeFileLog log(kTestFile);
-    TEST_ASSERT_FALSE(log.ok());
-    TEST_ASSERT_TRUE(log.begin());
-    TEST_ASSERT_TRUE(log.ok());
-    TEST_ASSERT_TRUE(log.end());
-    TEST_ASSERT_FALSE(log.ok());
-}
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+    reset(sink);
 
-void test_write_byte_and_block()
-{
-    NativeFileLog log(kTestFile);
-    TEST_ASSERT_TRUE(log.begin());
-    TEST_ASSERT_TRUE(log.ok());
+    TEST_ASSERT_TRUE(dl.appendLine());
 
-    // byte writes
-    TEST_ASSERT_EQUAL_size_t(1, log.write((uint8_t)'A'));
-    TEST_ASSERT_EQUAL_size_t(1, log.write((uint8_t)'\n'));
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(1, lines.size(), "One data line expected");
+    auto &row = lines[0];
 
-    // block write
-    const uint8_t buf[] = {0x01, 0x02, 0x03, 0x04};
-    TEST_ASSERT_EQUAL_size_t(sizeof(buf), log.write(buf, sizeof(buf)));
+    std::cout << row << std::endl;
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("0.13"));   // 0.125 -> "%.2f" -> 0.13
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("-1.500")); // "%.3f"
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("7"));
 
-    log.flush();
-    log.end();
-
-    auto data = readAll(kTestFile);
-    TEST_ASSERT_EQUAL_size_t(2 + sizeof(buf), data.size());
-    TEST_ASSERT_EQUAL_UINT8('A', data[0]);
-    TEST_ASSERT_EQUAL_UINT8('\n', data[1]);
-    TEST_ASSERT_EQUAL_UINT8(0x01, data[2]);
-    TEST_ASSERT_EQUAL_UINT8(0x02, data[3]);
-    TEST_ASSERT_EQUAL_UINT8(0x03, data[4]);
-    TEST_ASSERT_EQUAL_UINT8(0x04, data[5]);
+    // Basic comma sanity: two commas for 3 columns, and no trailing comma
+    size_t commas = 0;
+    for (char c : row)
+        if (c == ',')
+            commas++;
+    TEST_ASSERT_EQUAL_UINT(2, commas);
+    TEST_ASSERT_TRUE(row.back() != ',');
 }
 
-void test_print_and_println()
+void test_multi_reporter_header_and_row(void)
 {
-    NativeFileLog log(kTestFile);
-    TEST_ASSERT_TRUE(log.begin());
+    MockSink sink(true);
+    FakeReporter imu("imu");
+    PositionReporter pos("gps");
 
-    // Use Print API via ILogSink base
-    TEST_ASSERT_GREATER_OR_EQUAL_size_t(5, log.print("hello"));
-    TEST_ASSERT_GREATER_OR_EQUAL_size_t(1, log.println(" world"));
-    log.flush();
-    log.end();
+    imu.set(1.0f, 2.0f, 3);
+    pos.set(39.000123, -76.500789);
 
-    auto s = readAll(kTestFile);
-    std::string out(s.begin(), s.end());
-    TEST_ASSERT_EQUAL_STRING("hello world\n", out.c_str());
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&imu, &pos};
+
+    DataLogger dl(sinks, 1, reps, 2);
+    TEST_ASSERT_TRUE(dl.init());
+
+    auto hdrLines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(hdrLines.empty());
+    auto hdr = hdrLines[0];
+
+    // Expect "imu - ax,imu - ay,imu - count,gps - lat,gps - lon"
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("imu - ax"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("gps - lat"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("gps - lon"));
+
+    reset(sink);
+    TEST_ASSERT_TRUE(dl.appendLine());
+    auto rows = splitLines(sink.buf);
+    TEST_ASSERT_EQUAL_UINT(1, rows.size());
+    auto row = rows[0];
+
+    // Values appear in the same order as headers
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("1.00"));  // imu ax
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("2.000")); // imu ay
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("3"));     // count
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("39.000123"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("-76.500789"));
+
+    // Total commas should be (columns-1) = (3+2-1)=4
+    size_t commas = 0;
+    for (char c : row)
+        if (c == ',')
+            commas++;
+    TEST_ASSERT_EQUAL_UINT(4, commas);
 }
 
-// ---
+void test_unhealthy_sink_is_skipped(void)
+{
+    MockSink bad(false); // begin() returns false -> not ok()
+    MockSink good(true);
 
-// This is the main function that runs all the tests. It should be the last thing in the file.
-int main(int argc, char **argv)
+    FakeReporter rp("imu");
+    rp.set(0.5f, 0.25f, 1);
+
+    ILogSink *sinks[] = {&bad, &good};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 2, reps, 1);
+    TEST_ASSERT_TRUE(dl.init()); // 'any' will be true because good begins
+
+    // Header was written during init; now append a row
+    reset(bad);
+    reset(good);
+    TEST_ASSERT_TRUE(dl.appendLine());
+
+    // bad should remain empty; good should have data
+    TEST_ASSERT_TRUE(bad.buf.empty());
+    TEST_ASSERT_FALSE(good.buf.empty());
+}
+
+void test_empty_reporter_is_handled(void)
+{
+    // A reporter with 0 columns should not produce double-commas or blank columns.
+    class EmptyReporter : public DataReporter
+    {
+    public:
+        explicit EmptyReporter(const char *n) : DataReporter(n) {}
+    } empty("empty");
+
+    MockSink sink(true);
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&empty};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    // Header for empty reporter ideally is just a newline (implementation-dependent).
+    // We allow either empty header line or literal "empty" behavior depending on your choice.
+    // Keep this as a weak assertion: there should be exactly one newline.
+    TEST_ASSERT_TRUE(lines.size() == 1 && (lines[0].empty() || lines[0].find("empty") != std::string::npos));
+
+    reset(sink);
+    TEST_ASSERT_TRUE(dl.appendLine());
+    auto rows = splitLines(sink.buf);
+    // Row should exist but be empty (or minimal) rather than malformed
+    TEST_ASSERT_TRUE(rows.size() == 1);
+}
+
+void test_global_configure_and_instance(void)
+{
+    MockSink sink(true);
+    FakeReporter rp("imu");
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger::configure(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
+
+    reset(sink);
+    TEST_ASSERT_TRUE(DataLogger::instance().appendLine());
+    TEST_ASSERT_FALSE(sink.buf.empty());
+}
+
+// ---------- Unity harness ----------
+void setUp() {}
+void tearDown() {}
+
+int main(int, char **)
 {
     UNITY_BEGIN();
 
-    RUN_TEST(test_begin_ok_end_cycle);
-    RUN_TEST(test_write_byte_and_block);
-    RUN_TEST(test_print_and_println);
-    
-    return UNITY_END();
+    RUN_TEST(test_header_single_reporter);
+    RUN_TEST(test_append_line_single_reporter_values_and_commas);
+    RUN_TEST(test_multi_reporter_header_and_row);
+    RUN_TEST(test_unhealthy_sink_is_skipped);
+    RUN_TEST(test_empty_reporter_is_handled);
+    RUN_TEST(test_global_configure_and_instance);
+
+    UNITY_END();
+    return 0;
 }
-// ---

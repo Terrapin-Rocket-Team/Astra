@@ -12,11 +12,11 @@ namespace mmfs
         int var1 = 0;
         double var2 = 0;
         testDR(){
-            addColumn(INT, &var1, "int");
-            addColumn(DOUBLE, &var2, "DtoF");
-            addColumn(DOUBLE_HP, &var2, "Double");
+            addColumn("%d", &var1, "int");
+            addColumn("%0.3f", &var2, "DtoF");
+            addColumn("%0.7f", &var2, "Double");
             removeColumn("DtoF");
-            insertColumn(1, DOUBLE, &var2, "DtoF2");
+            insertColumn(1, "%0.3f", &var2, "DtoF2");
         }
     };
 }

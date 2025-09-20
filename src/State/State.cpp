@@ -15,17 +15,17 @@ namespace mmfs
         this->sensors = sensors;
         this->filter = filter;
 
-        addColumn(DOUBLE, &currentTime, "Time (s)");
-        addColumn(INT, &stage, "Stage");
-        addColumn(DOUBLE, &position.x(), "PX (m)");
-        addColumn(DOUBLE, &position.y(), "PY (m)");
-        addColumn(DOUBLE, &position.z(), "PZ (m)");
-        addColumn(DOUBLE, &velocity.x(), "VX (m/s)");
-        addColumn(DOUBLE, &velocity.y(), "VY (m/s)");
-        addColumn(DOUBLE, &velocity.z(), "VZ (m/s)");
-        addColumn(DOUBLE, &acceleration.x(), "AX (m/s/s)");
-        addColumn(DOUBLE, &acceleration.y(), "AY (m/s/s)");
-        addColumn(DOUBLE, &acceleration.z(), "AZ (m/s/s)");
+        addColumn("%0.3f", &currentTime, "Time (s)");
+        addColumn("%d", &stage, "Stage");
+        addColumn("%0.3f", &position.x(), "PX (m)");
+        addColumn("%0.3f", &position.y(), "PY (m)");
+        addColumn("%0.3f", &position.z(), "PZ (m)");
+        addColumn("%0.3f", &velocity.x(), "VX (m/s)");
+        addColumn("%0.3f", &velocity.y(), "VY (m/s)");
+        addColumn("%0.3f", &velocity.z(), "VZ (m/s)");
+        addColumn("%0.3f", &acceleration.x(), "AX (m/s/s)");
+        addColumn("%0.3f", &acceleration.y(), "AY (m/s/s)");
+        addColumn("%0.3f", &acceleration.z(), "AZ (m/s/s)");
     }
 
     State::~State()
