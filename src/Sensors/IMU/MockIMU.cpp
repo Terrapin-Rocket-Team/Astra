@@ -27,7 +27,7 @@ MockIMU::MockIMU(const char *dataPath, const std::string accColNames[3], const s
 
         if (numCols == -1 || numCols > MAX_NUM_COLS)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Invalid number of columns read: %d", numCols);
+            //getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Invalid number of columns read: %d", numCols);
             return false;
         }
 
@@ -71,19 +71,19 @@ MockIMU::MockIMU(const char *dataPath, const std::string accColNames[3], const s
         {
             if (accIndices[i] == -1)
             {
-                getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Failed to find acceleration column index for name: %s", accColNames[i].c_str());
+                //getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Failed to find acceleration column index for name: %s", accColNames[i].c_str());
                 return false;
             }
 
             if (gyroIndices[i] == -1)
             {
-                getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Failed to find gyroscope column index for name: %s", gyroColNames[i].c_str());
+                //getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Failed to find gyroscope column index for name: %s", gyroColNames[i].c_str());
                 return false;
             }
 
             if (magIndices[i] == -1)
             {
-                getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Failed to find magnetometer column index for name: %s", magColNames[i].c_str());
+                //getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Failed to find magnetometer column index for name: %s", magColNames[i].c_str());
                 return false;
             }
         }
@@ -98,7 +98,7 @@ MockIMU::MockIMU(const char *dataPath, const std::string accColNames[3], const s
     bool MockIMU::read()    {
         if (!dataReader.readLine(sdData))
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Failed to read data from file!");
+            //getLogger().recordLogData(ERROR_, 100, "[MockIMU]: Failed to read data from file!");
             initialized = false;
             return false;
         }

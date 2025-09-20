@@ -128,10 +128,10 @@ public:
             (sensorOK(imu) ? abs(imu->getAccelerationGlobal().z()) > 25 : false) ||
             (sensorOK(baro) ? baro->getAGLAltFt() > 60 : false)) {
 
-            getLogger().setRecordMode(FLIGHT);
+            //getLogger().setRecordMode(FLIGHT);
             stage = 1;
             timeOfLaunch = currentTime;
-            getLogger().recordLogData(INFO_, "Launch detected.");
+            //getLogger().recordLogData(INFO_, "Launch detected.");
         }
     }
 };

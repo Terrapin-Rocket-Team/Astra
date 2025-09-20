@@ -52,7 +52,7 @@ namespace mmfs
     //     Quaternion a_b = Quaternion{0, measuredAcc};
     //     if (!(a_b.magnitude() > 0))
     //     {
-    //         getLogger().recordLogData(ERROR_, "Acceleration magnitude 0 while running quaternionBasedComplimentaryFilterSetup(). Need to record acceleration vector on setup before running this function.");
+    //         //getLogger().recordLogData(ERROR_, "Acceleration magnitude 0 while running quaternionBasedComplimentaryFilterSetup(). Need to record acceleration vector on setup before running this function.");
     //         return;
     //     }
     //     a_b.normalize();
@@ -71,7 +71,7 @@ namespace mmfs
     //     Quaternion m_b = Quaternion{0, measuredMag};
     //     if (!(m_b.magnitude() > 0))
     //     {
-    //         getLogger().recordLogData(ERROR_, "Magnetic magnitude 0 while running quaternionBasedComplimentaryFilterSetup(). Need to record magnetometer vector on setup before running this function.");
+    //         //getLogger().recordLogData(ERROR_, "Magnetic magnitude 0 while running quaternionBasedComplimentaryFilterSetup(). Need to record magnetometer vector on setup before running this function.");
     //         return;
     //     }
     //     m_b.normalize();

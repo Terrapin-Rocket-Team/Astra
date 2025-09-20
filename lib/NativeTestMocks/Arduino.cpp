@@ -37,38 +37,8 @@ void digitalWrite(int pin, int value)
     printf("\x1B[%dm%.3f - %d to \x1B[%dm%s\x1B[0m\n", color, millis() / 1000.0, pin, value == LOW ? 91 : 92, value == LOW ? "LOW" : "HIGH");
 }
 
-void Stream::write(const char *data, int i)
-{
-    while (i > 0)
-    {
-        fakeBuffer[cursor++] = *data;
-        data++;
-        i--;
-    }
-    fakeBuffer[cursor] = '\0';
-}
-
-void Stream::print(const char *data)
-{
-    write(data, strlen(data));
-    printf("%s", data);
-}
-
-void Stream::println(const char *data)
-{
-    print(data);
-    print("\n");
-    printf("%s\n", data);
-}
-void Stream::printf(const char *data, ...)
-{
-    va_list args;
-    va_start(args, data);
-    vprintf(data, args);
-    va_end(args);
-}
-
 void Stream::begin(int baud) {}
+void Stream::end() {}
 
 void Stream::clearBuffer()
 {
@@ -80,9 +50,7 @@ int Stream::readBytesUntil(char c, char *i, size_t len) {return 0;}
 
 bool Stream::available() { return true; }
 
-void Stream::write(char &c) { write(&c, 1); }
-
-void Stream::println(int i) {}
+size_t Stream::write(uint8_t b) { fakeBuffer[cursor++] = b; return 1;}
 
 SerialClass Serial;
 CrashReportClass CrashReport;

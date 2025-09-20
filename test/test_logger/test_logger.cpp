@@ -3,32 +3,31 @@
 
 // include other headers you need to test here
 
-#include "../../src/State/State.h"
-#include "../../lib/NativeTestMocks/UnitTestSensors.h"
-#include "../../lib/NativeTestMocks/MockLoggingBackend.h"
-#include "../../src/RecordData/DataReporter/DataFormatter.h"
-#include "../src/Events/DefaultEventHandler.h"
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <fstream>
 
 // ---
 
 // Set up and global variables or mocks for testing here
 
-class TestState : public State
+static const char *kTestFile = "test_output.bin";
+
+static std::vector<uint8_t> readAll(const char *path)
 {
-public:
-    TestState(Sensor **sensors, int numSensors, Filter *filter) : State(sensors, numSensors, filter) {}
-    void determineStage() override {}
-};
-
-using namespace mmfs;
-MockFileData *flightFile, *logFile, *preFlightFile;
-
-FakeGPS gps;
-FakeBarometer baro;
-Sensor *sensors[2] = {&gps, &baro};
-TestState state(sensors, 2, nullptr);
-DataReporter *arr[] = {&state, &gps, &baro};
-Logger *testLogger;
+    std::ifstream ifs(path, std::ios::binary);
+    std::vector<uint8_t> out;
+    if (!ifs.is_open())
+        return out;
+    ifs.seekg(0, std::ios::end);
+    auto len = static_cast<size_t>(ifs.tellg());
+    ifs.seekg(0, std::ios::beg);
+    out.resize(len);
+    if (len)
+        ifs.read(reinterpret_cast<char *>(out.data()), len);
+    return out;
+}
 
 // ---
 
@@ -36,6 +35,7 @@ Logger *testLogger;
 void setUp(void)
 {
     // set stuff up before each test here, if needed
+    std::remove(kTestFile);
 }
 
 void tearDown(void)
@@ -46,119 +46,57 @@ void tearDown(void)
 
 // Test functions must be void and take no arguments, put them here
 
-void test_testLogger_init()
+void test_begin_ok_end_cycle()
 {
-    LoggingBackendMock *m = (LoggingBackendMock *)testLogger->backend;
-    testLogger->init(arr, 3);
-    TEST_ASSERT_TRUE(testLogger->isReady());
-    TEST_ASSERT_TRUE(testLogger->backend->exists("1_FlightData.csv"));
-    TEST_ASSERT_TRUE(testLogger->backend->exists("1_Log.txt"));
-    TEST_ASSERT_TRUE(testLogger->backend->exists("1_PreFlightData.csv"));
-    flightFile = ((LoggingBackendMock *)(testLogger->backend))->getMockFileData("1_FlightData.csv");
-    logFile = ((LoggingBackendMock *)(testLogger->backend))->getMockFileData("1_Log.txt");
-    preFlightFile = ((LoggingBackendMock *)(testLogger->backend))->getMockFileData("1_PreFlightData.csv");
+    NativeFileLog log(kTestFile);
+    TEST_ASSERT_FALSE(log.ok());
+    TEST_ASSERT_TRUE(log.begin());
+    TEST_ASSERT_TRUE(log.ok());
+    TEST_ASSERT_TRUE(log.end());
+    TEST_ASSERT_FALSE(log.ok());
 }
 
-void test_recordLogData_on_ground()
+void test_write_byte_and_block()
 {
+    NativeFileLog log(kTestFile);
+    TEST_ASSERT_TRUE(log.begin());
+    TEST_ASSERT_TRUE(log.ok());
 
-    testLogger->recordLogData(.1, INFO_, TO_FILE, "This is a test");
-    TEST_ASSERT_EQUAL(0, flightFile->size);
-    TEST_ASSERT_EQUAL(0, preFlightFile->size);
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("0.100 - [INFO] This is a test\n", logFile->arr, 30);
-    testLogger->recordLogData(.2, INFO_, "This is another test");
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("0.100 - [INFO] This is a test\n0.200 - [INFO] This is another test\n", logFile->arr, 66);
-    TEST_ASSERT_EQUAL_STRING("0.200 - [INFO] This is another test\n", Serial.fakeBuffer);
-    testLogger->recordLogData(.3, INFO_, TO_USB, "This is a third test");
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("0.100 - [INFO] This is a test\n0.200 - [INFO] This is another test\n", logFile->arr, 66);
-    TEST_ASSERT_EQUAL_STRING("0.200 - [INFO] This is another test\n0.300 - [INFO] This is a third test\n", Serial.fakeBuffer);
-    Serial.clearBuffer();
-    testLogger->recordLogData(.4, WARNING_, TO_USB, 50, "This is a warning! #%d did not %s!", 1, "work");
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("0.100 - [INFO] This is a test\n0.200 - [INFO] This is another test\n", logFile->arr, 66);
-    TEST_ASSERT_EQUAL_STRING("0.400 - [WARNING] This is a warning! #1 did not work!\n", Serial.fakeBuffer);
-    Serial.clearBuffer();
+    // byte writes
+    TEST_ASSERT_EQUAL_size_t(1, log.write((uint8_t)'A'));
+    TEST_ASSERT_EQUAL_size_t(1, log.write((uint8_t)'\n'));
+
+    // block write
+    const uint8_t buf[] = {0x01, 0x02, 0x03, 0x04};
+    TEST_ASSERT_EQUAL_size_t(sizeof(buf), log.write(buf, sizeof(buf)));
+
+    log.flush();
+    log.end();
+
+    auto data = readAll(kTestFile);
+    TEST_ASSERT_EQUAL_size_t(2 + sizeof(buf), data.size());
+    TEST_ASSERT_EQUAL_UINT8('A', data[0]);
+    TEST_ASSERT_EQUAL_UINT8('\n', data[1]);
+    TEST_ASSERT_EQUAL_UINT8(0x01, data[2]);
+    TEST_ASSERT_EQUAL_UINT8(0x02, data[3]);
+    TEST_ASSERT_EQUAL_UINT8(0x03, data[4]);
+    TEST_ASSERT_EQUAL_UINT8(0x04, data[5]);
 }
 
-void test_recordFlightData_on_ground()
+void test_print_and_println()
 {
-    state.init(); // will record log data, so don't do this earlier in order to test log data.
-    baro.set(0, 0);
-    gps.set(0, 0, 0);
-    state.updateState(1);
-    testLogger->recordFlightData();
-    TEST_ASSERT_EQUAL(0, flightFile->size); // no data should be written to the flight data file
-    TEST_ASSERT_EQUAL(145, preFlightFile->size);
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("1.000,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000," // state
-                                 "0.0000000,0.0000000,0.000,0.000,0.000,0.000,0,00:00:00,"        // gps
-                                 "0.000,0.000,44307.690,0.000\n",                                 // baro
-                                 preFlightFile->arr, 143);
+    NativeFileLog log(kTestFile);
+    TEST_ASSERT_TRUE(log.begin());
 
-    gps.set(180, 180, 1000);
-    state.updateState(2);
-    testLogger->recordFlightData(); // at this point, this string is all that the buffer should have in it.
-    TEST_ASSERT_EQUAL_CHAR_ARRAY(
-        "1.000,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,"
-        "0.0000000,0.0000000,0.000,0.000,0.000,0.000,0,00:00:00,"
-        "0.000,0.000,44307.690,0.000\n"
-        "2.000,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,"
-        "180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,"
-        "0.000,0.000,44307.690,0.000\n",
-        preFlightFile->arr, 297);
-    TEST_ASSERT_EQUAL(297, preFlightFile->size);
-}
+    // Use Print API via ILogSink base
+    TEST_ASSERT_GREATER_OR_EQUAL_size_t(5, log.print("hello"));
+    TEST_ASSERT_GREATER_OR_EQUAL_size_t(1, log.println(" world"));
+    log.flush();
+    log.end();
 
-void test_recordFlightData_in_flight()
-{
-    testLogger->setRecordMode(FLIGHT);
-    for (int i = 30; i < 40; i++)
-    {
-        state.updateState((i + 1) * .1);
-        testLogger->recordFlightData();
-    }
-    TEST_ASSERT_EQUAL(297, preFlightFile->size); // no new data should be written to the preflight data file
-    TEST_ASSERT_EQUAL(152 * 10, flightFile->size);
-}
-
-void test_dumpData()
-{
-    testLogger->setRecordMode(GROUND); // dump the data
-    flightFile->arr[flightFile->size] = '\0';
-    printf("%s\n", flightFile->arr);
-    TEST_ASSERT_EQUAL_CHAR_ARRAY(
-        "3.100,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.200,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.300,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.400,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.500,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.600,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.700,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.800,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.900,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "4.000,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n",
-        flightFile->arr, 1520);
-}
-
-void test_gps_file_time()
-{
-    Logger l;
-    setLogger(&l);
-    TEST_ASSERT_TRUE(l.backend->exists("1_FlightData.csv"));
-    DefaultEventHandler d;
-    FakeGPS gps;
-    gps.setHasFirstFix(true);
-    gps.setDateTime(2025, 1, 15, 23, 15, 50);
-
-    getEventManager().invoke(GPSFix{"GPS_FIX"_i, &gps, true});
-
-    MockFileData *f = ((LoggingBackendMock *)(l.backend))->getMockFileData("1_FlightData.csv");
-
-    TEST_ASSERT_EQUAL_INT8(2025 - 1900, f->modify.yr2);
-    TEST_ASSERT_EQUAL_INT16(2025, f->modify.yr1);
-    TEST_ASSERT_EQUAL_INT8(1, f->modify.m);
-    TEST_ASSERT_EQUAL_INT8(15, f->modify.d);
-    TEST_ASSERT_EQUAL_INT8(23, f->modify.h);
-    TEST_ASSERT_EQUAL_INT8(15, f->modify.mm);
-    TEST_ASSERT_EQUAL_INT8(50, f->modify.s);
+    auto s = readAll(kTestFile);
+    std::string out(s.begin(), s.end());
+    TEST_ASSERT_EQUAL_STRING("hello world\n", out.c_str());
 }
 
 // ---
@@ -168,20 +106,10 @@ int main(int argc, char **argv)
 {
     UNITY_BEGIN();
 
-    gps.setFixQual(3);
-
-    testLogger = &getLogger();
-    // Add your tests here
-    // RUN_TEST(test_function_name); // no parentheses after function name
-    RUN_TEST(test_testLogger_init);
-    RUN_TEST(test_recordLogData_on_ground);
-    RUN_TEST(test_recordFlightData_on_ground);
-    RUN_TEST(test_recordFlightData_in_flight);
-    RUN_TEST(test_dumpData);
-    RUN_TEST(test_gps_file_time);
-
-    UNITY_END();
-
-    return 0;
+    RUN_TEST(test_begin_ok_end_cycle);
+    RUN_TEST(test_write_byte_and_block);
+    RUN_TEST(test_print_and_println);
+    
+    return UNITY_END();
 }
 // ---

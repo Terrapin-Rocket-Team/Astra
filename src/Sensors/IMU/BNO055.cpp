@@ -42,7 +42,7 @@ namespace mmfs
         {
             Wire.end();
             Wire.begin();
-            getLogger().recordLogData(ERROR_, "BNO055 I2C Error");
+            //getLogger().recordLogData(ERROR_, "BNO055 I2C Error");
         }
         return true;
     }

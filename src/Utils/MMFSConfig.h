@@ -2,6 +2,7 @@
 #define MMFS_CONFIG_H
 
 #include "Events/DefaultEventHandler.h"
+#include <stdint.h>
 
 namespace mmfs
 {
@@ -87,7 +88,7 @@ namespace mmfs
         unsigned int maxQueueSize = 50;
         DataReporter *reporters[50];
         bool useBiasCorrection;
-        IEventListener *defaultEventListener;
+        // IEventListener *defaultEventListener;
 
         uint8_t numReporters = 0;
     };

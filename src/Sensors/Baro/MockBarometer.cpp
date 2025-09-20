@@ -22,7 +22,7 @@ namespace mmfs
 
         if (numCols == -1 || numCols > MAX_NUM_COLS)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockBarometer]: Invalid number of columns read: %d", numCols);
+            //getLogger().recordLogData(ERROR_, 100, "[MockBarometer]: Invalid number of columns read: %d", numCols);
             return false;
         }
 
@@ -50,12 +50,12 @@ namespace mmfs
 
         if (pressureColIndex == -1)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockBarometer]: Failed to find pressure column index for name: %s", pressureColName.c_str());
+            //getLogger().recordLogData(ERROR_, 100, "[MockBarometer]: Failed to find pressure column index for name: %s", pressureColName.c_str());
             return false;
         }
         if (temperatureColIndex == -1)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockBarometer]: Failed to find temperature column index for name: %s", temperatureColName.c_str());
+            //getLogger().recordLogData(ERROR_, 100, "[MockBarometer]: Failed to find temperature column index for name: %s", temperatureColName.c_str());
             return false;
         }
 
@@ -67,7 +67,7 @@ namespace mmfs
     {
         if (!dataReader.readLine(sdData))
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockBarometer]: Failed to read data from file!");
+            //getLogger().recordLogData(ERROR_, 100, "[MockBarometer]: Failed to read data from file!");
             initialized = false;
             return false;
         }

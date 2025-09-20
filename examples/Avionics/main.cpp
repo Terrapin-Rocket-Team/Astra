@@ -26,7 +26,7 @@ void setup()
     Serial.begin(9600);
     Serial.println("Starting up");
     sys.init();
-    Serial.println(getLogger().isReady());
+    Serial.println(//getLogger().isReady());
 }
 
 void loop()

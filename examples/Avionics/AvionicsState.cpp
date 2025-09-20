@@ -35,19 +35,19 @@ void AvionicsState::determineStage()
     // essentially, if we have either sensor and they meet launch threshold, launch. Otherwise, it will never detect a launch.
     {
         bb.aonoff(BUZZER, 200);
-        getLogger().setRecordMode(FLIGHT);
+        //getLogger().setRecordMode(FLIGHT);
         stage = 1;
         timeOfLaunch = currentTime;
         timeOfLastStage = currentTime;
-        getLogger().recordLogData(INFO_, "Launch detected.");
-        getLogger().recordLogData(INFO_, "Printing static data.");
+        //getLogger().recordLogData(INFO_, "Launch detected.");
+        //getLogger().recordLogData(INFO_, "Printing static data.");
         for (int i = 0; i < maxNumSensors; i++)
         {
             if (sensorOK(sensors[i]))
             {
                 char logData[200];
                 //snprintf(logData, 200, "%s: %s", sensors[i]->getName(), sensors[i]->getStaticDataString());
-                getLogger().recordLogData(INFO_, logData);
+                //getLogger().recordLogData(INFO_, logData);
                 // sensors[i]->setBiasCorrectionMode(false);
             }
         }
@@ -57,34 +57,34 @@ void AvionicsState::determineStage()
         bb.aonoff(BUZZER, 200, 2);
         timeOfLastStage = currentTime;
         stage = 2;
-        getLogger().recordLogData(INFO_, "Coasting detected.");
+        //getLogger().recordLogData(INFO_, "Coasting detected.");
     }
     else if (stage == 2 && baroVelocity <= 0 && timeSinceLaunch > 5)
     {
         bb.aonoff(BUZZER, 200, 3);
-        getLogger().recordLogData(INFO_, 100, "Apogee detected at %.2f m.", position.z());
+        //getLogger().recordLogData(INFO_, 100, "Apogee detected at %.2f m.", position.z());
         timeOfLastStage = currentTime;
         stage = 3;
-        getLogger().recordLogData(INFO_, "Drogue conditions detected.");
+        //getLogger().recordLogData(INFO_, "Drogue conditions detected.");
     }
     else if (stage == 3 && baro->getASLAltFt() < 1000 && timeSinceLaunch > 10)
     {
         bb.aonoff(BUZZER, 200, 4);
         stage = 4;
         timeOfLastStage = currentTime;
-        getLogger().recordLogData(INFO_, "Main parachute conditions detected.");
+        //getLogger().recordLogData(INFO_, "Main parachute conditions detected.");
     }
     else if (stage == 4 && baroVelocity > -1 && baro->getASLAltFt() < 66 && timeSinceLaunch > 15)
     {
         bb.aonoff(BUZZER, 200, 5);
         timeOfLastStage = currentTime;
         stage = 5;
-        getLogger().recordLogData(INFO_, "Landing detected. Waiting for 5 seconds to dump data.");
+        //getLogger().recordLogData(INFO_, "Landing detected. Waiting for 5 seconds to dump data.");
     }
     else if (stage == 5 && currentTime - timeOfLastStage > 5)
     {
         stage = 6;
-        getLogger().setRecordMode(GROUND);
-        getLogger().recordLogData(INFO_, "Dumped data after landing.");
+        //getLogger().setRecordMode(GROUND);
+        //getLogger().recordLogData(INFO_, "Dumped data after landing.");
     }
 }

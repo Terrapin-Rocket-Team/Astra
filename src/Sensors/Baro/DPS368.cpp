@@ -36,7 +36,7 @@ bool DPS368::read(){
     }
     else
     {
-        getLogger().recordLogData(ERROR_, "Failed to read data from DPS368 sensor", BOTH);
+        //getLogger().recordLogData(ERROR_, "Failed to read data from DPS368 sensor", BOTH);
         return false;
     }
 }

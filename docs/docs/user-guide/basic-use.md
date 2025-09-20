@@ -50,14 +50,14 @@ void NewState::determineStage() // (1)!
     if (stage == 0 && acceleration.z() > 10 && position.z() > 20) 
     {                                                             // accelerating upwards and off the pad
         stage = 1;                                                // ascent
-        getLogger().setRecordMode(FLIGHT);
+        //getLogger().setRecordMode(FLIGHT);
     }                                                             
     else if (stage == 1 && velocity.z() < 0)                      // descending
         stage = 2;                                                
     else if (stage == 2 && position.z() < 20)                     
     {                                                             // landed
         stage = 3;
-        getLogger().setRecordMode(GROUND);
+        //getLogger().setRecordMode(GROUND);
     }
 }
 ``` 
@@ -66,7 +66,7 @@ void NewState::determineStage() // (1)!
 1. You may have as many stages as you like, but MMFS expects you to have at least launch and land stages.
 /// 
 
-Let's briefly talk about what we've done. `State` declares a method called `#!cpp void determineStage()` that is called every time it updates. Only MMFS doesn't know which stages you might care about, so you have to tell it by overriding that function. The reason it's so important to detect launch and landing is because of those calls to `getLogger().setRecordMode()`. This changes the rate at which MMFS records data, but don't worry, we'll get to all of that. Just understand that this is an important method that must make those calls to `getLogger()` in order for data logging to work the way you want it to.[^1]
+Let's briefly talk about what we've done. `State` declares a method called `#!cpp void determineStage()` that is called every time it updates. Only MMFS doesn't know which stages you might care about, so you have to tell it by overriding that function. The reason it's so important to detect launch and landing is because of those calls to `//getLogger().setRecordMode()`. This changes the rate at which MMFS records data, but don't worry, we'll get to all of that. Just understand that this is an important method that must make those calls to `//getLogger()` in order for data logging to work the way you want it to.[^1]
 
 ### Instantiating the `State` object
 
@@ -261,7 +261,7 @@ You can modify the format of the event logger by using the `withLogPrefixFormatt
 
 `"$time - [$logType] "`
 
-To use the logger to record data, you can call `#!cpp getLogger().recordLogData(LogType type, const char *format, ...)`. This will log the data to both the SD card and USB serial port.
+To use the logger to record data, you can call `#!cpp //getLogger().recordLogData(LogType type, const char *format, ...)`. This will log the data to both the SD card and USB serial port.
 
 See the [Logger documentation](#) for more information.
 

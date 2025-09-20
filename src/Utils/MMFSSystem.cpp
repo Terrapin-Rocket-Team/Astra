@@ -11,8 +11,8 @@ MMFSSystem::MMFSSystem(MMFSConfig *config) : config(config)
 }
 void MMFSSystem::init()
 {
-    getLogger().recordCrashReport();
-    getLogger().recordLogData(INFO_, "Initializing MMFS.");
+    //getLogger().recordCrashReport();
+    //getLogger().recordLogData(INFO_, "Initializing MMFS.");
     Wire.begin();
     // BlinkBuzz first
     int pins = 0;
@@ -36,24 +36,24 @@ void MMFSSystem::init()
     for (i = 0; i < config->numReporters; i++)
         reporters[j++] = config->reporters[i];
 
-    bool log = getLogger().init(reporters, j);
-    getEventManager().invoke(BoolEvent{"LOGGER_INIT"_i, log});
+    // bool log = //getLogger().init(reporters, j);
+    // getEventManager().invoke(BoolEvent{"LOGGER_INIT"_i, log});
 
     delay(10);
     // then State
     bool state = config->state->init();
-    getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
+    // getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
     ready = true;
 
-    getLogger().writeCsvHeader();
-    getLogger().recordLogData(INFO_, "MMFS initialized.");
+    //getLogger().writeCsvHeader();
+    //getLogger().recordLogData(INFO_, "MMFS initialized.");
 }
 bool MMFSSystem::update(double ms)
 {
     bool didUpdate = false;
     if (!ready)
     {
-        getLogger().recordLogData(WARNING_, "Attempted to update MMFSSystem before it was initialized. Initializing it now...");
+        //getLogger().recordLogData(WARNING_, "Attempted to update MMFSSystem before it was initialized. Initializing it now...");
         init();
     }
     getSerialHandler().handle();
@@ -68,14 +68,14 @@ bool MMFSSystem::update(double ms)
         if (config->state)
             config->state->updateState();
         else
-            getLogger().recordLogData(WARNING_, "MMFS Attempted to update State without a reference to it! (use MMFSConfig.withState(&stateVar))");
+            //getLogger().recordLogData(WARNING_, "MMFS Attempted to update State without a reference to it! (use MMFSConfig.withState(&stateVar))");
         didUpdate = true;
     }
     
     if (ms - lastLoggingUpdate > LOGGING_INTERVAL)
     {
         lastLoggingUpdate = ms;
-        getLogger().recordFlightData();
+        //getLogger().recordFlightData();
     }
 
     return didUpdate;

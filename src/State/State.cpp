@@ -46,16 +46,16 @@ namespace mmfs
                 if (sensors[i]->begin())
                 {
                     good++;
-                    getLogger().recordLogData(INFO_, 100, "%s [%s] initialized.", sensors[i]->getTypeString(), sensors[i]->getName());
+                    //getLogger().recordLogData(INFO_, 100, "%s [%s] initialized.", sensors[i]->getTypeString(), sensors[i]->getName());
                 }
                 else
                 {
-                    getLogger().recordLogData(ERROR_, 100, "%s [%s] failed to initialize.", sensors[i]->getTypeString(), sensors[i]->getName());
+                    //getLogger().recordLogData(ERROR_, 100, "%s [%s] failed to initialize.", sensors[i]->getTypeString(), sensors[i]->getName());
                 }
             }
             else
             {
-                getLogger().recordLogData(ERROR_, "A sensor in the array was null!");
+                //getLogger().recordLogData(ERROR_, "A sensor in the array was null!");
             }
         }
         if (filter){
@@ -66,10 +66,10 @@ namespace mmfs
         numSensors = good;
 
         initialized = true;
-        if (good == tryNumSensors)
-            getLogger().recordLogData(INFO_, "State Initialized. All sensors OK.");
-        else
-            getLogger().recordLogData(WARNING_, "State Initialized. At least one sensor failed to initialize.");
+        // if (good == tryNumSensors)
+            //getLogger().recordLogData(INFO_, "State Initialized. All sensors OK.");
+        // else
+            //getLogger().recordLogData(WARNING_, "State Initialized. At least one sensor failed to initialize.");
         return good == tryNumSensors;
     }
 

@@ -5,7 +5,7 @@ namespace mmfs
     {
         initialized = true;
         this->dataPointer = dataPointer;
-        // getLogger().recordLogData(INFO_, "SerialReader: Initialized");
+        // //getLogger().recordLogData(INFO_, "SerialReader: Initialized");
     }
 
     bool SerialReader::readColumnHeaders(int &numCols, std::string colNames[])
@@ -32,7 +32,7 @@ namespace mmfs
         }
         else
         {
-            getLogger().recordLogData(WARNING_, "SerialReader: Headers already read!");
+            //getLogger().recordLogData(WARNING_, "SerialReader: Headers already read!");
             return false;
         }
     }

@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "../../src/Constants.h"
 #include "../../src/BlinkBuzz/BlinkBuzz.h"
-#include "../../src/RecordData/Logging/Logger.h"
+#include "NativeFileLog.h"
 #include <string>
 #ifdef PIO_UNIT_TESTING
 #define UNITY_INCLUDE_DOUBLE

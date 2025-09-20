@@ -7,8 +7,8 @@ namespace mmfs
     template <typename T>
     void DataReporter::insertColumn(uint8_t place, DataType t, T *variable, const char *label)
     {
-        if (getLogger().isReady())
-            getLogger().recordLogData(ERROR_, "Logger already initialized. Cannot add more columns.");
+        // if (//getLogger().isReady())
+            //getLogger().recordLogData(ERROR_, "Logger already initialized. Cannot add more columns.");
 
         auto packedInfo = new DataPoint();
         packedInfo->type = t;
