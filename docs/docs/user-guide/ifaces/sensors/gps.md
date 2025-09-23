@@ -1,12 +1,12 @@
 # GPS
 
-The `GPS` class in MMFS provides a standard interface for satellite-based positioning modules. Like all sensors in MMFS, it inherits from [`Sensor`](sensor.md), allowing it to integrate directly with the system’s data reporting and state machine infrastructure. However, it also offers specific features like positional tracking, fix quality monitoring, and displacement-from-origin calculations.
+The `GPS` class in Astra provides a standard interface for satellite-based positioning modules. Like all sensors in Astra, it inherits from [`Sensor`](sensor.md), allowing it to integrate directly with the system’s data reporting and state machine infrastructure. However, it also offers specific features like positional tracking, fix quality monitoring, and displacement-from-origin calculations.
 
 ---
 
 ## **Overview**
 
-GPS modules output geographic location, altitude, speed, and timing information. The MMFS `GPS` class manages parsing, tracking fix quality, and computing displacement from the original location, so you don’t have to.
+GPS modules output geographic location, altitude, speed, and timing information. The Astra `GPS` class manages parsing, tracking fix quality, and computing displacement from the original location, so you don’t have to.
 
 ---
 
@@ -62,7 +62,7 @@ This makes it easy to track launch site-relative movement without needing extern
 
 ## **Time and Heading Utilities**
 
-MMFS GPS also tracks the time-of-day from the satellite fix. You can access it with:
+Astra GPS also tracks the time-of-day from the satellite fix. You can access it with:
 
 ```cpp
 const char *getTimeOfDay() const;
@@ -82,7 +82,7 @@ This is generally based on the change in GPS position across updates.
 
 /// tab | Using a GPS Module
 
-If you're using an MMFS-supported GPS driver:
+If you're using an Astra-supported GPS driver:
 
 ```cpp
 MyGPS gps;
@@ -139,7 +139,7 @@ To add a new GPS module:
 
 Bias correction mode in the GPS module serves the same core purpose as it does for the barometer: stabilizing the baseline reference — in this case, your origin point (lat, lon, alt). Instead of relying on a single fix, it smooths out noise and minor drift by averaging over several recent GPS readings.
 
-By default, the origin is set the first time a valid fix is obtained. If bias correction is enabled, MMFS continues updating this origin using the second-to-last second of position data. This helps reduce the effect of GPS jitter or slow drift while the rocket is sitting still.
+By default, the origin is set the first time a valid fix is obtained. If bias correction is enabled, Astra continues updating this origin using the second-to-last second of position data. This helps reduce the effect of GPS jitter or slow drift while the rocket is sitting still.
 
 Why not use the most recent second? Same reason as with pressure sensors — the moment just before launch may already contain motion. Locking in a slightly older, averaged position provides a cleaner and safer ground reference for computing AGL altitude or displacement.
 
@@ -161,11 +161,11 @@ From that point onward, the origin stays fixed and all displacement values are c
 
 ## **Summary**
 
-* `GPS` standardizes satellite position data in MMFS
+* `GPS` standardizes satellite position data in Astra
 * You only need to implement `init()` and `read()` to add new modules
 * Outputs latitude, longitude, altitude, fix quality, and heading
 * Tracks local displacement and satellite time-of-day
-* Integrates with MMFS telemetry/logging and supports packed data
+* Integrates with Astra telemetry/logging and supports packed data
 
 ---
 

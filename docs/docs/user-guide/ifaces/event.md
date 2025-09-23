@@ -1,6 +1,6 @@
 # Events
 
-Events in MMFS allow you to respond to system-wide actions or notifications. By default, these events are used to coordinate various parts of the library (e.g., logging, GPS, state changes). You can also create your own events or custom listeners to handle specific needs.
+Events in Astra allow you to respond to system-wide actions or notifications. By default, these events are used to coordinate various parts of the library (e.g., logging, GPS, state changes). You can also create your own events or custom listeners to handle specific needs.
 
 ---
 
@@ -10,7 +10,7 @@ Events in MMFS allow you to respond to system-wide actions or notifications. By 
     A simple class carrying an **EventID**. Developers can create new event types by inheriting from `Event` and adding any additional data they want to share with listeners.
 
 2. **`IEventListener`**  
-    An interface that you can inherit from to automatically subscribe to **all** events in MMFS. Each `IEventListener` must implement:
+    An interface that you can inherit from to automatically subscribe to **all** events in Astra. Each `IEventListener` must implement:
     ```cpp
     void onEvent(const Event *e) override;
     ```
@@ -24,7 +24,7 @@ Events in MMFS allow you to respond to system-wide actions or notifications. By 
 ## **How It Works**
 
 1. **Event Creation**  
-    An event in MMFS has a unique numeric ID. You can either:
+    An event in Astra has a unique numeric ID. You can either:
     - Directly specify an integer ID, or
     - Use the handy compile-time hashing of a string literal with `"SOME_TEXT"_i`.
 
@@ -74,7 +74,7 @@ Events in MMFS allow you to respond to system-wide actions or notifications. By 
 
 ## **Default Events**
 
-MMFS provides a few built-in events for common scenarios:
+Astra provides a few built-in events for common scenarios:
 
 - **`GPSFix`**  
   Notifies listeners when a GPS fix occurs or changes. It carries a pointer to the `GPS` object and a boolean indicating if this is the first time a fix has been acquired since boot.
@@ -106,7 +106,7 @@ void onEvent(const Event *event) override {
 
 If you **do not** want the default behavior at all, you can remove the default event listener by using:
 ```cpp
-MMFSConfig config = MMFSConfig()
+AstraConfig config = AstraConfig()
     .withNoDefaultEventListener();
 ```
 This way, only your custom listeners will process events.
@@ -121,7 +121,7 @@ Below is a simple example showing how you might create a custom event, a custom 
 #include <Event.h>          // Contains IEventListener, EventManager, etc.
 #include <DefaultEvents.h>  // For reference to built-in events (optional)
 
-using namespace mmfs;
+using namespace astra;
 
 // 1. Define a custom event by inheriting from Event
 class MyCustomEvent : public Event {
@@ -169,7 +169,7 @@ void loop() {
 
 ## **Summary**
 
-- **Events** allow a decoupled way of communicating changes or notifications within MMFS.  
+- **Events** allow a decoupled way of communicating changes or notifications within Astra.  
 - **`IEventListener`** classes automatically subscribe to all events.  
 - **Event IDs** can be manually specified or derived via the string hashing syntax `"SOME_ID"_i`.  
 - **Default events** like `LogData`, `GPSFix`, and `BoolEvent` are provided for common tasks.  

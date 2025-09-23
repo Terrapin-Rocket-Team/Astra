@@ -1,3 +1,0 @@
-0.000 [INFO]: power_on fw=9.9.9
-0.000 [WARNING]: gps_wait age=1200
-0.000 [ERROR]: sensor_fail id=7

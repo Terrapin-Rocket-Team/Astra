@@ -1,6 +1,6 @@
 #include "BMI088andLIS3MDL.h"
 
-using namespace mmfs;
+using namespace astra;
 
 bool BMI088andLIS3MDL::init()
 {
@@ -22,9 +22,9 @@ bool BMI088andLIS3MDL::init()
     accel.readSensor();
     gyro.readSensor();
     mag.read();
-    measuredMag = mmfs::Vector<3>(mag.m.x, mag.m.y, mag.m.z);
-    measuredAcc = mmfs::Vector<3>(accel.getAccelX_mss(), accel.getAccelY_mss(), accel.getAccelZ_mss());
-    measuredGyro = mmfs::Vector<3>(gyro.getGyroX_rads(), gyro.getGyroY_rads(), gyro.getGyroZ_rads());
+    measuredMag = astra::Vector<3>(mag.m.x, mag.m.y, mag.m.z);
+    measuredAcc = astra::Vector<3>(accel.getAccelX_mss(), accel.getAccelY_mss(), accel.getAccelZ_mss());
+    measuredGyro = astra::Vector<3>(gyro.getGyroX_rads(), gyro.getGyroY_rads(), gyro.getGyroZ_rads());
 
     // quaternionBasedComplimentaryFilterSetup();
     // setAccelBestFilteringAtStatic(.5);
@@ -37,9 +37,9 @@ bool BMI088andLIS3MDL::read(){
     gyro.readSensor();
     mag.read();
 
-    measuredMag = mmfs::Vector<3>(mag.m.x, mag.m.y, mag.m.z);
-    measuredAcc = mmfs::Vector<3>(accel.getAccelX_mss(), accel.getAccelY_mss(), accel.getAccelZ_mss());
-    measuredGyro = mmfs::Vector<3>(gyro.getGyroX_rads(), gyro.getGyroY_rads(), gyro.getGyroZ_rads());
+    measuredMag = astra::Vector<3>(mag.m.x, mag.m.y, mag.m.z);
+    measuredAcc = astra::Vector<3>(accel.getAccelX_mss(), accel.getAccelY_mss(), accel.getAccelZ_mss());
+    measuredGyro = astra::Vector<3>(gyro.getGyroX_rads(), gyro.getGyroY_rads(), gyro.getGyroZ_rads());
     
     // quaternionBasedComplimentaryFilter(UPDATE_INTERVAL / 1000.0);
     return true;

@@ -1,6 +1,6 @@
 #include "BMP280.h"
 
-using namespace mmfs;
+using namespace astra;
 
 BMP280::BMP280(const char *name, uint8_t addr, TwoWire *wire) : Barometer(name), addr(addr), bmp(wire)
 {

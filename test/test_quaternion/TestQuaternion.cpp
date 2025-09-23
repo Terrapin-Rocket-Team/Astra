@@ -6,7 +6,7 @@
     #define M_PI 3.14159265358979323846
 #endif
 
-using mmfs::Quaternion;
+using astra::Quaternion;
 
 
 // These two functions are called before and after each test function, and are required in unity, even if empty.
@@ -75,11 +75,11 @@ void test_quat_to_matrix(void)
     Quaternion q(cos(half_angle), 0.0, sin(half_angle), 0.0); // (w, x, y, z)
 
     // Convert quaternion to DCM
-    mmfs::Matrix dcm = q.toMatrix();
+    astra::Matrix dcm = q.toMatrix();
 
     // Expected DCM for 45-degree rotation about Y-axis
     double sqrt2_2 = sqrt(2) / 2;
-    mmfs::Matrix expected_dcm(3, 3, new double[9]{sqrt2_2,0,-sqrt2_2,0,1,0,sqrt2_2, 0, sqrt2_2});
+    astra::Matrix expected_dcm(3, 3, new double[9]{sqrt2_2,0,-sqrt2_2,0,1,0,sqrt2_2, 0, sqrt2_2});
 
     // Compare each element of the DCM (assuming TEST_ASSERT_EQUAL_FLOAT can be used for matrices)
     for (int i = 0; i < 3; i++)
@@ -96,14 +96,14 @@ void test_matrix_to_quat(void)
     // Define a 3x3 rotation matrix representing a 45-degree (π/4 rad) rotation about the Z-axis
     double angle = M_PI / 4;  // 45 degrees
     double half_angle = angle / 2;
-    mmfs::Matrix rotation_matrix(3, 3, new double[9]{
+    astra::Matrix rotation_matrix(3, 3, new double[9]{
         cos(angle), -sin(angle), 0.0,
         sin(angle), cos(angle), 0.0,
         0.0, 0.0, 1.0
     });
 
     // Create a quaternion and use the fromMatrix function to convert the rotation matrix to a quaternion
-    mmfs::Quaternion q;
+    astra::Quaternion q;
     q.fromMatrix(rotation_matrix);
 
     // Expected quaternion for a 45-degree rotation about the Z-axis

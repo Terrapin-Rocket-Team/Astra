@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #pragma region Constructor and Destructor
 
-namespace mmfs
+namespace astra
 {
     State::State(Sensor **sensors, int numSensors, Filter *filter)
     {
@@ -208,4 +208,4 @@ namespace mmfs
     }
 #pragma endregion
 
-} // namespace mmfs
+} // namespace astra

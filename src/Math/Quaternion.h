@@ -33,10 +33,9 @@
 
 #include "Vector.h"
 #include "Matrix.h"
-#include "../RecordData/Logging/Logger.h"
 #include <cstdio>
 
-namespace mmfs {
+namespace astra {
 
 class Quaternion {
 public:

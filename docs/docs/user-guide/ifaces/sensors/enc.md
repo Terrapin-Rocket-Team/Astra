@@ -1,6 +1,6 @@
 # Encoder
 
-The `Encoder_MMFS` class provides a standard MMFS interface for rotary or linear encoders. It inherits from [`Sensor`](sensor.md) and implements the familiar MMFS lifecycle (`begin()`, `update()`), while requiring only simple hardware-specific methods to be overridden.
+The `Encoder_Astra` class provides a standard Astra interface for rotary or linear encoders. It inherits from [`Sensor`](sensor.md) and implements the familiar Astra lifecycle (`begin()`, `update()`), while requiring only simple hardware-specific methods to be overridden.
 
 ---
 
@@ -8,7 +8,7 @@ The `Encoder_MMFS` class provides a standard MMFS interface for rotary or linear
 
 The encoder tracks step counts — ticks of a shaft or linear scale — relative to its startup position. It is commonly used for measuring angular rotation, wheel travel, or simple mechanical motion.
 
-Internally, the `Encoder_MMFS` class handles lifecycle integration and telemetry exposure. You only need to implement two functions:
+Internally, the `Encoder_Astra` class handles lifecycle integration and telemetry exposure. You only need to implement two functions:
 
 ```cpp
 bool init() override;
@@ -22,12 +22,12 @@ bool read() override;
 
 ## **Inheritance Structure**
 
-`Encoder_MMFS` inherits from [`Sensor`](sensor.md), and therefore implements:
+`Encoder_Astra` inherits from [`Sensor`](sensor.md), and therefore implements:
 
 * `begin()` → Calls `init()` and stores whether bias correction is enabled
 * `update()` → Calls `read()` and then updates the telemetry data buffer
 
-This ensures your encoder integrates seamlessly with MMFSSystem and the logging stack.
+This ensures your encoder integrates seamlessly with AstraSystem and the logging stack.
 
 ---
 
@@ -59,10 +59,10 @@ loop() {
 
 /// tab | Implementing a Custom Encoder
 
-To add a hardware-specific encoder driver, subclass `Encoder_MMFS` and implement `init()` and `read()`:
+To add a hardware-specific encoder driver, subclass `Encoder_Astra` and implement `init()` and `read()`:
 
 ```cpp
-class MyEncoder : public Encoder_MMFS {
+class MyEncoder : public Encoder_Astra {
     MyHardwareEncoder hw;
 
     bool init() override {
@@ -81,9 +81,9 @@ class MyEncoder : public Encoder_MMFS {
 
 ## **Summary**
 
-* `Encoder_MMFS` provides a standard interface for step-counting encoders
+* `Encoder_Astra` provides a standard interface for step-counting encoders
 * Override `init()` and `read()` to integrate your own hardware
-* Automatically hooks into MMFS telemetry and logging
+* Automatically hooks into Astra telemetry and logging
 * Supports packed telemetry for bandwidth-sensitive applications
 
 ---

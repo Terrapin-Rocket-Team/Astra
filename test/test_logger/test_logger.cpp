@@ -10,10 +10,9 @@
 // ---- Include your headers (adjust paths as needed) ----
 #include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "../../src/RecordData/DataReporter/DataReporter.h"
-#include "../../src/RecordData/DataReporter/DataReporter.inl"
 #include "../../src/RecordData/Logging/DataLogger.h"
 
-using namespace mmfs;
+using namespace astra;
 
 // --------------- MockSink ---------------
 // Captures all writes in-memory; simulates a healthy sink by default.

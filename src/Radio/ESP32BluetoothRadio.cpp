@@ -2,16 +2,16 @@
 
 #include <utility>
 
-mmfs::ESP32BluetoothRadio::ESP32BluetoothRadio(HardwareSerial &port, std::string name, bool hangForSerialReadyOnInit) : port(port), name(std::move(name))
+astra::ESP32BluetoothRadio::ESP32BluetoothRadio(HardwareSerial &port, std::string name, bool hangForSerialReadyOnInit) : port(port), name(std::move(name))
 {
     this->hangForSerialOnInit = hangForSerialReadyOnInit;
 }
 
-mmfs::ESP32BluetoothRadio::~ESP32BluetoothRadio()
+astra::ESP32BluetoothRadio::~ESP32BluetoothRadio()
 {
 }
 
-bool mmfs::ESP32BluetoothRadio::begin()
+bool astra::ESP32BluetoothRadio::begin()
 {
     port.begin(9600);
 
@@ -37,7 +37,7 @@ bool mmfs::ESP32BluetoothRadio::begin()
     return true;
 }
 
-bool mmfs::ESP32BluetoothRadio::tx(const uint8_t *message, int len)
+bool astra::ESP32BluetoothRadio::tx(const uint8_t *message, int len)
 {
     port.write(DATA_MESSAGE);
     uint16_t messageSize = len;
@@ -58,7 +58,7 @@ void waitForSerial(uint32_t ms, Stream &s)
     // }
 }
 
-bool mmfs::ESP32BluetoothRadio::rx()
+bool astra::ESP32BluetoothRadio::rx()
 {
     uint8_t messageType = port.read();
     if (messageType == 255)
@@ -121,14 +121,14 @@ bool mmfs::ESP32BluetoothRadio::rx()
     return false;
 }
 
-bool mmfs::ESP32BluetoothRadio::send(Data &data)
+bool astra::ESP32BluetoothRadio::send(Data &data)
 {
     Message message;
     data.encode(message.buf, message.size);
     return tx(message.buf, message.size);
 }
 
-bool mmfs::ESP32BluetoothRadio::receive(Data &data)
+bool astra::ESP32BluetoothRadio::receive(Data &data)
 {
     if (receiveBufferSize > 0)
     {
@@ -139,27 +139,27 @@ bool mmfs::ESP32BluetoothRadio::receive(Data &data)
     return false;
 }
 
-int mmfs::ESP32BluetoothRadio::RSSI()
+int astra::ESP32BluetoothRadio::RSSI()
 {
     return 0;
 }
 
-bool mmfs::ESP32BluetoothRadio::isReady()
+bool astra::ESP32BluetoothRadio::isReady()
 {
     return ready;
 }
 
-const uint8_t *mmfs::ESP32BluetoothRadio::getReceiveBuffer() const
+const uint8_t *astra::ESP32BluetoothRadio::getReceiveBuffer() const
 {
     return receiveBuffer;
 }
 
-const uint16_t mmfs::ESP32BluetoothRadio::getReceiveSize() const
+const uint16_t astra::ESP32BluetoothRadio::getReceiveSize() const
 {
     return receiveBufferSize;
 }
 
-int mmfs::ESP32BluetoothRadio::readBuffer(char *dest, uint16_t maxLen)
+int astra::ESP32BluetoothRadio::readBuffer(char *dest, uint16_t maxLen)
 {
     int read = min(receiveBufferSize, maxLen);
     memcpy(dest, receiveBuffer, read);

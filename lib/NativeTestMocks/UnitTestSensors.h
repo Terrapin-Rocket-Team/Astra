@@ -2,7 +2,7 @@
 #include "../../src/Sensors/GPS/GPS.h"
 #include "../../src/Sensors/IMU/IMU.h"
 
-using namespace mmfs;
+using namespace astra;
 
 class FakeBarometer : public Barometer
 {

@@ -1,6 +1,6 @@
 # IMU
 
-The `IMU` class in MMFS represents an advanced inertial sensor interface designed to support both raw sensor reporting and fused orientation estimation. It processes data from gyroscopes, accelerometers, and optionally magnetometers, and internally runs a quaternion-based complementary filter to estimate device orientation.
+The `IMU` class in Astra represents an advanced inertial sensor interface designed to support both raw sensor reporting and fused orientation estimation. It processes data from gyroscopes, accelerometers, and optionally magnetometers, and internally runs a quaternion-based complementary filter to estimate device orientation.
 
 Unlike basic sensors, IMUs operate in a multi-frame context — reporting both local-frame measurements and global-frame acceleration — and may expose both raw and filtered signals. Orientation is represented using quaternions but is often interpreted in Euler angles for ease of telemetry.
 
@@ -8,7 +8,7 @@ Unlike basic sensors, IMUs operate in a multi-frame context — reporting both l
 
 ## **Overview**
 
-An IMU in MMFS provides:
+An IMU in Astra provides:
 
 * Angular velocity (from gyroscope)
 * Linear acceleration (from accelerometer)
@@ -128,13 +128,13 @@ class MyIMU : public IMU {
 ### **[BMI088 + LIS3MDL](bmi088_lis3mdl.md)**
 
 * Combines separate accelerometer, gyro, and magnetometer
-* Uses MMFS’s internal filter and fusion logic
+* Uses Astra’s internal filter and fusion logic
 * Best for flexible, high-performance inertial applications
 
 ### **[BNO055](bno055.md)**
 
 * Integrated 9DOF sensor with onboard fusion
-* MMFS defers to the sensor’s internal orientation logic
+* Astra defers to the sensor’s internal orientation logic
 * Returns pre-filtered quaternion and acceleration data
 
 ---

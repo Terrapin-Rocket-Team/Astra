@@ -1,6 +1,6 @@
 #include "MockIMU.h"
 
-using namespace mmfs;
+using namespace astra;
 MockIMU::MockIMU(const char *dataPath, const std::string accColNames[3], const std::string gyroColNames[3], const std::string magColNames[3]) : IMU("MockIMU"), dataReader(dataPath)
 {
 

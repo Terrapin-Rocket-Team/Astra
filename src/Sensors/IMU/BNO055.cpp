@@ -1,7 +1,6 @@
 #include "BNO055.h"
-#include "../../RecordData/Logging/Logger.h"
 
-namespace mmfs
+namespace astra
 {
 
     BNO055::BNO055(const char *name, uint8_t address, TwoWire *theWire)
@@ -25,16 +24,16 @@ namespace mmfs
 
         bno.setExtCrystalUse(true);
 
-        // initialMagField = convertIMUtoMMFS(bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER));
+        // initialMagField = convertIMUtoAstra(bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER));
         return initialized = true;
     }
 
     bool BNO055::read()    {
-        measuredAcc = convertIMUtoMMFS(bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL));
-        measuredGyro = convertIMUtoMMFS(bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE));
-        measuredMag = convertIMUtoMMFS(bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER));
+        measuredAcc = convertIMUtoAstra(bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL));
+        measuredGyro = convertIMUtoAstra(bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE));
+        measuredMag = convertIMUtoAstra(bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER));
 
-        orientation = convertIMUtoMMFS(bno.getQuat());
+        orientation = convertIMUtoAstra(bno.getQuat());
         // check the i2c bus to make sure the BNO didn't misbehave
         Wire.beginTransmission(address);
         byte b = Wire.endTransmission();

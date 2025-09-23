@@ -1,6 +1,6 @@
 #include "MockGPS.h"
 
-namespace mmfs
+namespace astra
 {
     MockGPS::MockGPS(const char *dataPath,
                      const std::string &posXColName,
@@ -122,4 +122,4 @@ namespace mmfs
         return true;
     }
 
-} // namespace mmfs
+} // namespace astra

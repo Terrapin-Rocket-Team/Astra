@@ -3,14 +3,8 @@
 
 #include "LoggingBackend/ILogSink.h"
 
-namespace mmfs
+namespace astra
 {
-    enum LogType
-    {
-        INFO,
-        WARN,
-        ERR,
-    };
     class EventLogger
     {
     private:
@@ -34,7 +28,7 @@ namespace mmfs
         {
             va_list ap;
             va_start(ap, fmt);
-            const bool rc = vrecord(LogType::INFO, fmt, ap);
+            const bool rc = vrecord("INFO", fmt, ap);
             va_end(ap);
             return rc;
         }
@@ -42,7 +36,7 @@ namespace mmfs
         {
             va_list ap;
             va_start(ap, fmt);
-            const bool rc = vrecord(LogType::WARN, fmt, ap);
+            const bool rc = vrecord("WARNING", fmt, ap);
             va_end(ap);
             return rc;
         }
@@ -50,7 +44,7 @@ namespace mmfs
         {
             va_list ap;
             va_start(ap, fmt);
-            const bool rc = vrecord(LogType::ERR, fmt, ap);
+            const bool rc = vrecord("ERROR", fmt, ap);
             va_end(ap);
             return rc;
         }
@@ -69,7 +63,7 @@ namespace mmfs
             return a < b ? a : b;
         }
 
-        bool vrecord(LogType t, const char *fmt, va_list ap)
+        bool vrecord(const char *lvl, const char *fmt, va_list ap)
         {
             if (!_ok)
                 return false;
@@ -79,8 +73,6 @@ namespace mmfs
                 return false;
 
             char pre[32];
-            const char *lvl = (t == LogType::INFO) ? "INFO" : (t == LogType::WARN) ? "WARNING"
-                                                                                   : "ERROR";
             const int m = snprintf(pre, sizeof(pre), "%.3f [%s]: ", millis() / 1000.0, lvl);
 
             bool wroteAny = false;
@@ -99,5 +91,7 @@ namespace mmfs
         }
     };
 }
-
+#define LOGI(...) ::astra::EventLogger::instance().info(__VA_ARGS__)
+#define LOGW(...) ::astra::EventLogger::instance().warn(__VA_ARGS__)
+#define LOGE(...) ::astra::EventLogger::instance().err(__VA_ARGS__)
 #endif

@@ -4,7 +4,7 @@
 #include <Adafruit_BMP280.h>
 #include "Barometer.h"
 
-namespace mmfs
+namespace astra
 {
     class BMP280 : public Barometer
     {
@@ -19,6 +19,6 @@ namespace mmfs
         virtual bool init() override;
         virtual bool read() override;
     };
-} // namespace mmfs
+} // namespace astra
 
 #endif

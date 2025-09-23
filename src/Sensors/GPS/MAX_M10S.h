@@ -6,7 +6,7 @@
 #include <Arduino.h>
 #include "GPS.h"
 
-namespace mmfs
+namespace astra
 {
 
     class MAX_M10S : public GPS

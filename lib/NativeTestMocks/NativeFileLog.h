@@ -4,7 +4,7 @@
 #include <vector>
 #include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
 
-class NativeFileLog : public mmfs::ILogSink
+class NativeFileLog : public astra::ILogSink
 {
     std::string path_;
     std::ofstream ofs_;

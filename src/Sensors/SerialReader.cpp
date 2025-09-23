@@ -1,5 +1,5 @@
 #include "SerialReader.h"
-namespace mmfs
+namespace astra
 {
     SerialReader::SerialReader(const char *dataPointer)
     {

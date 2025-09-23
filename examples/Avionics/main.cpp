@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include "AvionicsState.h"
 #include "AvionicsKF.h"
-#include "MMFS.h"
+#include "Astra.h"
 #include "RetrieveData/SerialHandler.h"
 
-using namespace mmfs;
+using namespace astra;
 const int BUZZER_PIN = 33;
 
 MAX_M10S gps;
@@ -14,12 +14,12 @@ Sensor *sensors[3] = {&gps, &mmfsimu, &baro};
 AvionicsKF kfilter;
 AvionicsState avionicsState(sensors, 3, &kfilter);
 
-MMFSConfig config = MMFSConfig()
+AstraConfig config = AstraConfig()
                         .withBBPin(LED_BUILTIN)
                         .withBuzzerPin(BUZZER_PIN)
                         .withState(&avionicsState);
 
-MMFSSystem sys(&config);
+AstraSystem sys(&config);
 
 void setup()
 {

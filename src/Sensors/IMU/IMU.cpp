@@ -1,6 +1,6 @@
 #include "IMU.h"
 
-namespace mmfs
+namespace astra
 {
 
     IMU::IMU(const char *name) : Sensor("IMU", name)

@@ -1,6 +1,6 @@
 #include "BBPattern.h"
 
-using namespace mmfs;
+using namespace astra;
 // Constructor
 BBPattern::BBPattern() : head(nullptr), tail(nullptr) {}
 

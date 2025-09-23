@@ -1,11 +1,10 @@
 #ifndef SERIALREADER_H
 #define SERIALREADER_H
-#include "../RecordData/Logging/Logger.h"
 #include <Arduino.h>
 #include <string>
 #define MAX_NUM_COLS 1024
 
-namespace mmfs
+namespace astra
 {
 class SerialReader {
     private:

@@ -1,5 +1,4 @@
 #include "BlinkBuzz.h"
-#include "../RecordData/Logging/Logger.h"
 
 #ifndef ARDUINO
 #include "NativeTestHelper.h"
@@ -8,7 +7,7 @@
 #include <Arduino.h>
 
 #endif // !ARDUINO
-namespace mmfs
+namespace astra
 {
     BlinkBuzz::BlinkBuzz() {}
 

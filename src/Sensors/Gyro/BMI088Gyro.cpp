@@ -1,6 +1,6 @@
 #include "BMI088Gyro.h"
 
-namespace mmfs
+namespace astra
 {
     BMI088Gyro::BMI088Gyro(const char *name, TwoWire &bus, uint8_t addr) : Gyro(name), gyro(bus, addr)
     {
@@ -24,4 +24,4 @@ namespace mmfs
         angVel = Vector<3>(gyro.getGyroX_rads(), gyro.getGyroY_rads(), gyro.getGyroZ_rads());
         return true;
     }
-} // namespace mmfs
+} // namespace astra

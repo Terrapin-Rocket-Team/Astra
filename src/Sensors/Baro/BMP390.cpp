@@ -1,6 +1,6 @@
 #include "BMP390.h"
 
-using namespace mmfs;
+using namespace astra;
 
 BMP390::BMP390(const char *name, uint8_t address, TwoWire *theWire) : Barometer(name), wire(theWire), addr(address), bmp()
 {

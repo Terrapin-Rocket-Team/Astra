@@ -1,32 +1,32 @@
-# MMFSSystem
+# AstraSystem
 
-The **MMFSSystem** object is designed to make interacting with the **MMFS** library as simple as possible. You begin by defining an **MMFSConfig** object, configuring all of the parameters your flight code needs, and then passing that configuration object into an **MMFSSystem** object. Afterward, you only need to call the `init()` and `update()` functions. **MMFSSystem** will take care of everything else.
+The **AstraSystem** object is designed to make interacting with the **Astra** library as simple as possible. You begin by defining an **AstraConfig** object, configuring all of the parameters your flight code needs, and then passing that configuration object into an **AstraSystem** object. Afterward, you only need to call the `init()` and `update()` functions. **AstraSystem** will take care of everything else.
 
-## MMFSConfig
+## AstraConfig
 
-The **MMFSConfig** object uses a builder-like pattern, making it easy to set up **MMFS**. The only configuration option that you **must** use in order to run **MMFSSystem** is to pass a derived **State** object with proper launch detection.
+The **AstraConfig** object uses a builder-like pattern, making it easy to set up **Astra**. The only configuration option that you **must** use in order to run **AstraSystem** is to pass a derived **State** object with proper launch detection.
 
 ### Code Example: `withState(...)`
 
 ```cpp
-#include <MMFS.h>
+#include <Astra.h>
 #include <MyCustomState.h> // A user-defined State class that detects launch
 
 
 MyCustomState myState;
 
-MMFSConfig config = MMFSConfig()
+AstraConfig config = AstraConfig()
                     .withState(&myState); // REQUIRED
 ```
 
 Where `myState` is your derived **State** object that handles launch detection.
 
-### MMFSConfig Options
+### AstraConfig Options
 
-Below is a refined list of the configuration methods available in **MMFSConfig**. Each returns a reference to the same **MMFSConfig** instance, allowing you to chain calls together:
+Below is a refined list of the configuration methods available in **AstraConfig**. Each returns a reference to the same **AstraConfig** instance, allowing you to chain calls together:
 
 - **`#!cpp withState(State *state)`**  
-  Adds a derived **State** (and its associated sensors) to **MMFS**. This is required for **MMFSSystem** to function properly.
+  Adds a derived **State** (and its associated sensors) to **Astra**. This is required for **AstraSystem** to function properly.
 
 - **`#!cpp withUpdateRate(unsigned int updateRate)`**  
   Sets an update rate in Hertz. (Default is `10`.) Mutually exclusive with update interval.
@@ -68,11 +68,11 @@ Below is a refined list of the configuration methods available in **MMFSConfig**
 
 ## Full Example
 
-Below is a simple, hypothetical Arduino sketch illustrating how to use **MMFSSystem** with **MMFSConfig**:
+Below is a simple, hypothetical Arduino sketch illustrating how to use **AstraSystem** with **AstraConfig**:
 
 ```cpp
 #include <Arduino.h>
-#include <MMFS.h>
+#include <Astra.h>
 #include <MyCustomState.h>  // Your derived State class
 #include <MyCustomReporter.h> // Additional DataReporter
 
@@ -81,14 +81,14 @@ MyCustomState myState;
 MyCustomReporter myReporter;
 
 // Create the configuration
-MMFSConfig config = MMFSConfig()
+AstraConfig config = AstraConfig()
     .withState(&myState)    // Required for launch detection
     .withUpdateRate(20)     // 20 Hz update
     .withOtherDataReporters({&myReporter}) // Additional data reporters
     .withLogPrefixFormatting("$time - [$logType]: ");
 
 // Create the system object
-MMFSSystem system = MMFSSystem(config);
+AstraSystem system = AstraSystem(config);
 
 void setup() {
     Serial.begin(115200);

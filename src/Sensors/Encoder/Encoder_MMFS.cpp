@@ -1,24 +1,24 @@
-#include "Encoder_MMFS.h"
+#include "Encoder_Astra.h"
 
-namespace mmfs
+namespace astra
 {
 
 #pragma region Encoder Specific Functions
 
-    Encoder_MMFS::~Encoder_MMFS() {}
+    Encoder_Astra::~Encoder_Astra() {}
 
-    Encoder_MMFS::Encoder_MMFS(const char *name) : Sensor("Encoder", name)
+    Encoder_Astra::Encoder_Astra(const char *name) : Sensor("Encoder", name)
     {
         addColumn("%d", &currentRelativeSteps, "Rel Steps");
     }
 
-    int Encoder_MMFS::getSteps() const { return currentRelativeSteps; }
+    int Encoder_Astra::getSteps() const { return currentRelativeSteps; }
 
 #pragma endregion // Encoder Specific Functions
 
 #pragma region Sensor Virtual Function Implementations
 
-    void Encoder_MMFS::setInitialSteps(int step)
+    void Encoder_Astra::setInitialSteps(int step)
     {
         initialSteps = step;
         //getLogger().recordLogData(INFO_, 100, "[Encoder]: Initial Steps set to: %d", step);

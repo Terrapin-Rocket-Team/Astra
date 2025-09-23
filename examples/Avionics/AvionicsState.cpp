@@ -1,7 +1,7 @@
 
 #include "AvionicsState.h"
 
-using namespace mmfs;
+using namespace astra;
 
 AvionicsState::AvionicsState(Sensor **sensors, int numSensors, LinearKalmanFilter *kfilter, bool stateRecordsOwnData) : State(sensors, numSensors, kfilter)
 {

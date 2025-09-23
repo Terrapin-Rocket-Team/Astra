@@ -1,7 +1,7 @@
 #include "Barometer.h"
 #include <cmath>
 #include <Arduino.h>
-namespace mmfs
+namespace astra
 {
 
 #pragma region Barometer Specific Functions

@@ -4,9 +4,9 @@
 #include "../SerialReader.h"
 #include "IMU.h"
 
-namespace mmfs
+namespace astra
 {
-class MockIMU : public mmfs::IMU {
+class MockIMU : public astra::IMU {
     private:
         SerialReader dataReader;
 

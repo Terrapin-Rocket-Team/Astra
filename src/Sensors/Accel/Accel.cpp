@@ -1,6 +1,6 @@
 #include "Accel.h"
 
-namespace mmfs
+namespace astra
 {
     Accel::Accel(const char *name) : Sensor("Accelerometer", name)
     {
@@ -17,4 +17,4 @@ namespace mmfs
     {
         return acc;
     }
-} // namespace mmfs
+} // namespace astra

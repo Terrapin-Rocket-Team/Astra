@@ -1,6 +1,6 @@
 #include "LightSensor.h"
 
-namespace mmfs
+namespace astra
 {
 #pragma region LightSensor Specific Functions
 

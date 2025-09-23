@@ -4,9 +4,9 @@
 #include <LIS3MDL.h>
 #include <Sensors/IMU/IMU.h>
 
-namespace mmfs
+namespace astra
 {
-    class BMI088andLIS3MDL : public mmfs::IMU
+    class BMI088andLIS3MDL : public astra::IMU
     {
     public:
         // See https://github.com/bolderflight/bmi088-arduino/blob/main/README.md for default addresses

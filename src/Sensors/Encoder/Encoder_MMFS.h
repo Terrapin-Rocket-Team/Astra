@@ -1,23 +1,22 @@
-#ifndef ENCODER_MMFS_H
-#define ENCODER_MMFS_H
+#ifndef ENCODER_Astra_H
+#define ENCODER_Astra_H
 
 #include "../Sensor.h"
 #include "../../Constants.h"
-#include "../../RecordData/Logging/Logger.h"
 
-namespace mmfs
+namespace astra
 {
-    class Encoder_MMFS : public Sensor
+    class Encoder_Astra : public Sensor
     {
     public:
-        virtual ~Encoder_MMFS();
+        virtual ~Encoder_Astra();
         virtual int getSteps() const;
         virtual void setInitialSteps(int step);
 
     protected:
-        Encoder_MMFS(const char *name = "Encoder");
+        Encoder_Astra(const char *name = "Encoder");
         int currentRelativeSteps;
         int initialSteps;
     };
 }
-#endif // ENCODER_MMFS_H
+#endif // ENCODER_Astra_H

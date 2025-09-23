@@ -1,12 +1,11 @@
-#include "MMFSConfig.h"
+#include "AstraConfig.h"
 #include "../State/State.h"
-#include "../RecordData/Logging/Logger.h"
 #include "../BlinkBuzz/BlinkBuzz.h"
 
-namespace mmfs
+namespace astra
 {
     
-    MMFSConfig::MMFSConfig()
+    AstraConfig::AstraConfig()
     {
         for (int i = 0; i < 50; i++)
         {
@@ -15,12 +14,12 @@ namespace mmfs
         }
         // defaultEventListener = new DefaultEventHandler();
     }
-    MMFSConfig &MMFSConfig::withState(State *state)
+    AstraConfig &AstraConfig::withState(State *state)
     {
         this->state = state;
         return *this;
     }
-    MMFSConfig &MMFSConfig::withUpdateRate(unsigned int updateRate)
+    AstraConfig &AstraConfig::withUpdateRate(unsigned int updateRate)
     {
         if (UPDATE_RATE == updateRate)
             return *this;
@@ -29,7 +28,7 @@ namespace mmfs
         UPDATE_INTERVAL = 1000.0 / updateRate;
         return *this;
     }
-    MMFSConfig &MMFSConfig::withUpdateInterval(unsigned int updateInterval)
+    AstraConfig &AstraConfig::withUpdateInterval(unsigned int updateInterval)
     {
         if (UPDATE_INTERVAL == updateInterval)
             return *this;
@@ -38,7 +37,7 @@ namespace mmfs
         UPDATE_RATE = 1000.0 / updateInterval;
         return *this;
     }
-    MMFSConfig &MMFSConfig::withLoggingRate(unsigned int loggingRate)
+    AstraConfig &AstraConfig::withLoggingRate(unsigned int loggingRate)
     {
         if (LOGGING_RATE == loggingRate)
             return *this;
@@ -47,7 +46,7 @@ namespace mmfs
         LOGGING_INTERVAL = 1000.0 / loggingRate;
         return *this;
     }
-    MMFSConfig &MMFSConfig::withLoggingInterval(unsigned int loggingInterval)
+    AstraConfig &AstraConfig::withLoggingInterval(unsigned int loggingInterval)
     {
         if (LOGGING_INTERVAL == loggingInterval)
             return *this;
@@ -58,7 +57,7 @@ namespace mmfs
     }
 
 
-    MMFSConfig &MMFSConfig::withSensorBiasCorrectionDataLength(unsigned int sensorBiasCorrectionDataLength)
+    AstraConfig &AstraConfig::withSensorBiasCorrectionDataLength(unsigned int sensorBiasCorrectionDataLength)
     {
         if (SENSOR_BIAS_CORRECTION_DATA_LENGTH == sensorBiasCorrectionDataLength)
             return *this;
@@ -66,7 +65,7 @@ namespace mmfs
         SENSOR_BIAS_CORRECTION_DATA_LENGTH = sensorBiasCorrectionDataLength;
         return *this;
     }
-    MMFSConfig &MMFSConfig::withSensorBiasCorrectionDataIgnore(unsigned int sensorBiasCorrectionDataIgnore)
+    AstraConfig &AstraConfig::withSensorBiasCorrectionDataIgnore(unsigned int sensorBiasCorrectionDataIgnore)
     {
         if (SENSOR_BIAS_CORRECTION_DATA_IGNORE == sensorBiasCorrectionDataIgnore)
             return *this;
@@ -74,7 +73,7 @@ namespace mmfs
         SENSOR_BIAS_CORRECTION_DATA_IGNORE = sensorBiasCorrectionDataIgnore;
         return *this;
     }
-    MMFSConfig &MMFSConfig::withUsingSensorBiasCorrection(bool useBiasCorrection)
+    AstraConfig &AstraConfig::withUsingSensorBiasCorrection(bool useBiasCorrection)
     {
         if (this->useBiasCorrection == useBiasCorrection)
             return *this;
@@ -82,7 +81,7 @@ namespace mmfs
         this->useBiasCorrection = useBiasCorrection;
         return *this;
     }
-    MMFSConfig &MMFSConfig::withBuzzerPin(unsigned int buzzerPin)
+    AstraConfig &AstraConfig::withBuzzerPin(unsigned int buzzerPin)
     {
         if ((unsigned int) BUZZER == buzzerPin)
             return *this;
@@ -103,7 +102,7 @@ namespace mmfs
         //getLogger().recordLogData(WARNING_, "Attempted to add pin %d to BlinkBuzz, but the maximum number of pins (50) has been reached. That's too many pins. Why.", buzzerPin);
         return *this;
     }
-    MMFSConfig &MMFSConfig::withBBPin(unsigned int bbPin)
+    AstraConfig &AstraConfig::withBBPin(unsigned int bbPin)
     {
         for (int i = 0; i < 50; i++)
         {
@@ -121,7 +120,7 @@ namespace mmfs
         //getLogger().recordLogData(WARNING_, "Attempted to add pin %d to BlinkBuzz, but the maximum number of pins (50) has been reached. That's too many pins. Why.", bbPin);
         return *this;
     }
-    MMFSConfig &MMFSConfig::withBBAsync(bool bbAsync, unsigned int queueSize)
+    AstraConfig &AstraConfig::withBBAsync(bool bbAsync, unsigned int queueSize)
     {
         if (this->bbAsync == bbAsync)
             return *this;
@@ -129,7 +128,7 @@ namespace mmfs
         this->bbAsync = bbAsync;
         return *this;
     }
-    MMFSConfig &MMFSConfig::withOtherDataReporters(DataReporter **others)
+    AstraConfig &AstraConfig::withOtherDataReporters(DataReporter **others)
     {
         for (int i = 0; i < 50; i++)
         {
@@ -150,14 +149,14 @@ namespace mmfs
         return *this;
     }
 
-    MMFSConfig &MMFSConfig::withNoDefaultEventListener()
+    AstraConfig &AstraConfig::withNoDefaultEventListener()
     {
         // delete defaultEventListener;
         // defaultEventListener = nullptr;
         return *this;
     }
 
-    MMFSConfig &MMFSConfig::withLogPrefixFormatting(const char *prefix)
+    AstraConfig &AstraConfig::withLogPrefixFormatting(const char *prefix)
     {
         //getLogger().setLogPrefixFormatting(prefix);
         return *this;

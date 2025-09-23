@@ -1,6 +1,5 @@
 #include "SerialHandler.h"
-#include "Events/Event.h"
-using namespace mmfs;
+using namespace astra;
 
 void SerialHandler::handle()
 {
@@ -99,7 +98,7 @@ void SerialHandler::latestFiles()
     // Serial.println(//getLogger().getFlightNum() - 1);
 }
 
-SerialHandler &mmfs::getSerialHandler()
+SerialHandler &astra::getSerialHandler()
 {
     static SerialHandler SerialHandler;
     return SerialHandler;

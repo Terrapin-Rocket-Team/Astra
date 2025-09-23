@@ -2,7 +2,7 @@
 #include "../src/Math/Matrix.h"
 #include "../../lib/NativeTestMocks/NativeTestHelper.h"
 
-using mmfs::Matrix;
+using astra::Matrix;
 
 Matrix m1(2, 2, new double[4]{1, 2, 3, 4});
 Matrix m2(2, 2, new double[4]{5, 6, 7, 8});

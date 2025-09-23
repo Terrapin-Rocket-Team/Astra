@@ -1,6 +1,6 @@
 #include "BMI088Accel.h"
 
-namespace mmfs
+namespace astra
 {
     BMI088Accel::BMI088Accel(const char *name, TwoWire &bus, uint8_t addr) : Accel(name), accel(bus, addr)
     {
@@ -21,4 +21,4 @@ namespace mmfs
         acc = Vector<3>(accel.getAccelX_mss(), accel.getAccelY_mss(), accel.getAccelZ_mss());
         return true;
     }
-} // namespace mmfs
+} // namespace astra

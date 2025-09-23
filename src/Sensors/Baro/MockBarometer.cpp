@@ -1,6 +1,6 @@
 #include "MockBarometer.h"
 
-namespace mmfs
+namespace astra
 {
     MockBarometer::MockBarometer(const char *dataPath, const std::string &pressureColName, const std::string &temperatureColName)
         : Barometer("MockBarometer"),

@@ -1,6 +1,6 @@
 #include "../../src/RecordData/DataReporter/DataReporter.h"
 
-namespace mmfs
+namespace astra
 {
     class testDR : public DataReporter
     {

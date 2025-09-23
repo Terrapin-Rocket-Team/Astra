@@ -1,18 +1,18 @@
-#include "MMFSSystem.h"
+#include "Astra.h"
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
 #include "Wire.h"
 #include "RetrieveData/SerialHandler.h"
 
-using namespace mmfs;
+using namespace astra;
 BlinkBuzz bb;
-MMFSSystem::MMFSSystem(MMFSConfig *config) : config(config)
+Astra::Astra(AstraConfig *config) : config(config)
 {
 }
-void MMFSSystem::init()
+void Astra::init()
 {
     //getLogger().recordCrashReport();
-    //getLogger().recordLogData(INFO_, "Initializing MMFS.");
+    //getLogger().recordLogData(INFO_, "Initializing Astra.");
     Wire.begin();
     // BlinkBuzz first
     int pins = 0;
@@ -46,14 +46,14 @@ void MMFSSystem::init()
     ready = true;
 
     //getLogger().writeCsvHeader();
-    //getLogger().recordLogData(INFO_, "MMFS initialized.");
+    //getLogger().recordLogData(INFO_, "Astra initialized.");
 }
-bool MMFSSystem::update(double ms)
+bool Astra::update(double ms)
 {
     bool didUpdate = false;
     if (!ready)
     {
-        //getLogger().recordLogData(WARNING_, "Attempted to update MMFSSystem before it was initialized. Initializing it now...");
+        //getLogger().recordLogData(WARNING_, "Attempted to update Astra before it was initialized. Initializing it now...");
         init();
     }
     getSerialHandler().handle();
@@ -68,7 +68,7 @@ bool MMFSSystem::update(double ms)
         if (config->state)
             config->state->updateState();
         else
-            //getLogger().recordLogData(WARNING_, "MMFS Attempted to update State without a reference to it! (use MMFSConfig.withState(&stateVar))");
+            //getLogger().recordLogData(WARNING_, "Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
         didUpdate = true;
     }
     

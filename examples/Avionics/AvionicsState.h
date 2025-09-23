@@ -5,7 +5,7 @@
 #include "../src/BlinkBuzz/BlinkBuzz.h"
 #include "../src/Filters/LinearKalmanFilter.h"
 
-namespace mmfs
+namespace astra
 {
     class AvionicsState : public State
     {

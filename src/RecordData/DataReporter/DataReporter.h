@@ -7,7 +7,7 @@
 #include <Arduino.h>                            // for Print
 #include "../Logging/LoggingBackend/ILogSink.h" // gives you ILogSink : Print
 
-namespace mmfs
+namespace astra
 {
 
     struct DataPoint
@@ -70,7 +70,7 @@ namespace mmfs
         char *name = nullptr;
     };
 
-} // namespace mmfs
+} // namespace astra
 
 #include "DataReporter.inl"
 #endif // DATA_REPORTER_H

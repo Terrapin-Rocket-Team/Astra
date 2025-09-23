@@ -1,7 +1,7 @@
 ---
 title: User Manual - Introduction
 ---
-# The Complete MMFS User's Manual
+# The Complete Astra User's Manual
 
 !!! info
     These docs were written in the order shown on the sidebar. You many notice that later docs somewhat rely on the reader understanding topics covered earlier. They should mostly be self-sufficient, but it's not guaranteed.
@@ -11,7 +11,7 @@ title: User Manual - Introduction
 
 <sub><sup><sub><sup>Now on a cool new website!</sup></sub></sup></sub>
 
-This is the official user's manual for TRT's Multi-Mission Flight Software (MMFS). It is designed to be a comprehensive guide for users of all levels, from beginners to advanced developers. The manual covers everything from installation and setup to advanced features and troubleshooting.
+This is the official user's manual for TRT's Multi-Mission Flight Software (Astra). It is designed to be a comprehensive guide for users of all levels, from beginners to advanced developers. The manual covers everything from installation and setup to advanced features and troubleshooting.
 
 The library is essentially split into two categories: **Utilities** and **Interfaces**. 
 
@@ -20,7 +20,7 @@ The library is essentially split into two categories: **Utilities** and **Interf
 ## Utilities
 
 We describe utilities as any part of the library designed to be used as-is, without the end user (you) having to overload or otherwise modify it.
-The utilities offered by MMFS are:
+The utilities offered by Astra are:
 
 ### **[BlinkBuzz](blinkbuzz.md)**
 An (asynchronous!) utility for outputting patterned buzzes and LED blinks.
@@ -37,19 +37,19 @@ A system that allows transfer of flight data files over Serial, allowing retriev
 ### **[Math](math.md)**
 A collection of ... math? ... objects (vectors, matrices, and quaternions) and their functions.
 
-### **[MMFSSystem](mmfssys.md)**
-An object designed to handle all of the MMFS functions during flight.
+### **[AstraSystem](mmfssys.md)**
+An object designed to handle all of the Astra functions during flight.
 
-Most of the power that MMFS offers comes from the Logger and MMFSSystem utilities. That is to say, those are two of the most complicated systems in the library.
+Most of the power that Astra offers comes from the Logger and AstraSystem utilities. That is to say, those are two of the most complicated systems in the library.
 
 ---
 
 ## Interfaces
 
-Interfaces are for any other part of the library that is not fully implemented, or otherwise is expected to be modified by the end user. Most of them are not strictly interfaces, but rather abstract classes. The following interfaces are offered by MMFS:
+Interfaces are for any other part of the library that is not fully implemented, or otherwise is expected to be modified by the end user. Most of them are not strictly interfaces, but rather abstract classes. The following interfaces are offered by Astra:
 
 ### **[State](state.md)**
-This is the main purpose of using MMFS. It is an abstract class that is used to define the state of the rocket. It is designed to be overloaded by the end user, and is used to define the behavior of the telemetry systems during flight.
+This is the main purpose of using Astra. It is an abstract class that is used to define the state of the rocket. It is designed to be overloaded by the end user, and is used to define the behavior of the telemetry systems during flight.
 
 ### **[DataReporter](data-reporter.md)**
 This is an interface for recording flight CSV data using Logger. State implements it, as do all of the sensors. You may extend it to add your own data reporters.

@@ -1,6 +1,6 @@
 # Barometer
 
-The `Barometer` class in MMFS provides an abstract base for all barometric pressure sensors, extending the functionality of the core [`Sensor`](sensor.md) interface. It not only standardizes access to pressure data, but also computes altitude from that data, enabling derived classes to easily support telemetry and flight logic.
+The `Barometer` class in Astra provides an abstract base for all barometric pressure sensors, extending the functionality of the core [`Sensor`](sensor.md) interface. It not only standardizes access to pressure data, but also computes altitude from that data, enabling derived classes to easily support telemetry and flight logic.
 
 ---
 
@@ -82,13 +82,13 @@ public:
 };
 ```
 
-3. If you're using **MMFSSystem**, then that's it. Pass an instance of your new barometer to State, and the software will take care of the rest. If you're not using MMFSSystem, you should call `myBaro.begin()` in `setup()` and `myBaro.update()` in `loop()`, at whatever frequency you find works best.
+3. If you're using **AstraSystem**, then that's it. Pass an instance of your new barometer to State, and the software will take care of the rest. If you're not using AstraSystem, you should call `myBaro.begin()` in `setup()` and `myBaro.update()` in `loop()`, at whatever frequency you find works best.
 
 ---
 
 ## **Available Built-in Drivers**
 
-The following sensors are currently supported in MMFS:
+The following sensors are currently supported in Astra:
 
 * [BMP280](https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software/blob/main/src/Sensors/Baro/BMP280.h) - [Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf) (**NRND**)
 * [BMP390](https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software/blob/main/src/Sensors/Baro/BMP390.h) - [Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp390-ds002.pdf)
@@ -105,7 +105,7 @@ Each of these classes derives from `Barometer` and implements the required `read
 
 Bias correction mode helps compensate for slow pressure drift and sensor noise by continuously recalibrating the zero-altitude baseline — essentially adjusting what the barometer considers "ground level." This is especially useful when the vehicle stays on the pad for a long time before launch, or when ambient pressure changes slightly.
 
-However, it’s off by default because blindly recalibrating can be dangerous — especially if the rocket has already left the ground. See the MMFSSystem docs for more on the risks and defaults.
+However, it’s off by default because blindly recalibrating can be dangerous — especially if the rocket has already left the ground. See the AstraSystem docs for more on the risks and defaults.
 
 When enabled, the barometer periodically computes a new baseline using the second-to-last second of recent pressure data — not the most recent second. Why? Because launch detection systems typically rely on altitude changes to identify liftoff. Including very recent data (which may already show movement) would confuse this logic and result in a bad zero point. Using the "2nd-to-last" second instead gives you a quieter, more accurate reference without interfering with launch detection.
 
@@ -147,7 +147,7 @@ virtual double getAGLAltFt() const; // Above Ground Level - Ft
 * `Barometer` simplifies pressure → altitude conversion using standard math
 * Hardware implementations must only define a `read()` method
 * `begin()` auto-calibrates base pressure and `update()` calls your driver
-* Output is integrated with the MMFS logging/telemetry stack via `DataReporter`
+* Output is integrated with the Astra logging/telemetry stack via `DataReporter`
 * Easy to extend using any existing Arduino/C++ pressure sensor library
 
 !!! note

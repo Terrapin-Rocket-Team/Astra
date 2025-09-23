@@ -1,2 +1,0 @@
-0.002 [INFO]: first
-0.002 [INFO]: second

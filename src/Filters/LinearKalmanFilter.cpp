@@ -1,6 +1,6 @@
 #include "LinearKalmanFilter.h"
 
-namespace mmfs {
+namespace astra {
 
 LinearKalmanFilter::LinearKalmanFilter(int measurementSize, int controlSize, int stateSize)
 {
@@ -77,4 +77,4 @@ void LinearKalmanFilter::covarianceExtrapolate(double dt) {
     P = getF(dt) * P * getF(dt).transpose() + getQ(dt);
 }
 
-} // namespace mmfs
+} // namespace astra

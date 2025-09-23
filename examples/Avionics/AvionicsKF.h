@@ -3,7 +3,7 @@
 
 #include "../src/Filters/LinearKalmanFilter.h"
 
-namespace mmfs {
+namespace astra {
 
 class AvionicsKF : public LinearKalmanFilter {
 public:
@@ -19,6 +19,6 @@ public:
     Matrix getQ(double dt) override;
 };
 
-} // namespace mmfs
+} // namespace astra
 
 #endif // AVIONICS_KF_H

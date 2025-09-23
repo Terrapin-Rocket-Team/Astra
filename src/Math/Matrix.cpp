@@ -1,7 +1,6 @@
 #include "Matrix.h"
-#include "../RecordData/Logging/Logger.h"
 
-namespace mmfs {
+namespace astra {
 
 // Default constructor
 Matrix::Matrix()
@@ -384,4 +383,4 @@ void Matrix::disp()
     //     std::cout << std::endl;
     // }
 }
-} // namespace mmfs
+} // namespace astra

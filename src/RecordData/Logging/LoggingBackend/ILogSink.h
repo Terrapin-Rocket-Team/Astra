@@ -1,9 +1,7 @@
 #ifndef LOGGER_H
 #define LOGGER_H
-
-#include <Arduino.h>
-
-namespace mmfs
+#include "SerialCompat.h"
+namespace astra
 {
     class State;        // Forward declaration
     class DataReporter; // Forward declaration
@@ -21,14 +19,35 @@ namespace mmfs
         // flush() inherited from print, as are all print() and write() variants.
     };
 
-    class SerialLog : public ILogSink
+    class UARTLog : public ILogSink
     {
     private:
-        SerialClass &s;
+        SerialUART_t &s;
         int baud;
 
     public:
-        SerialLog(SerialClass &s, int baud) : s(s), baud(baud) {}
+        UARTLog(SerialUART_t &s, int baud) : s(s), baud(baud) {}
+        bool begin() override
+        {
+            s.begin(baud);
+            return true;
+        }
+        bool end() override
+        {
+            s.end();
+            return true;
+        }
+        bool ok() const override { return s; }
+        size_t write(uint8_t b) override { return s.write(b); }
+    };
+    class USBLog : public ILogSink
+    {
+    private:
+        SerialUSB_t &s;
+        int baud;
+
+    public:
+        USBLog(SerialUSB_t &s, int baud) : s(s), baud(baud) {}
         bool begin() override
         {
             s.begin(baud);

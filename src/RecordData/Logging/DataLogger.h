@@ -4,7 +4,7 @@
 #include "LoggingBackend/ILogSink.h"
 #include "../DataReporter/DataReporter.h"
 
-namespace mmfs
+namespace astra
 {
     class DataLogger
     {

@@ -8,7 +8,7 @@
 #define STATUS_MESSAGE 3
 #define RECEIVE_BUFFER_SIZE 512
 
-namespace mmfs
+namespace astra
 {
     class ESP32BluetoothRadio : public Radio
     {

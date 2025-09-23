@@ -1,6 +1,6 @@
 #include "DPS368.h"
 
-using namespace mmfs;
+using namespace astra;
 
 DPS368::DPS368(const char *name, uint8_t addr, TwoWire *bus) : Barometer(name), addr(addr), bus(bus) {}
 

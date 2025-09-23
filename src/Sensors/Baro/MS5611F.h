@@ -4,7 +4,7 @@
 #include <MS5611.h>
 #include "Sensors/Baro/Barometer.h"
 
-namespace mmfs
+namespace astra
 {
     class MS5611 : public Barometer
     {

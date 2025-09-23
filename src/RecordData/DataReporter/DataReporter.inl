@@ -1,6 +1,6 @@
 #ifndef DATA_REPORTER_INL
 #define DATA_REPORTER_INL
-namespace mmfs
+namespace astra
 {
 
     template <typename T>
@@ -40,5 +40,5 @@ namespace mmfs
         insertColumn<T>(-1, fmt, variable, label);
     }
 
-} // namespace mmfs
+} // namespace astra
 #endif // DATA_REPORTER_INL

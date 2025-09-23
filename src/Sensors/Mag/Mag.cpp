@@ -1,6 +1,6 @@
 #include "Mag.h"
 
-namespace mmfs
+namespace astra
 {
     Mag::Mag(const char *name) : Sensor("Magnetometer", name)
     {
@@ -17,4 +17,4 @@ namespace mmfs
     {
         return mag;
     }
-} // namespace mmfs
+} // namespace astra

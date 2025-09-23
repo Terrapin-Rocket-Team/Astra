@@ -11,7 +11,7 @@
 #include "../Math/Vector.h"
 #include "../Math/Quaternion.h"
 
-namespace mmfs
+namespace astra
 {
     class State : public DataReporter
     {

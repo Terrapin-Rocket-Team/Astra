@@ -1,6 +1,6 @@
 #include "GPS.h"
 
-using namespace mmfs;
+using namespace astra;
 
 #pragma region GPS Specific Functions
 

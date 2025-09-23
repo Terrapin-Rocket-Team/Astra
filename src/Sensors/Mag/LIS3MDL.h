@@ -5,9 +5,9 @@
 #include <Wire.h>
 #include "Mag.h"
 
-namespace mmfs
+namespace astra
 {
-    class LIS3MDL : public mmfs::Mag
+    class LIS3MDL : public astra::Mag
     {
     public:
         bool read() override;

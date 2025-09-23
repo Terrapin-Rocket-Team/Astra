@@ -1,6 +1,6 @@
 #include "DataReporter.h"
 
-using namespace mmfs;
+using namespace astra;
 
 int DataReporter::numReporters = 0;
 

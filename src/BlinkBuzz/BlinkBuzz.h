@@ -3,7 +3,7 @@
 
 #include "BBPattern.h"
 
-namespace mmfs
+namespace astra
 {
 	class BlinkBuzz
 	{
@@ -81,5 +81,5 @@ namespace mmfs
 
 }
 
-extern mmfs::BlinkBuzz bb;
+extern astra::BlinkBuzz bb;
 #endif // !BLINKBUZZ_H

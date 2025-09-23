@@ -3,7 +3,7 @@
 
 #include "../Sensor.h"
 
-namespace mmfs
+namespace astra
 {
     class LightSensor : public Sensor
     {
