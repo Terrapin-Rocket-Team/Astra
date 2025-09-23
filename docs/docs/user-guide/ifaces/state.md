@@ -131,7 +131,7 @@ public:
             //getLogger().setRecordMode(FLIGHT);
             stage = 1;
             timeOfLaunch = currentTime;
-            //getLogger().recordLogData(INFO_, "Launch detected.");
+            LOGI("Launch detected.");
         }
     }
 };

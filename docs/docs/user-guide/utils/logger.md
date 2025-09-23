@@ -99,8 +99,8 @@ Once setup is complete, you can record log data using:
 There are eight different function overloads for this method, each taking different arguments. Essentially, you specify the log type, where you want to send it (destination), and the actual data you want to log. You can optionally supply a timestamp instead of letting it be generated automatically, and you can choose to use or not use a printf-style format string followed by any number of arguments. Rather than list every overload, here are a couple of examples:
 
 ```cpp
-//getLogger().recordLogData(WARNING_, TO_USB, "Hello, world!");
-//getLogger().recordLogData(INFO_, TO_FILE, 50, "Hello %s", "there!");
+LOGW(TO_USB, "Hello, world!");
+LOGI(TO_FILE, 50, "Hello %s", "there!");
 ```
 
 !!! note

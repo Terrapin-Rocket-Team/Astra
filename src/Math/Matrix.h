@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <stdint.h>
+#include "RecordData/Logging/EventLogger.h"
 
 namespace astra
 {

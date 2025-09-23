@@ -12,7 +12,7 @@ Astra::Astra(AstraConfig *config) : config(config)
 void Astra::init()
 {
     //getLogger().recordCrashReport();
-    //getLogger().recordLogData(INFO_, "Initializing Astra.");
+    LOGI("Initializing Astra.");
     Wire.begin();
     // BlinkBuzz first
     int pins = 0;
@@ -46,14 +46,14 @@ void Astra::init()
     ready = true;
 
     //getLogger().writeCsvHeader();
-    //getLogger().recordLogData(INFO_, "Astra initialized.");
+    LOGI("Astra initialized.");
 }
 bool Astra::update(double ms)
 {
     bool didUpdate = false;
     if (!ready)
     {
-        //getLogger().recordLogData(WARNING_, "Attempted to update Astra before it was initialized. Initializing it now...");
+        LOGW("Attempted to update Astra before it was initialized. Initializing it now...");
         init();
     }
     getSerialHandler().handle();
@@ -68,7 +68,7 @@ bool Astra::update(double ms)
         if (config->state)
             config->state->updateState();
         else
-            //getLogger().recordLogData(WARNING_, "Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
+            LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
         didUpdate = true;
     }
     

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "../RecordData/DataReporter/DataReporter.h"
 #include "Utils/Hash.h"
+#include "RecordData/Logging/EventLogger.h"
 
 namespace astra
 {

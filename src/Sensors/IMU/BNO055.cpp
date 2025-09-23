@@ -41,7 +41,7 @@ namespace astra
         {
             Wire.end();
             Wire.begin();
-            //getLogger().recordLogData(ERROR_, "BNO055 I2C Error");
+            LOGE("BNO055 I2C Error");
         }
         return true;
     }

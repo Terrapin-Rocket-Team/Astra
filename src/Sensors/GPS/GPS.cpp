@@ -88,49 +88,49 @@ void GPS::findTimeZone()
     if (isDST)
     {
         hrOffset = 1;
-        //getLogger().recordLogData(INFO_, "DST is in effect.");
+        LOGI("DST is in effect.");
     }
     else
     {
         hrOffset = 0;
-        //getLogger().recordLogData(INFO_, "DST is not in effect.");
+        LOGI("DST is not in effect.");
     }
 
     if (getPos().x() > -82.5)
     {
         hrOffset -= 5;
-        //getLogger().recordLogData(INFO_, "Timezone: Eastern Standard Time");
+        LOGI("Timezone: Eastern Standard Time");
     }
     else if (getPos().x() > -97.5)
     {
         hrOffset -= 6;
-        //getLogger().recordLogData(INFO_, "Timezone: Central Standard Time");
+        LOGI("Timezone: Central Standard Time");
     }
     else if (getPos().x() > -112.5)
     {
         hrOffset -= 7;
-        //getLogger().recordLogData(INFO_, "Timezone: Mountain Standard Time");
+        LOGI("Timezone: Mountain Standard Time");
     }
     else if (getPos().x() > -127.5)
     {
         hrOffset -= 8;
-        //getLogger().recordLogData(INFO_, "Timezone: Pacific Standard Time");
+        LOGI("Timezone: Pacific Standard Time");
     }
     else if (getPos().x() > -135)
     {
         hrOffset -= 9;
-        //getLogger().recordLogData(INFO_, "Timezone: Alaska Standard Time");
+        LOGI("Timezone: Alaska Standard Time");
     }
     else if (getPos().x() > -150)
     {
         hrOffset -= 10;
-        //getLogger().recordLogData(INFO_, "Timezone: Hawaii-Aleutian Standard Time");
+        LOGI("Timezone: Hawaii-Aleutian Standard Time");
     }
     else
     {
-        //getLogger().recordLogData(INFO_, "Timezone: UTC");
+        LOGI("Timezone: UTC");
     }
-    //getLogger().recordLogData(INFO_, 100, "Timezone offset: %d", hrOffset);
+    LOGI("Timezone offset: %d", hrOffset);
 }
 
 #pragma endregion // GPS Specific Functions

@@ -2,6 +2,8 @@
 #define SERIALREADER_H
 #include <Arduino.h>
 #include <string>
+#include "RecordData/Logging/EventLogger.h"
+
 #define MAX_NUM_COLS 1024
 
 namespace astra

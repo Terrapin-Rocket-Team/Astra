@@ -81,7 +81,7 @@ public:
   void fromMatrix(Matrix &m) {
     // Ensure that the matrix is 3x3
     if (m.getRows() != 3 || m.getCols() != 3) {
-      //getLogger().recordLogData(ERROR_, "Tried to convert a non3x3 matrix into a quaterion. Input matrix was a %dx%d. Returning previous quaternion.", m.getRows(), m.getCols());
+      LOGE("Tried to convert a non3x3 matrix into a quaterion. Input matrix was a %dx%d. Returning previous quaternion.", m.getRows(), m.getCols());
       return;
     }
 

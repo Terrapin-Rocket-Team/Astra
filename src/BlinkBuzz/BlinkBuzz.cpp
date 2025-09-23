@@ -1,5 +1,5 @@
 #include "BlinkBuzz.h"
-
+#include "RecordData/Logging/EventLogger.h"
 #ifndef ARDUINO
 #include "NativeTestHelper.h"
 #else
@@ -68,7 +68,7 @@ namespace astra
     bool BlinkBuzz::isRdy()
     {
         if (!ready)
-            //getLogger().recordLogData(ERROR_, "Attempted to use BlinkBuzz before it was initialized!");
+            LOGE("Attempted to use BlinkBuzz before it was initialized!");
         return ready;
     }
 #pragma region Synchronous and Helper functions
@@ -79,14 +79,14 @@ namespace astra
             return false;
         if (isAllowed(pin))
             return pinState[getPinIndex(pin)];
-        //getLogger().recordLogData(WARNING_, 100, "BlinkBuzz: Attempted to check state of an unallowed pin: %d", pin);
+        LOGW("BlinkBuzz: Attempted to check state of an unallowed pin: %d", pin);
         return false;
     }
 
     bool BlinkBuzz::isUsingAsync()
     {
         if (!ready)
-            //getLogger().recordLogData(ERROR_, "Attempted to use BlinkBuzz before it was initialized!");
+            LOGE("Attempted to use BlinkBuzz before it was initialized!");
         return ready;
     }
 
@@ -98,7 +98,7 @@ namespace astra
             for (int i = 0; i < numPins; i++)
                 if (allowedPins[i] == pin)
                     return true;
-        //getLogger().recordLogData(WARNING_, 100, "BlinkBuzz: Attempted to use an unallowed pin: %d", pin);
+        LOGW("BlinkBuzz: Attempted to use an unallowed pin: %d", pin);
         return false;
     }
     int BlinkBuzz::getPinIndex(int pin)
@@ -206,7 +206,7 @@ namespace astra
         if (!enableAsync)
         {
 
-            //getLogger().recordLogData(ERROR_, "BlinkBuzz: Attempted to use an asynchronous function without enabling asynchronous mode.");
+            LOGE("BlinkBuzz: Attempted to use an asynchronous function without enabling asynchronous mode.");
             return;
         }
 
@@ -249,7 +249,7 @@ namespace astra
     {
         if (pinQEnd[idx] == maxQueueSize - 1)
         { // if the queue is full, don't add anything
-            //getLogger().recordLogData(WARNING_, 100, "BlinkBuzz: pin %d's queue has overflown.", allowedPins[idx]);
+            LOGW("BlinkBuzz: pin %d's queue has overflown.", allowedPins[idx]);
             return;
         }
         pinQ[idx][pinQEnd[idx]] = timeStamp;

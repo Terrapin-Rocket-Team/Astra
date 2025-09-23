@@ -21,7 +21,7 @@ namespace astra
     void Encoder_Astra::setInitialSteps(int step)
     {
         initialSteps = step;
-        //getLogger().recordLogData(INFO_, 100, "[Encoder]: Initial Steps set to: %d", step);
+        LOGI("[Encoder]: Initial Steps set to: %d", step);
     }
 
 #pragma region Data Reporting

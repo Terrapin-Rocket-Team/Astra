@@ -46,16 +46,16 @@ namespace astra
                 if (sensors[i]->begin())
                 {
                     good++;
-                    //getLogger().recordLogData(INFO_, 100, "%s [%s] initialized.", sensors[i]->getTypeString(), sensors[i]->getName());
+                    LOGI("%s [%s] initialized.", sensors[i]->getTypeString(), sensors[i]->getName());
                 }
                 else
                 {
-                    //getLogger().recordLogData(ERROR_, 100, "%s [%s] failed to initialize.", sensors[i]->getTypeString(), sensors[i]->getName());
+                    LOGE("%s [%s] failed to initialize.", sensors[i]->getTypeString(), sensors[i]->getName());
                 }
             }
             else
             {
-                //getLogger().recordLogData(ERROR_, "A sensor in the array was null!");
+                LOGE("A sensor in the array was null!");
             }
         }
         if (filter){
@@ -67,9 +67,9 @@ namespace astra
 
         initialized = true;
         // if (good == tryNumSensors)
-            //getLogger().recordLogData(INFO_, "State Initialized. All sensors OK.");
+            LOGI("State Initialized. All sensors OK.");
         // else
-            //getLogger().recordLogData(WARNING_, "State Initialized. At least one sensor failed to initialize.");
+            LOGW("State Initialized. At least one sensor failed to initialize.");
         return good == tryNumSensors;
     }
 
