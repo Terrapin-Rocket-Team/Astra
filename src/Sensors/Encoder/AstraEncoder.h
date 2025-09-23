@@ -2,7 +2,6 @@
 #define ENCODER_Astra_H
 
 #include "../Sensor.h"
-#include "../../Constants.h"
 
 namespace astra
 {

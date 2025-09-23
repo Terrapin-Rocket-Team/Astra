@@ -91,7 +91,7 @@ void test_quaternion_based_complimentary_filter()
     // Test case 1: Propagate orientation with zero angular velocity, and acceleration aligning with gravity
     imu.begin();
     imu.set(Vector<3>{0.0, 0.0, 9.81}, Vector<3>{0.0, 0.0, 0.0}, Vector<3>{0.0, 0.0, 0.0}); // Set accel to gravity and angular velocity to 0
-    imu.quaternionBasedComplimentaryFilter((double)UPDATE_INTERVAL/1000); // Run filter with small time step
+    imu.quaternionBasedComplimentaryFilter((double)updateInterval/1000); // Run filter with small time step
 
     // Expected orientation should still be close to identity quaternion (no angular motion)
     Quaternion expected_orientation = Quaternion{1.0, 0.0, 0.0, 0.0};
@@ -103,7 +103,7 @@ void test_quaternion_based_complimentary_filter()
     // Test case 2: Small angular velocity with no external acceleration, identity quaternion
     imu.begin();
     imu.set(Vector<3>{0.0, 0.0, 9.81}, Vector<3>{0.1, 0.0, 0.0}, Vector<3>{0.0, 0.0, 0.0}); // Set small angular velocity in x direction
-    imu.quaternionBasedComplimentaryFilter((double)UPDATE_INTERVAL/1000); // Run filter
+    imu.quaternionBasedComplimentaryFilter((double)updateInterval/1000); // Run filter
     
     // Check if the orientation has slightly changed due to angular velocity
     expected_orientation = Quaternion{0.999999875, .000499994313, 0.0, 0.0};
@@ -115,7 +115,7 @@ void test_quaternion_based_complimentary_filter()
     // Test case 3: Large angular velocity and non-gravitational acceleration
     imu.begin();
     imu.set(Vector<3>{2.0, 2.0, 5.0}, Vector<3>{1.0, 1.0, 1.0}, Vector<3>{0.5, 0.5, 0.5}); // Random non-gravity forces
-    imu.quaternionBasedComplimentaryFilter((double)UPDATE_INTERVAL/1000); // Run filter
+    imu.quaternionBasedComplimentaryFilter((double)updateInterval/1000); // Run filter
 
     TEST_IGNORE_MESSAGE("Magnetometer code doesn't work");
     // The result should deviate significantly from the identity quaternion

@@ -1,4 +1,4 @@
-#include "Encoder_Astra.h"
+#include "AstraEncoder.h"
 
 namespace astra
 {

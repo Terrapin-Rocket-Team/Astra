@@ -1,7 +1,6 @@
 #ifndef SENSOR_H
 #define SENSOR_H
 
-#include "../Constants.h"
 #include "../Utils/CircBuffer.h"
 #include "../BlinkBuzz/BlinkBuzz.h"
 #include <algorithm>

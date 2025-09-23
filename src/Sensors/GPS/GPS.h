@@ -2,7 +2,6 @@
 #define GPS_H
 
 #include "../Sensor.h"
-#include "../../Constants.h"
 #include "../../Math/Vector.h"
 
 namespace astra

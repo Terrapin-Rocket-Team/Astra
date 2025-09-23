@@ -1,6 +1,7 @@
 #include "Barometer.h"
 #include <cmath>
 #include <Arduino.h>
+#define MEAN_SEA_LEVEL_PRESSURE_HPA 1013.25
 namespace astra
 {
 

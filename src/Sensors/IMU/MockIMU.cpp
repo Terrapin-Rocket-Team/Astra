@@ -109,6 +109,6 @@ MockIMU::MockIMU(const char *dataPath, const std::string accColNames[3], const s
             measuredMag[i] = sdData[magIndices[i]];
         }
 
-        // quaternionBasedComplimentaryFilter(UPDATE_INTERVAL / 1000.0);
+        // quaternionBasedComplimentaryFilter(updateInterval / 1000.0);
         return true;
     }

@@ -4,7 +4,6 @@
 #include "../Sensor.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Quaternion.h"
-#include "../../Constants.h"
 
 namespace astra
 {

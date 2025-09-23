@@ -62,7 +62,7 @@ bool Astra::update(double ms)
     if (ms == -1)
         ms = millis();
 
-    if (ms - lastStateUpdate > UPDATE_INTERVAL)
+    if (ms - lastStateUpdate > config->updateInterval)
     {
         lastStateUpdate = ms;
         if (config->state)
@@ -72,7 +72,7 @@ bool Astra::update(double ms)
         didUpdate = true;
     }
     
-    if (ms - lastLoggingUpdate > LOGGING_INTERVAL)
+    if (ms - lastLoggingUpdate > config->loggingInterval)
     {
         lastLoggingUpdate = ms;
         //getLogger().recordFlightData();

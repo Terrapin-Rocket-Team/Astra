@@ -19,7 +19,7 @@ namespace astra
         // Set a sensor/state update rate (in hz).
         // Mutually exclusive with `withUpdateInterval()`. Last one called will take effect.
         // Default `10`.
-        AstraConfig &withUpdateRate(unsigned int updateRate);
+        AstraConfig &withUpdateRate(double updateRate);
 
         // Set a sensor/state update interval (in ms).
         // Mutually exclusive with `withUpdateRate()`. Last one called will take effect.
@@ -29,7 +29,7 @@ namespace astra
         // Set the rate at which logs will be written to the SD card (in hz).
         // Mutually exclusive with `withLoggingInterval()`. Last one called will take effect.
         // Default `10`.
-        AstraConfig &withLoggingRate(unsigned int loggingRate);
+        AstraConfig &withLoggingRate(double loggingRate);
 
         // Set the interval at which logs will be written to the SD card (in ms).
         // Mutually exclusive with `withLoggingRate()`. Last one called will take effect.
@@ -86,8 +86,10 @@ namespace astra
         bool bbAsync;
         unsigned int maxQueueSize = 50;
         DataReporter *reporters[50];
-        bool useBiasCorrection;
-        // IEventListener *defaultEventListener;
+        int updateInterval = 100;  // in ms
+        int loggingInterval = 100; // in ms
+        double loggingRate = 10;   // in hz
+        double updateRate = 10;    // in hz
 
         uint8_t numReporters = 0;
     };

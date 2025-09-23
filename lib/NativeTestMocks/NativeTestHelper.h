@@ -2,7 +2,6 @@
 #define NATIVE_TEST_HELPER_H
 
 #include <Arduino.h>
-#include "../../src/Constants.h"
 #include "../../src/BlinkBuzz/BlinkBuzz.h"
 #include "NativeFileLog.h"
 #include <string>

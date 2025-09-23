@@ -41,7 +41,7 @@ bool BMI088andLIS3MDL::read(){
     measuredAcc = astra::Vector<3>(accel.getAccelX_mss(), accel.getAccelY_mss(), accel.getAccelZ_mss());
     measuredGyro = astra::Vector<3>(gyro.getGyroX_rads(), gyro.getGyroY_rads(), gyro.getGyroZ_rads());
     
-    // quaternionBasedComplimentaryFilter(UPDATE_INTERVAL / 1000.0);
+    // quaternionBasedComplimentaryFilter(updateInterval / 1000.0);
     return true;
 }
 
