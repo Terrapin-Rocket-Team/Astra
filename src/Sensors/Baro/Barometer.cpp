@@ -50,7 +50,7 @@ namespace astra
         pressure = 0;
         temp = 0;
         altitudeASL = 0;
-        if(initialized = init())
+        if (initialized = init())
         {
             read();
             altitudeASL = calcAltitude(pressure);

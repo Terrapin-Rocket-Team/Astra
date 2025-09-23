@@ -3,9 +3,6 @@
 #include "SerialCompat.h"
 namespace astra
 {
-    class State;        // Forward declaration
-    class DataReporter; // Forward declaration
-    class GPS;
 
     class ILogSink : public Print
     {
