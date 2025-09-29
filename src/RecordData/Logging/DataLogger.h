@@ -25,6 +25,9 @@ namespace astra
                 if (_sinks[i]->begin())
                 {
                     any = true;
+                    if(_sinks[i]->wantsPrefix() && _countReporters > 0 && _rps[0]->getNumColumns() > 0)
+                        _sinks[i]->print("TELEM/");
+
                     for (int j = 0; j < _countReporters; j++)
                     {
                         DataPoint *d = _rps[j]->getDataPoints();

@@ -6,11 +6,11 @@ namespace astra
 
     class ILogSink : public Print
     {
-
     public:
         virtual bool begin() = 0;
         virtual bool end() = 0;
         virtual bool ok() const = 0;
+        virtual bool wantsPrefix() const = 0;
         virtual size_t write(uint8_t) override = 0;
         using Print::write;
         // flush() inherited from print, as are all print() and write() variants.
@@ -21,20 +21,22 @@ namespace astra
     private:
         SerialUART_t &s;
         int baud;
-
+        bool prefix;
+        bool rdy;
     public:
-        UARTLog(SerialUART_t &s, int baud) : s(s), baud(baud) {}
+        UARTLog(SerialUART_t &s, int baud, bool prefix = false) : s(s), baud(baud), prefix(prefix) {}
         bool begin() override
         {
             s.begin(baud);
-            return true;
+            return rdy = true;
         }
         bool end() override
         {
             s.end();
             return true;
         }
-        bool ok() const override { return s; }
+        bool wantsPrefix() const override { return prefix; }
+        bool ok() const override { return rdy; }
         size_t write(uint8_t b) override { return s.write(b); }
     };
     class USBLog : public ILogSink
@@ -42,20 +44,23 @@ namespace astra
     private:
         SerialUSB_t &s;
         int baud;
-
+        bool prefix;
+        bool rdy;
     public:
-        USBLog(SerialUSB_t &s, int baud) : s(s), baud(baud) {}
+        USBLog(SerialUSB_t &s, int baud, bool prefix = false) : s(s), baud(baud), prefix(prefix) {}
         bool begin() override
         {
             s.begin(baud);
-            return true;
+            return rdy = true;
         }
         bool end() override
         {
             s.end();
+            rdy = false;
             return true;
         }
-        bool ok() const override { return s; }
+        bool wantsPrefix() const override { return prefix; }
+        bool ok() const override { return rdy; }
         size_t write(uint8_t b) override { return s.write(b); }
     };
 
@@ -63,18 +68,21 @@ namespace astra
     {
     private:
         Print &p;
-
+        bool prefix;
+        bool rdy;
     public:
-        PrintLog(Print &p) : p(p) {}
+        PrintLog(Print &p, bool prefix = false) : p(p), prefix(prefix) {}
         bool begin() override
         {
-            return true;
+            return rdy = true;
         }
         bool end() override
         {
+            rdy = false;
             return true;
         }
-        bool ok() const override { return true; }
+        bool wantsPrefix() const override { return prefix; }
+        bool ok() const override { return rdy; }
         size_t write(uint8_t b) override { return p.write(b); }
     };
 };

@@ -59,7 +59,8 @@ namespace astra
         static bool available() { return _global._ok; }
 
     private:
-        int min(int a, int b){
+        int min(int a, int b)
+        {
             return a < b ? a : b;
         }
 
@@ -81,6 +82,8 @@ namespace astra
                 ILogSink *s = _sinks[i];
                 if (!s->ok())
                     continue;
+                if (s->wantsPrefix())
+                    s->print("LOG/");
                 s->write((const uint8_t *)pre, (size_t)m);
                 s->write((const uint8_t *)msg, (size_t)min(n, (int)(_maxMsgLen - 1)));
                 s->write((const uint8_t *)"\n", 1);

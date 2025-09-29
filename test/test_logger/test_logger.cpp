@@ -11,6 +11,7 @@
 #include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "../../src/RecordData/DataReporter/DataReporter.h"
 #include "../../src/RecordData/Logging/DataLogger.h"
+#include "../../src/RecordData/Logging/EventLogger.h"
 
 using namespace astra;
 
@@ -25,8 +26,9 @@ public:
     int beginCount = 0;
     int flushCount = 0;
     int endCount = 0;
+    bool prefix = false;
 
-    explicit MockSink(bool healthy_ = true) : healthy(healthy_) {}
+    explicit MockSink(bool healthy_, bool prefx = false) : healthy(healthy_), prefix(prefix) {}
 
     bool begin() override
     {
@@ -41,7 +43,7 @@ public:
         return true;
     }
     bool ok() const override { return healthy && began; }
-
+    bool wantsPrefix() const override { return prefix; }
     // Make sure Print APIs work
     size_t write(uint8_t b) override
     {
@@ -274,7 +276,8 @@ void test_empty_reporter_is_handled(void)
     // Header for empty reporter ideally is just a newline (implementation-dependent).
     // We allow either empty header line or literal "empty" behavior depending on your choice.
     // Keep this as a weak assertion: there should be exactly one newline.
-    TEST_ASSERT_TRUE(lines.size() == 1 && (lines[0].empty() || lines[0].find("empty") != std::string::npos));
+    printf("Header line: '%s'\n", lines[0].c_str());
+    TEST_ASSERT_TRUE(lines.size() == 1 && lines[0].empty());
 
     reset(sink);
     TEST_ASSERT_TRUE(dl.appendLine());
@@ -298,6 +301,34 @@ void test_global_configure_and_instance(void)
     TEST_ASSERT_FALSE(sink.buf.empty());
 }
 
+void testWantsPrefix()
+{
+    MockSink sink(true, true);
+    FakeReporter rp("imu");
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    EventLogger el(sinks, 1);
+    TEST_ASSERT_TRUE(dl.init());
+    TEST_ASSERT_TRUE(el.init());
+
+    //expect header like "TELEM/imu - ax,imu - ay,imu - count"
+    // expect log line like "LOG/0.123 [INFO]: test message"
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &hdr = lines[0];
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("TELEM/imu - ax"));
+    reset(sink);
+    TEST_ASSERT_TRUE(el.info("test message"));
+    lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &log = lines[0];
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, log.find("LOG/"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, log.find("[INFO]: test message"));
+
+}
+
 // ---------- Unity harness ----------
 void setUp() {}
 void tearDown() {}
@@ -312,6 +343,7 @@ int main(int, char **)
     RUN_TEST(test_unhealthy_sink_is_skipped);
     RUN_TEST(test_empty_reporter_is_handled);
     RUN_TEST(test_global_configure_and_instance);
+    RUN_TEST(testWantsPrefix);
 
     UNITY_END();
     return 0;

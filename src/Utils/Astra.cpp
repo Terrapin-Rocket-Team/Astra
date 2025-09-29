@@ -41,7 +41,7 @@ void Astra::init()
 
     delay(10);
     // then State
-    bool state = config->state->init();
+    bool state = config->state->begin();
     // getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
     ready = true;
 
@@ -66,7 +66,7 @@ bool Astra::update(double ms)
     {
         lastStateUpdate = ms;
         if (config->state)
-            config->state->updateState();
+            config->state->update();
         else
             LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
         didUpdate = true;
