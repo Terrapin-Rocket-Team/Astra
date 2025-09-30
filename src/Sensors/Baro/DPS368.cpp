@@ -36,7 +36,7 @@ bool DPS368::read(){
     }
     else
     {
-        LOGE("Failed to read data from DPS368 sensor", BOTH);
+        LOGE("Failed to read data from DPS368 sensor");
         return false;
     }
 }
