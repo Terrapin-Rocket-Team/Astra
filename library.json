@@ -87,15 +87,6 @@
             "version": "https://github.com/RobTillaart/MS5611.git#0.4.1"
         },
         {
-            "name": "LittleFS",
-	        "version": "https://github.com/PaulStoffregen/LittleFS.git#a061862589841627424170a12a246ce5660a4f0a",
-            "platforms": ["teensy"]
-        },
-        {
-            "name": "RadioMessage",
-            "version": "https://github.com/erodarob/RadioMessage.git"
-        },
-        {
             "name": "BMI088",
             "version": "https://github.com/redstonee/bmi088-arduino-esp32.git"
         },
