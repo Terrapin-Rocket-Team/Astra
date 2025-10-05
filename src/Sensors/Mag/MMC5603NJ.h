@@ -17,9 +17,12 @@ namespace astra
     protected:
         ::Adafruit_MMC5603 magmtr;
 
+        // Store the I2C bus pointer so we can use the bus later (e.g. in init())
+        
         ::astra::Vector<3> m_min = {0, 0, 0}; // TODO: find these
         ::astra::Vector<3> m_max = {0, 0, 0}; // TODO: find these
-    private:
+        private:
+        TwoWire *i2c_bus = &Wire;
         uint8_t i2c_addr = MMC56X3_DEFAULT_ADDRESS;
     };
     
