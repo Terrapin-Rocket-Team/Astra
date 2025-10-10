@@ -5,7 +5,6 @@
 #include "Sensors/Baro/DPS368.h"
 #include "State/State.h"
 #include "Utils/Astra.h"
-#include "RetrieveData/SerialHandler.h"
 #include "RecordData/Logging/EventLogger.h"
 #include "RecordData/Logging/DataLogger.h"
 
