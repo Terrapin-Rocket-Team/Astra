@@ -1,7 +1,8 @@
 #ifndef SDFATBP_H
 #define SDFATBP_H
 #define SD_FAT_TYPE 3
-
+// SD_FAT_TYPE = 0 for SdFat/File as defined in SdFatConfig.h,
+// 1 for FAT16/FAT32, 2 for exFAT, 3 for FAT16/FAT32 and exFAT.
 #include "SdFat.h"
 #include "Arduino.h"
 
