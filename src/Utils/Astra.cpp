@@ -2,7 +2,7 @@
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
 #include "Wire.h"
-#include "RetrieveData/SerialHandler.h"
+#include "RetrieveData/USBSerialOffload.h"
 
 using namespace astra;
 BlinkBuzz bb;
@@ -37,7 +37,7 @@ void Astra::init()
         reporters[j++] = config->reporters[i];
 
     // bool log = //getLogger().init(reporters, j);
-    // getEventManager().invoke(BoolEvent{"LOGGER_INIT"_i, log});
+    getDataRetrieverInstance().handleChoices();
 
     delay(10);
     // then State
@@ -56,7 +56,8 @@ bool Astra::update(double ms)
         LOGW("Attempted to update Astra before it was initialized. Initializing it now...");
         init();
     }
-    getSerialHandler().handle();
+    //TOOD: replace with my implementation
+    // getSerialHandler().handle();
     // loop based on time and interval and update bb.
     bb.update();
     if (ms == -1)
