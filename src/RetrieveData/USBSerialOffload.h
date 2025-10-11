@@ -24,8 +24,7 @@ namespace astra
     {
     private:
         char *currentFileName;
-        char *skipSpace(char *str);
-        bool parseLine(char *str);
+        void formatAndEraseCard();
 
 // define file format being used
 // unfortunately means recompilation needs to be done
@@ -48,11 +47,13 @@ namespace astra
 
     public:
         bool init();
-        bool validateFileName(char *name);
         bool deleteFile(char *path);
         void listFiles();
         void handleChoices();
         bool readFile(char *path);
+        bool formatCard(); // TODO: implement later
     };
     USBSerialOffload &getDataRetrieverInstance();
 }
+
+

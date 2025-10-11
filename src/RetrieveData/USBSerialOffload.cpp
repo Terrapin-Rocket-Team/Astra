@@ -1,9 +1,5 @@
-
 #include "USBSerialOffload.h"
 using namespace astra;
-
-// Store error strings in flash to save RAM.
-#define sd_print_error(s) sd.errorHalt(&Serial, F(s))
 
 USBSerialOffload &astra::getDataRetrieverInstance()
 {
@@ -18,82 +14,22 @@ bool USBSerialOffload::init()
         sd.initErrorHalt(&Serial);
         return false;
     }
-    Serial.println(F("Initialized SD Card"));
+
+    Serial.println(F("Initialized SD Card Reader"));
     return true;
 }
-
-// Check for extra characters in field or find minus sign.
-// Given from ReadCSV
-char *USBSerialOffload::skipSpace(char *str)
-{
-    while (isspace(*str))
-        str++;
-    return str;
-}
-// given from readCSV Example
-bool USBSerialOffload::parseLine(char *str)
-{
-    char *ptr;
-
-    // Set strtok start of line.
-    str = strtok(str, ",");
-    if (!str)
-        return false;
-
-    // Print text field.
-    Serial.println(str);
-
-    // Subsequent calls to strtok expects a null pointer.
-    str = strtok(nullptr, ",");
-    if (!str)
-        return false;
-
-    // Convert string to long integer.
-    int32_t i32 = strtol(str, &ptr, 0);
-    if (str == ptr || *skipSpace(ptr))
-        return false;
-    Serial.println(i32);
-
-    str = strtok(nullptr, ",");
-    if (!str)
-        return false;
-
-    // strtoul accepts a leading minus with unexpected results.
-    if (*skipSpace(str) == '-')
-        return false;
-
-    // Convert string to unsigned long integer.
-    uint32_t u32 = strtoul(str, &ptr, 0);
-    if (str == ptr || *skipSpace(ptr))
-        return false;
-    Serial.println(u32);
-
-    str = strtok(nullptr, ",");
-    if (!str)
-        return false;
-
-    // Convert string to double.
-    double d = strtod(str, &ptr);
-    if (str == ptr || *skipSpace(ptr))
-        return false;
-    Serial.println(d);
-
-    // Check for extra fields.
-    return strtok(nullptr, ",") == nullptr;
-}
-//------------------------------------------------------------------------------
 // TODO: maybe change this to a char* and return a big array??? or maybe handle read funcionality in the
 bool USBSerialOffload::readFile(char *path)
 {
-    if (!validateFileName(path))
+    bool success = file.open(path, FILE_READ);
+    if (!success)
     {
-        sd_print_error("|---File not found---|");
+        Serial.println("ERROR: File name not found");
         return false;
     }
-    file.open(path, FILE_READ);
     char currentLine[LINE_LENGTH];
     // for python program parsing
-    Serial.println("----------BOF----------");
+    Serial.println("|----------BOF----------|");
     while (file.available())
     {
         // get the current line (buffer size), stores the array in currentLine, stopping the line at any newline char
@@ -102,12 +38,14 @@ bool USBSerialOffload::readFile(char *path)
         if (n <= 0)
         {
             // formatting is for python program parsing
-            sd_print_error("|---No data read from file---|");
+            Serial.println("|---No data read from file---|");
+            return false;
         }
-        // hopefully this never happens
-        if (currentLine[n - 1] != '\n' && n == (sizeof(currentLine) - 1))
+        // hopefully this never happens. Essentially the length of one line exceeds the buffer size
+        if (n == (sizeof(currentLine) - 1))
         {
-            sd_print_error("|---line too long---|");
+            Serial.println("|---line too long---|");
+            return false;
         }
         if (currentLine[n - 1] == '\n')
         {
@@ -115,70 +53,70 @@ bool USBSerialOffload::readFile(char *path)
             currentLine[n - 1] = 0;
         }
         // parseLine prints out the contents of the line
-        if (!parseLine(currentLine))
-        {
-            sd_print_error("|---parseLine failed---|");
-        }
-        Serial.println();
+        Serial.println(currentLine);
     }
-    file.close();
     // for python program parsing
-    Serial.println("----------EOF----------");
+    Serial.println("|----------EOF----------|");
+    file.close();
     return true;
-}
-
-bool USBSerialOffload::validateFileName(char *name)
-{
-    return file.exists(name);
 }
 
 bool USBSerialOffload::deleteFile(char *path)
 {
-    if(validateFileName(path)){
-        file.remove(path);
-        return true;
-    } else {
-        return false;
-    }
+    bool success = file.remove(path);
+    return success;
 }
 
 void USBSerialOffload::handleChoices()
 {
-    if (Serial.available())
+    char input[40];
+    int i = Serial.readBytesUntil('\n', input, sizeof(input));
+    // im assuming you have to type cmd/ls, cmd/rm cmd/sf, etc, then the file name
+    if (strncmp("cmd/", input, 4) == 0)
     {
-        char input[40];
-        int i = Serial.readBytesUntil('\n', input, sizeof(input));
-        if (strncmp("cmd/", input, 4) == 0)
+        input[i] = '\0';
+        char *cmd = strtok(input + 4, " ");
+        char *args = strtok(nullptr, "");
+        if (strcmp(cmd, "ls") == 0)
         {
-            input[i] = '\0';
-            char *cmd = strtok(input+4, " ");
-            char *args = strtok(nullptr, "");
-            if (strcmp(cmd, "ls") == 0)
+            listFiles();
+        }
+        else if (strcmp(cmd, "rm") == 0)
+        {
+            Serial.print("Deleting file: " + String(args));
+            bool success = deleteFile(args);
+            // TODO: make sure proper error logging is used
+            if (success)
             {
-                Serial.println("ok ls");
-                listFiles();
-            }
-            else if (strcmp(cmd, "rm") == 0)
-            {
-                Serial.println("ok rm");
-                deleteFile(args);
-            }
-            else if (strcmp(cmd, "cp") == 0)
-            {
-                Serial.println("ok cp");
-                readFile(args);
-            }
-            else if (strcmp(cmd, "latest") == 0)
-            {
-                Serial.println("ok latest");
-                listFiles();
+                Serial.println("Successfully deleted file");
             }
             else
             {
-                Serial.printf("no cmd: %s\n", cmd);
+                Serial.println("ERROR: File not deleted: " + String(args));
             }
-        } else {
-            // TODO: figure out this :/
+        }
+        else if (strcmp(cmd, "sf") == 0)
+        {
+            Serial.print("Copying File: ");
+            Serial.println(args);
+            bool success = readFile(args);
+            if (success)
+            {
+                Serial.println("Done sending file");
+            }
+            else
+            {
+                Serial.println("Could not send file");
+            }
+        }
+        else if (strcmp(cmd, "help") == 0)
+        {
+            Serial.println("Choices are:\nls - list all files on sd card\nrm - remove file on disk\nsf - send file to computer\nhelp - print this statement");
+        }
+        else
+        {
+            Serial.printf("no cmd: %s\n", cmd);
+            Serial.println("Choices are:\nls - list all files on sd card\nrm - remove file on disk\nsf - send file to computer\nhelp - print this statement");
         }
     }
 }
@@ -186,5 +124,9 @@ void USBSerialOffload::handleChoices()
 void USBSerialOffload::listFiles()
 {
     // ls the size, date modified, and all files, including hidden
-    file.ls(LS_SIZE | LS_A | LS_DATE);
+    bool success = sd.ls("/", LS_R);
+    if (!success)
+    {
+        Serial.println("ERROR: Could not list files");
+    }
 }
