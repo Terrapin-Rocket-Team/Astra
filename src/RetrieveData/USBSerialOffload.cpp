@@ -66,58 +66,77 @@ bool USBSerialOffload::deleteFile(char *path)
     bool success = file.remove(path);
     return success;
 }
-
-void USBSerialOffload::handleChoices()
+// returns true if there is no serial connection or "cmd/quit" is typed
+bool USBSerialOffload::handleChoices()
 {
-    char input[40];
-    int i = Serial.readBytesUntil('\n', input, sizeof(input));
-    // im assuming you have to type cmd/ls, cmd/rm cmd/sf, etc, then the file name
-    if (strncmp("cmd/", input, 4) == 0)
+    if (Serial)
     {
-        input[i] = '\0';
-        char *cmd = strtok(input + 4, " ");
-        char *args = strtok(nullptr, "");
-        if (strcmp(cmd, "ls") == 0)
+        char input[40];
+        // read bytes until a newline
+        // leave room for a terminating NUL
+        int i = Serial.readBytesUntil('\n', input, sizeof(input) - 1);
+        // Only process when we read a new input
+        if (i > 0)
         {
-            listFiles();
-        }
-        else if (strcmp(cmd, "rm") == 0)
-        {
-            Serial.print("Deleting file: " + String(args));
-            bool success = deleteFile(args);
-            // TODO: make sure proper error logging is used
-            if (success)
+            // terminate input with null char
+            input[i] = '\0';
+            // strip CRLF
+            if (i > 0 && input[i - 1] == '\r')
             {
-                Serial.println("Successfully deleted file");
+                input[i - 1] = '\0';
             }
-            else
+            if (strncmp("cmd/", input, 4) == 0)
             {
-                Serial.println("ERROR: File not deleted: " + String(args));
+                char *cmd = strtok(input + 4, " ");
+                char *args = strtok(nullptr, "");
+
+                if (strcmp(cmd, "ls") == 0)
+                {
+                    listFiles();
+                }
+                else if (strcmp(cmd, "rm") == 0)
+                {
+                    Serial.print("Deleting file: " + String(args));
+                    bool success = deleteFile(args);
+                    if (success)
+                    {
+                        Serial.println("Successfully deleted file");
+                    }
+                    else
+                    {
+                        Serial.println("ERROR: File not deleted: " + String(args));
+                    }
+                }
+                else if (strcmp(cmd, "sf") == 0)
+                {
+                    Serial.print("Copying File: ");
+                    Serial.println(args);
+                    bool success = readFile(args);
+                    if (success)
+                    {
+                        Serial.println("Done sending file");
+                    }
+                    else
+                    {
+                        Serial.println("Could not send file");
+                    }
+                }
+                else if (strcmp(cmd, "help") == 0)
+                {
+                    Serial.println("Choices are:\nls - list all files on sd card\nrm - remove file on disk\nsf - send file to computer\nquit\nhelp - print this statement");
+                }
+                else if(strcmp(cmd, "quit") == 0){
+                    // return true when quit is entered
+                    return true;
+                }
+                return false;
             }
         }
-        else if (strcmp(cmd, "sf") == 0)
-        {
-            Serial.print("Copying File: ");
-            Serial.println(args);
-            bool success = readFile(args);
-            if (success)
-            {
-                Serial.println("Done sending file");
-            }
-            else
-            {
-                Serial.println("Could not send file");
-            }
-        }
-        else if (strcmp(cmd, "help") == 0)
-        {
-            Serial.println("Choices are:\nls - list all files on sd card\nrm - remove file on disk\nsf - send file to computer\nhelp - print this statement");
-        }
-        else
-        {
-            Serial.printf("no cmd: %s\n", cmd);
-            Serial.println("Choices are:\nls - list all files on sd card\nrm - remove file on disk\nsf - send file to computer\nhelp - print this statement");
-        }
+        return false;
+    }
+    else
+    {
+        return true;
     }
 }
 

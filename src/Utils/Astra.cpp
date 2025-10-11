@@ -11,7 +11,7 @@ Astra::Astra(AstraConfig *config) : config(config)
 }
 void Astra::init()
 {
-    //getLogger().recordCrashReport();
+    // getLogger().recordCrashReport();
     LOGI("Initializing Astra.");
     Wire.begin();
     // BlinkBuzz first
@@ -38,6 +38,11 @@ void Astra::init()
 
     // bool log = //getLogger().init(reporters, j);
     getDataRetrieverInstance().handleChoices();
+    bool quitOrNoSerial = false;
+    while (!quitOrNoSerial)
+    {
+        quitOrNoSerial = getDataRetrieverInstance().handleChoices();
+    }
 
     delay(10);
     // then State
@@ -45,7 +50,7 @@ void Astra::init()
     // getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
     ready = true;
 
-    //getLogger().writeCsvHeader();
+    // getLogger().writeCsvHeader();
     LOGI("Astra initialized.");
 }
 bool Astra::update(double ms)
@@ -56,9 +61,9 @@ bool Astra::update(double ms)
         LOGW("Attempted to update Astra before it was initialized. Initializing it now...");
         init();
     }
-    //TOOD: replace with my implementation
-    // getSerialHandler().handle();
-    // loop based on time and interval and update bb.
+    // TOOD: replace with my implementation
+    //  getSerialHandler().handle();
+    //  loop based on time and interval and update bb.
     bb.update();
     if (ms == -1)
         ms = millis();
@@ -72,11 +77,11 @@ bool Astra::update(double ms)
             LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
         didUpdate = true;
     }
-    
+
     if (ms - lastLoggingUpdate > config->loggingInterval)
     {
         lastLoggingUpdate = ms;
-        //getLogger().recordFlightData();
+        // getLogger().recordFlightData();
     }
 
     return didUpdate;

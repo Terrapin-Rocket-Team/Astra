@@ -49,7 +49,7 @@ namespace astra
         bool init();
         bool deleteFile(char *path);
         void listFiles();
-        void handleChoices();
+        bool handleChoices();
         bool readFile(char *path);
         bool formatCard(); // TODO: implement later
     };
