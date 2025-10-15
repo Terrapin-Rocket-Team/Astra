@@ -11,12 +11,15 @@ namespace astra
     }
     bool MMC5603NJ::init()
     {
-        if(!magmtr.begin(i2c_addr, i2c_bus))
+        if (!magmtr.begin(i2c_addr, i2c_bus))
         {
             return false;
         }
+        magmtr.setDataRate(255);
         // I think continuous would be better for our use case
         magmtr.setContinuousMode(true);
+        // clear any offsets in the magnetometer
+        magmtr.magnetSetReset();
         return true;
     }
     bool MMC5603NJ::read()
@@ -24,11 +27,9 @@ namespace astra
         sensors_event_t event;
         magmtr.getEvent(&event);
 
-        // TODO: figure out what hard iron calibration is
-        mag = astra::Vector<3>(
-            (float)event.magnetic.x,
-            (float)event.magnetic.y,
-            (float)event.magnetic.z);
+        mag = {event.magnetic.x,
+               event.magnetic.y,
+               event.magnetic.z};
         return true;
     }
 }
