@@ -2,8 +2,7 @@
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
 #include "Wire.h"
-#include "RetrieveData/USBSerialOffload.h"
-
+#include "RetrieveData/RetrieveSDCardData.h"
 using namespace astra;
 BlinkBuzz bb;
 Astra::Astra(AstraConfig *config) : config(config)

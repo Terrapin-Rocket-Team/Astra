@@ -1,13 +1,19 @@
-#include "USBSerialOffload.h"
+/*
+    This class should only be used to retrive data from an SD card over serial
+    The print statements correspond with a python file to get the data off the microcontroller
+    
+*/
+
+#include "RetrieveSDCardData.h"
 using namespace astra;
 
-USBSerialOffload &astra::getDataRetrieverInstance()
+IRetrieveData &astra::getDataRetrieverInstance()
 {
-    static USBSerialOffload instance;
+    static RetrieveSDCardData instance;
     return instance;
 }
 
-bool USBSerialOffload::init()
+bool RetrieveSDCardData::init()
 {
     if (!sd.begin(SD_CONFIG))
     {
@@ -19,7 +25,7 @@ bool USBSerialOffload::init()
     return true;
 }
 // TODO: maybe change this to a char* and return a big array??? or maybe handle read funcionality in the
-bool USBSerialOffload::readFile(char *path)
+bool RetrieveSDCardData::readFile(char *path)
 {
     bool success = file.open(path, FILE_READ);
     if (!success)
@@ -61,13 +67,13 @@ bool USBSerialOffload::readFile(char *path)
     return true;
 }
 
-bool USBSerialOffload::deleteFile(char *path)
+bool RetrieveSDCardData::deleteFile(char *path)
 {
     bool success = file.remove(path);
     return success;
 }
 // returns true if there is no serial connection or "cmd/quit" is typed
-bool USBSerialOffload::handleChoices()
+bool RetrieveSDCardData::handleChoices()
 {
     if (Serial)
     {
@@ -140,7 +146,7 @@ bool USBSerialOffload::handleChoices()
     }
 }
 
-void USBSerialOffload::listFiles()
+void RetrieveSDCardData::listFiles()
 {
     // ls the size, date modified, and all files, including hidden
     bool success = sd.ls("/", LS_R);
