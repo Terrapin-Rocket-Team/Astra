@@ -10,25 +10,26 @@
  *   - Not all functions for eMMC will be available with STM32SD
  */
 #include <STM32SD.h>
+#elif defined(ENV_ESP)
+#include <SD_MMC.h>
 #endif
 // Note that Teensy is not included here because it will never be used with an MMC connection
 namespace astra
 {
-#if defined(ENV_STM)
     class SDMMCBackend
     {
-    public:
+        public:
         virtual bool begin();
         virtual bool end();
         virtual bool write(char *data, char *filename);
-        virtual char *read(char *filename);
-    private:
+        virtual bool createFile(char *filename);
+        private:
+        #if defined(ENV_STM)
         File file;
+        #elif defined(ENV_ESP)
+        
+        #endif
     };
-#elif defined(ENV_ESP)
-    class SDMMCBackend
-    {
-    };
-#endif
+   
 }
 #endif

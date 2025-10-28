@@ -15,6 +15,9 @@ namespace astra
     }
     bool SDMMCBackend::write(char *data, char *filename)
     {
+        if(!SD.exists(filename)){
+            return false; // should only write to files which exist already
+        }
         file = SD.open(filename, FILE_WRITE);
         
         if(file){
@@ -24,23 +27,21 @@ namespace astra
             file.flush();
             // close out file once operations are finished
             file.close();
-            
+            return true;
+        } else {
+            return false;
         }
-        return true;
     }
-    //TODO: figure out what to shove the data from the file into (buffer or serial)
-    char *SDMMCBackend::read(char *filename)
-    {
-
-        char *fileData;
-        file = SD.open(filename, FILE_READ);
+    // will return true if a file is created or already exists
+    bool SDMMCBackend::createFile(char *filename){
+        file = SD.open(filename);
         if(file){
-            while(file.available()){
-                file.read();
-
-            }
+            file.close();
+            return true;
+        } else {
+            file.close();
+            return false;
         }
-        return "ff";
     }
 }
 #endif
