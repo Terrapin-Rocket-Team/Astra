@@ -1,13 +1,13 @@
 /*
     This class should only be used to retrive data from an SD card over serial
     The print statements correspond with a python file to get the data off the microcontroller
-    
+
 */
 
 #include "RetrieveSDCardData.h"
 using namespace astra;
 
-IRetrieveData &astra::getDataRetrieverInstance()
+RetrieveSDCardData &astra::getDataRetrieverInstance()
 {
     static RetrieveSDCardData instance;
     return instance;
@@ -131,7 +131,8 @@ bool RetrieveSDCardData::handleChoices()
                 {
                     Serial.println("Choices are:\nls - list all files on sd card\nrm - remove file on disk\nsf - send file to computer\nquit\nhelp - print this statement");
                 }
-                else if(strcmp(cmd, "quit") == 0){
+                else if (strcmp(cmd, "quit") == 0)
+                {
                     // return true when quit is entered
                     return true;
                 }

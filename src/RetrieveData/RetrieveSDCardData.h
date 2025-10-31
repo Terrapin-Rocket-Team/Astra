@@ -4,7 +4,6 @@
     This is for SPI/SDIO cards. If the SD card is connected over an SDMMC interface, use the MMC data retriever
 */
 #include "SdFat.h"
-#include "IRetrieveData.h"
 // length of an individual line (should change depending on worst case scenario)
 #define LINE_LENGTH 512
 // make sure to use the custom, optimized SPI driver
@@ -46,7 +45,7 @@ const uint8_t SD_CS_PIN = SDCARD_SS_PIN;
 
 namespace astra
 {
-    class RetrieveSDCardData: public IRetrieveData
+    class RetrieveSDCardData
     {
     private:
         char *currentFileName;
@@ -72,13 +71,13 @@ namespace astra
 #endif // SD_FAT_TYPE
 
     public:
-        bool init() override;
-        bool deleteFile(char *path) override;
-        void listFiles() override;
-        bool handleChoices() override;
-        bool readFile(char *path) override;
+        bool init();
+        bool deleteFile(char *path);
+        void listFiles();
+        bool handleChoices();
+        bool readFile(char *path);
         bool formatCard(); // TODO: implement later
     };
-    IRetrieveData &getDataRetrieverInstance();
+    RetrieveSDCardData &getDataRetrieverInstance();
 }
 #endif
