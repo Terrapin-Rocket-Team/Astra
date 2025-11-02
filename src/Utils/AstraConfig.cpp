@@ -123,4 +123,17 @@ namespace astra
         return *this;
     }
 
+    AstraConfig &AstraConfig::withDataLogs(ILogSink **logs, uint8_t numLogs)
+    {
+        if (numLogs > 50)
+        {
+            // getLogger().recordLogData(WARNING_, "Attempted to add %d log sinks, but the maximum number of log sinks is 50. That's too many logs. Why.", numLogs);
+            numLogs = 50;
+        }
+        for (uint8_t i = 0; i < numLogs; i++)
+            this->logs[i] = logs[i];
+        this->numLogs = numLogs;
+        return *this;
+    }
+
 }

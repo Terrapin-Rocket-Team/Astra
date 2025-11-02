@@ -3,6 +3,7 @@
 #include "State/State.h"
 #include "Wire.h"
 #include "RetrieveData/SerialHandler.h"
+#include "RecordData/Logging/DataLogger.h"
 
 using namespace astra;
 BlinkBuzz bb;
@@ -11,7 +12,7 @@ Astra::Astra(AstraConfig *config) : config(config)
 }
 void Astra::init()
 {
-    //getLogger().recordCrashReport();
+    // getLogger().recordCrashReport();
     LOGI("Initializing Astra.");
     Wire.begin();
     // BlinkBuzz first
@@ -25,7 +26,6 @@ void Astra::init()
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
     // then Logger
-
     DataReporter **reporters = new DataReporter *[config->numReporters + config->state->getNumMaxSensors() + 1];
 
     reporters[0] = config->state;
@@ -36,6 +36,8 @@ void Astra::init()
     for (i = 0; i < config->numReporters; i++)
         reporters[j++] = config->reporters[i];
 
+    DataLogger::configure(config->logs, config->numLogs, reporters, j);
+
     // bool log = //getLogger().init(reporters, j);
     // getEventManager().invoke(BoolEvent{"LOGGER_INIT"_i, log});
 
@@ -45,7 +47,7 @@ void Astra::init()
     // getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
     ready = true;
 
-    //getLogger().writeCsvHeader();
+    // getLogger().writeCsvHeader();
     LOGI("Astra initialized.");
 }
 bool Astra::update(double ms)
@@ -71,11 +73,11 @@ bool Astra::update(double ms)
             LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
         didUpdate = true;
     }
-    
+
     if (ms - lastLoggingUpdate > config->loggingInterval)
     {
         lastLoggingUpdate = ms;
-        //getLogger().recordFlightData();
+        // getLogger().recordFlightData();
     }
 
     return didUpdate;

@@ -1,6 +1,7 @@
 #ifndef Astra_CONFIG_H
 #define Astra_CONFIG_H
 
+#include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include <stdint.h>
 
 namespace astra
@@ -78,11 +79,15 @@ namespace astra
         // Default: `"$time - [$logType] "`
         AstraConfig &withLogPrefixFormatting(const char *prefix);
 
+        AstraConfig &withDataLogs(ILogSink **logs, uint8_t numLogs);
+
         AstraConfig();
 
     private:
         State *state = nullptr;
         int pins[50];
+        ILogSink *logs[50];
+        uint8_t numLogs = 0;
         bool bbAsync;
         unsigned int maxQueueSize = 50;
         DataReporter *reporters[50];
