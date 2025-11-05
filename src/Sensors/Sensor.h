@@ -1,15 +1,14 @@
 #ifndef SENSOR_H
 #define SENSOR_H
 
-#include "../Constants.h"
 #include "../Utils/CircBuffer.h"
 #include "../BlinkBuzz/BlinkBuzz.h"
-#include "../RecordData/Logging/Logger.h"
 #include <algorithm>
 #include "../RecordData/DataReporter/DataReporter.h"
 #include "Utils/Hash.h"
+#include "RecordData/Logging/EventLogger.h"
 
-namespace mmfs
+namespace astra
 {
     using SensorType = uint32_t;
 
@@ -65,6 +64,6 @@ namespace mmfs
 
         // ----------------------------------------------------------------------------------------------------------
     };
-}; // namespace mmfs
+}; // namespace astra
 
 #endif // SENSOR_H

@@ -3,9 +3,9 @@
 #include "../SerialReader.h"
 #include "Barometer.h"
 
-namespace mmfs
+namespace astra
 {
-class MockBarometer : public mmfs::Barometer {
+class MockBarometer : public astra::Barometer {
     private:
         SerialReader dataReader;
 

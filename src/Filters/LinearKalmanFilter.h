@@ -4,7 +4,7 @@
 #include "Filter.h"
 #include "../Math/Matrix.h"
 
-namespace mmfs {
+namespace astra {
 
 class LinearKalmanFilter : public Filter {
 public:
@@ -52,6 +52,6 @@ protected:
 
 };
 
-} // namespace mmfs
+} // namespace astra
 
 #endif // LINEAR_KALMAN_FILTER_H

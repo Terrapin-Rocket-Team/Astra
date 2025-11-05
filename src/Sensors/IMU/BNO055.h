@@ -4,7 +4,7 @@
 #include <Adafruit_BNO055.h>
 #include "IMU.h"
 
-namespace mmfs
+namespace astra
 {
     class BNO055 : public IMU
     {
@@ -12,20 +12,20 @@ namespace mmfs
         Adafruit_BNO055 bno;
         uint8_t address;
 
-        // Helper function to convert Adafruit's imu::Vector to mmfs::Vector
+        // Helper function to convert Adafruit's imu::Vector to astra::Vector
         template <uint8_t N>
-        mmfs::Vector<N> convertIMUtoMMFS(imu::Vector<N> src)
+        astra::Vector<N> convertIMUtoAstra(imu::Vector<N> src)
         {
-            mmfs::Vector<N> dest;
+            astra::Vector<N> dest;
             for (int i = 0; i < N; i++)
             {
                 dest[i] = src[i];
             }
             return dest;
         }
-        mmfs::Quaternion convertIMUtoMMFS(imu::Quaternion src)
+        astra::Quaternion convertIMUtoAstra(imu::Quaternion src)
         {
-            mmfs::Quaternion dest;
+            astra::Quaternion dest;
             dest.w() = src.w();
             dest.x() = src.x();
             dest.y() = src.y();

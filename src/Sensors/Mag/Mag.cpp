@@ -1,12 +1,12 @@
 #include "Mag.h"
 
-namespace mmfs
+namespace astra
 {
     Mag::Mag(const char *name) : Sensor("Magnetometer", name)
     {
-        addColumn(DOUBLE, &mag.x(), "Mag X (uT)");
-        addColumn(DOUBLE, &mag.y(), "Mag Y (uT)");
-        addColumn(DOUBLE, &mag.z(), "Mag Z (uT)");
+        addColumn("%0.3f", &mag.x(), "Mag X (uT)");
+        addColumn("%0.3f", &mag.y(), "Mag Y (uT)");
+        addColumn("%0.3f", &mag.z(), "Mag Z (uT)");
     }
 
     Mag::~Mag()
@@ -17,4 +17,4 @@ namespace mmfs
     {
         return mag;
     }
-} // namespace mmfs
+} // namespace astra

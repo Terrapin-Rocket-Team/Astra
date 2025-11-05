@@ -1,12 +1,12 @@
 #include "LightSensor.h"
 
-namespace mmfs
+namespace astra
 {
 #pragma region LightSensor Specific Functions
 
     LightSensor::LightSensor(const char *name) : Sensor("Light Sensor", name), lux(0), initialLux(0)
     {
-        addColumn(DOUBLE, &lux, "Lux (Lux)");
+        addColumn("%0.3f", &lux, "Lux (Lux)");
     }
 
     LightSensor::~LightSensor() {}

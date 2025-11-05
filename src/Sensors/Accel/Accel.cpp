@@ -1,12 +1,12 @@
 #include "Accel.h"
 
-namespace mmfs
+namespace astra
 {
     Accel::Accel(const char *name) : Sensor("Accelerometer", name)
     {
-        addColumn(DOUBLE, &acc.x(), "Acc X (m/s^2)");
-        addColumn(DOUBLE, &acc.y(), "Acc Y (m/s^2)");
-        addColumn(DOUBLE, &acc.z(), "Acc Z (m/s^2)");
+        addColumn("%0.3f", &acc.x(), "Acc X (m/s^2)");
+        addColumn("%0.3f", &acc.y(), "Acc Y (m/s^2)");
+        addColumn("%0.3f", &acc.z(), "Acc Z (m/s^2)");
     }
 
     Accel::~Accel()
@@ -17,4 +17,4 @@ namespace mmfs
     {
         return acc;
     }
-} // namespace mmfs
+} // namespace astra

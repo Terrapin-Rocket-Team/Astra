@@ -1,12 +1,12 @@
 # Sensor Interface
 
-The `Sensor` interface in MMFS defines a standard structure for hardware sensor modules such as barometers, GPS units, IMUs, and more. It provides a unified API for initialization, updates, and data reporting. All sensors inherit from the `Sensor` base class, which itself inherits from `DataReporter`, enabling each sensor to automatically expose its data in a standardized way for logging or telemetry.
+The `Sensor` interface in Astra defines a standard structure for hardware sensor modules such as barometers, GPS units, IMUs, and more. It provides a unified API for initialization, updates, and data reporting. All sensors inherit from the `Sensor` base class, which itself inherits from `DataReporter`, enabling each sensor to automatically expose its data in a standardized way for logging or telemetry.
 
 ---
 
 ## **Purpose**
 
-This interface ensures that all sensor types in MMFS can be:
+This interface ensures that all sensor types in Astra can be:
 
 * Queried consistently (via `update()`)
 * Initialized uniformly (via `begin()`)

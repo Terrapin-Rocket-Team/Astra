@@ -4,7 +4,7 @@
 #include "../Sensor.h"
 #include "../../Math/Vector.h"
 
-namespace mmfs
+namespace astra
 {
     class Mag : public Sensor
     {

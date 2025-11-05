@@ -1,6 +1,6 @@
 #include "GPS.h"
 
-using namespace mmfs;
+using namespace astra;
 
 #pragma region GPS Specific Functions
 
@@ -10,11 +10,11 @@ GPS::GPS(const char *name) : Sensor("GPS", name)
     min = 0;
     sec = 0;
     strcpy(tod, "00:00:00");
-    addColumn(DOUBLE_HP, &position.x(), "Lat (deg)");
-    addColumn(DOUBLE_HP, &position.y(), "Lon (deg)");
-    addColumn(DOUBLE, &position.z(), "Alt (m)");
-    addColumn(INT, &fixQual, "Fix Quality");
-    addColumn(STRING, tod, "Time of Day");
+    addColumn("%0.7f", &position.x(), "Lat (deg)");
+    addColumn("%0.7f", &position.y(), "Lon (deg)");
+    addColumn("%0.3f", &position.z(), "Alt (m)");
+    addColumn("%d", &fixQual, "Fix Quality");
+    addColumn("%s", tod, "Time of Day");
     hasFirstFix = false;
     hasFix = false;
 }
@@ -88,49 +88,49 @@ void GPS::findTimeZone()
     if (isDST)
     {
         hrOffset = 1;
-        getLogger().recordLogData(INFO_, "DST is in effect.");
+        LOGI("DST is in effect.");
     }
     else
     {
         hrOffset = 0;
-        getLogger().recordLogData(INFO_, "DST is not in effect.");
+        LOGI("DST is not in effect.");
     }
 
     if (getPos().x() > -82.5)
     {
         hrOffset -= 5;
-        getLogger().recordLogData(INFO_, "Timezone: Eastern Standard Time");
+        LOGI("Timezone: Eastern Standard Time");
     }
     else if (getPos().x() > -97.5)
     {
         hrOffset -= 6;
-        getLogger().recordLogData(INFO_, "Timezone: Central Standard Time");
+        LOGI("Timezone: Central Standard Time");
     }
     else if (getPos().x() > -112.5)
     {
         hrOffset -= 7;
-        getLogger().recordLogData(INFO_, "Timezone: Mountain Standard Time");
+        LOGI("Timezone: Mountain Standard Time");
     }
     else if (getPos().x() > -127.5)
     {
         hrOffset -= 8;
-        getLogger().recordLogData(INFO_, "Timezone: Pacific Standard Time");
+        LOGI("Timezone: Pacific Standard Time");
     }
     else if (getPos().x() > -135)
     {
         hrOffset -= 9;
-        getLogger().recordLogData(INFO_, "Timezone: Alaska Standard Time");
+        LOGI("Timezone: Alaska Standard Time");
     }
     else if (getPos().x() > -150)
     {
         hrOffset -= 10;
-        getLogger().recordLogData(INFO_, "Timezone: Hawaii-Aleutian Standard Time");
+        LOGI("Timezone: Hawaii-Aleutian Standard Time");
     }
     else
     {
-        getLogger().recordLogData(INFO_, "Timezone: UTC");
+        LOGI("Timezone: UTC");
     }
-    getLogger().recordLogData(INFO_, 100, "Timezone offset: %d", hrOffset);
+    LOGI("Timezone offset: %d", hrOffset);
 }
 
 #pragma endregion // GPS Specific Functions
@@ -145,7 +145,7 @@ bool GPS::update()
     if (!hasFix && fixQual >= 4)
     {
         hasFix = true;
-        getEventManager().invoke(GPSFix{"GPS_FIX"_i, this, !hasFirstFix}); // will be false the first time this runs, so invert it
+        // getEventManager().invoke(GPSFix{"GPS_FIX"_i, this, !hasFirstFix}); // will be false the first time this runs, so invert it
         if (!hasFirstFix)
         {
             findTimeZone();
@@ -158,7 +158,7 @@ bool GPS::update()
         if (fixQual < 4)
         {
             hasFix = false;
-            getEventManager().invoke(GPSFix{"GPS_FIX"_i, this, false});
+            // getEventManager().invoke(GPSFix{"GPS_FIX"_i, this, false});
         }
         hr += hrOffset;
         hr = (hr % 24 + 24) % 24; // in cpp -1 % 24 = -1, but we want it to be 23

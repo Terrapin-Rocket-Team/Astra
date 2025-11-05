@@ -1,6 +1,6 @@
 #include "ADXL375.h"
 
-using namespace mmfs;
+using namespace astra;
 
 ADXL375::ADXL375(const char *name, TwoWire &bus, uint8_t address) : Accel(name), accel(0, &bus), addr(address)
 {

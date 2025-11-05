@@ -1,6 +1,5 @@
 #include "SerialHandler.h"
-#include "Events/Event.h"
-using namespace mmfs;
+using namespace astra;
 
 void SerialHandler::handle()
 {
@@ -44,62 +43,62 @@ void SerialHandler::handle()
             }
         }
         else{
-            getEventManager().invoke(Event("SERIAL_LINE"_i));
+            // getEventManager().invoke(Event("SERIAL_LINE"_i));
         }
     }
 }
 
 void SerialHandler::fetchList()
 {
-    getLogger().backend->ls(Serial);
+    //getLogger().backend->ls(Serial);
 }
 
 void SerialHandler::clearFiles()
 {
-    getLogger().backend->format();
+    //getLogger().backend->format();
     Serial.println("Removed All Files");
 }
 
 // expects "fileName_##.csv" i.e. the full name/path of the file.
 void SerialHandler::copyFile(char *args)
 {
-    LoggingBackend *backend = getLogger().backend;
-    if (!backend->exists(args))
-    {
-        Serial.print("File not found: ");
-        Serial.println(args);
-        return;
-    }
-    Serial.println("Sending...");
-    LoggingBackendFile *f = backend->open(args);
-    f->seek(0);
-    char c;
-    while (f->readBytes(&c, 1))
-        Serial.write(c);
-    delete f;
+    // LoggingBackend *backend = //getLogger().backend;
+    // if (!backend->exists(args))
+    // {
+    //     Serial.print("File not found: ");
+    //     Serial.println(args);
+    //     return;
+    // }
+    // Serial.println("Sending...");
+    // LoggingBackendFile *f = backend->open(args);
+    // f->seek(0);
+    // char c;
+    // while (f->readBytes(&c, 1))
+    //     Serial.write(c);
+    // delete f;
 }
 
 void SerialHandler::removeFile(char *args)
 {
 
-    if (!getLogger().backend->exists(args))
-    {
-        Serial.print("File not found: ");
-        Serial.println(args);
-        return;
-    }
-    getLogger().backend->remove(args);
-    Serial.print("Removed ");
-    Serial.println(args);
+    // if (!//getLogger().backend->exists(args))
+    // {
+    //     Serial.print("File not found: ");
+    //     Serial.println(args);
+    //     return;
+    // }
+    // //getLogger().backend->remove(args);
+    // Serial.print("Removed ");
+    // Serial.println(args);
 }
 
 // prints out the # of the last power cycle's flight files.
 void SerialHandler::latestFiles()
 {
-    Serial.println(getLogger().getFlightNum() - 1);
+    // Serial.println(//getLogger().getFlightNum() - 1);
 }
 
-SerialHandler &mmfs::getSerialHandler()
+SerialHandler &astra::getSerialHandler()
 {
     static SerialHandler SerialHandler;
     return SerialHandler;

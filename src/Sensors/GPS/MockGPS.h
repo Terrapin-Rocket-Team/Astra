@@ -4,9 +4,9 @@
 #include "../SerialReader.h"
 #include "GPS.h"
 
-namespace mmfs
+namespace astra
 {
-class MockGPS : public mmfs::GPS {
+class MockGPS : public astra::GPS {
 private:
     SerialReader dataReader;
 

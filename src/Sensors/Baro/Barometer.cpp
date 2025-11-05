@@ -1,15 +1,16 @@
 #include "Barometer.h"
 #include <cmath>
 #include <Arduino.h>
-namespace mmfs
+#define MEAN_SEA_LEVEL_PRESSURE_HPA 1013.25
+namespace astra
 {
 
 #pragma region Barometer Specific Functions
     Barometer::Barometer(const char *name) : Sensor("Barometer", name)
     {
-        addColumn(DOUBLE, &pressure, "Pres (hPa)");
-        addColumn(DOUBLE, &temp, "Temp (C)");
-        addColumn(DOUBLE, &altitudeASL, "Alt ASL (m)");
+        addColumn("%0.3f", &pressure, "Pres (hPa)");
+        addColumn("%0.3f", &temp, "Temp (C)");
+        addColumn("%0.3f", &altitudeASL, "Alt ASL (m)");
     }
 
     Barometer::~Barometer() {}
@@ -49,7 +50,7 @@ namespace mmfs
         pressure = 0;
         temp = 0;
         altitudeASL = 0;
-        if(initialized = init())
+        if (initialized = init())
         {
             read();
             altitudeASL = calcAltitude(pressure);

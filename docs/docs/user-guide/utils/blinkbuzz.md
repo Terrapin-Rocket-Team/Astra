@@ -4,24 +4,24 @@ This utility is designed to be used as-is, without the end user (you) having to 
 
 ## Setup
 
-We strongly recommend that you use the `MMFSSystem` and `MMFSConfig` objects whenever you use MMFS. That said, all utilities have the ability to be used outside of `MMFSSystem`, including BlinkBuzz. The only difference between the two is the setup. All other functions are identical.
+We strongly recommend that you use the `AstraSystem` and `AstraConfig` objects whenever you use Astra. That said, all utilities have the ability to be used outside of `AstraSystem`, including BlinkBuzz. The only difference between the two is the setup. All other functions are identical.
 
-/// tab | With MMFSSystem
+/// tab | With AstraSystem
 
 BlinkBuzz does not have too many configuration options. Here they are, shown with their default values if they have them:
 
 ```c++
-#include <MMFS.h>
+#include <Astra.h>
 
 int GPS_STATUS_PIN = 25;
 
-MMFSConfig config = MMFSConfig()
+AstraConfig config = AstraConfig()
                     .withBuzzerPin(int pinNum) // no default
                     .withBBPin(int pinNum) // add any pin you'd like, no default
                     .withBBPin(int pinNum) // add as many pins as you want, no default
                     .withBBAsync(true, 50); // allow async patterns, max queue size of 50.
 
-MMFSSystem system = MMFSSystem(config);
+AstraSystem system = AstraSystem(config);
 ```
 
 In `setup()` you *must* call `system.init()` to initialize the system. This will also initialize the BlinkBuzz utility.
@@ -29,9 +29,9 @@ In `setup()` you *must* call `system.init()` to initialize the system. This will
 In order to take advantage of the async features, you must call `system.update()` in your `loop()`. This will also update the BlinkBuzz utility.
 ///
 
-/// tab | Without MMFSSystem
+/// tab | Without AstraSystem
 
-If you do not wish to use the MMFSSystem, you can use BlinkBuzz as a standalone utility. You must however set up the object yourself, and remember to call `bb.update()` in your `loop()`. 
+If you do not wish to use the AstraSystem, you can use BlinkBuzz as a standalone utility. You must however set up the object yourself, and remember to call `bb.update()` in your `loop()`. 
 
 ```c++
 #include <BlinkBuzz.h>

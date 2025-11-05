@@ -1,19 +1,21 @@
-#include "MMFSSystem.h"
+#include "Astra.h"
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
 #include "Wire.h"
 #include "RetrieveData/SerialHandler.h"
+#include "RecordData/Logging/DataLogger.h"
 
-using namespace mmfs;
+using namespace astra;
 BlinkBuzz bb;
-MMFSSystem::MMFSSystem(MMFSConfig *config) : config(config)
+Astra::Astra(AstraConfig *config) : config(config)
 {
 }
-void MMFSSystem::init()
+void Astra::init()
 {
-    getLogger().recordCrashReport();
-    getLogger().recordLogData(INFO_, "Initializing MMFS.");
-    Wire.begin(PB9, PB8);
+    // getLogger().recordCrashReport();
+    LOGI("Initializing Astra.");
+    // Wire.begin(PB9, PB8); //stm32
+    Wire.begin();
     // BlinkBuzz first
     int pins = 0;
     for (int i = 0; i < 50; i++)
@@ -25,7 +27,6 @@ void MMFSSystem::init()
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
     // then Logger
-
     DataReporter **reporters = new DataReporter *[config->numReporters + config->state->getNumMaxSensors() + 1];
 
     reporters[0] = config->state;
@@ -36,24 +37,26 @@ void MMFSSystem::init()
     for (i = 0; i < config->numReporters; i++)
         reporters[j++] = config->reporters[i];
 
-    bool log = getLogger().init(reporters, j);
-    getEventManager().invoke(BoolEvent{"LOGGER_INIT"_i, log});
+    DataLogger::configure(config->logs, config->numLogs, reporters, j);
+
+    // bool log = //getLogger().init(reporters, j);
+    // getEventManager().invoke(BoolEvent{"LOGGER_INIT"_i, log});
 
     delay(10);
     // then State
-    bool state = config->state->init();
-    getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
+    bool state = config->state->begin();
+    // getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
     ready = true;
 
-    getLogger().writeCsvHeader();
-    getLogger().recordLogData(INFO_, "MMFS initialized.");
+    // getLogger().writeCsvHeader();
+    LOGI("Astra initialized.");
 }
-bool MMFSSystem::update(double ms)
+bool Astra::update(double ms)
 {
     bool didUpdate = false;
     if (!ready)
     {
-        getLogger().recordLogData(WARNING_, "Attempted to update MMFSSystem before it was initialized. Initializing it now...");
+        LOGW("Attempted to update Astra before it was initialized. Initializing it now...");
         init();
     }
     getSerialHandler().handle();
@@ -62,20 +65,20 @@ bool MMFSSystem::update(double ms)
     if (ms == -1)
         ms = millis();
 
-    if (ms - lastStateUpdate > UPDATE_INTERVAL)
+    if (ms - lastStateUpdate > config->updateInterval)
     {
         lastStateUpdate = ms;
         if (config->state)
-            config->state->updateState();
+            config->state->update();
         else
-            getLogger().recordLogData(WARNING_, "MMFS Attempted to update State without a reference to it! (use MMFSConfig.withState(&stateVar))");
+            LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
         didUpdate = true;
     }
-    
-    if (ms - lastLoggingUpdate > LOGGING_INTERVAL)
+
+    if (ms - lastLoggingUpdate > config->loggingInterval)
     {
         lastLoggingUpdate = ms;
-        getLogger().recordFlightData();
+        // getLogger().recordFlightData();
     }
 
     return didUpdate;

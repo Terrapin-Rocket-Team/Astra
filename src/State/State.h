@@ -7,12 +7,10 @@
 #include "../Sensors/Baro/Barometer.h"
 #include "../Sensors/GPS/GPS.h"
 #include "../Sensors/IMU/IMU.h"
-#include "../RecordData/Logging/Logger.h"
-#include "../Constants.h"
 #include "../Math/Vector.h"
 #include "../Math/Quaternion.h"
 
-namespace mmfs
+namespace astra
 {
     class State : public DataReporter
     {
@@ -22,10 +20,10 @@ namespace mmfs
 
         // Returns false if any sensor failed to init. Check data log for failed sensor. Disables sensor if failed.
         // useBiasCorrection: whether or not to use bias correction. If true, the override class must call sensor.useBiasCorrection(false) upon liftoff to disable bias correction.
-        virtual bool init();
+        virtual bool begin();
 
         // Updates the state with the most recent sensor data. CurrentTime is the time in seconds since the uC was turned on. If not provided, the state will use the current time.
-        virtual void updateState(double currentTime = -1);
+        virtual void update(double currentTime = -1);
 
         // sensor functions
         virtual Sensor *getSensor(SensorType type, int sensorNum = 1) const; // get a sensor of a certain type. 1 indexed. i.e. getSensor(GPS, 1) gets the first GPS sensor.
@@ -39,8 +37,6 @@ namespace mmfs
         virtual double getHeading() const { return heading; }
         virtual int getNumMaxSensors() const { return maxNumSensors; } // how many sensors were passed in the constructor
         virtual Sensor **getSensors() const { return sensors; }
-        virtual int getStage() const { return stage; }
-
         bool sensorOK(const Sensor *sensor) const;
 
     protected:
@@ -53,26 +49,8 @@ namespace mmfs
 
         // ----
 
-        // Update function layout in the CPP:
-        /*
-        update(){
-            updateSensors();
-            updateVariables(){
-                if (filter)
-                    updateKF();
-                else
-                    updateWithoutKF();
-                // other variables
-            }
-            determineStage();
-        }
-        */
         virtual void updateSensors();
         virtual void updateVariables();
-        virtual void updateKF();
-        virtual void updateWithoutKF(); // if no KF is set
-
-        virtual void determineStage() = 0; // MUST BE IMPLEMENTED IN OVERRIDE CLASS
 
         // ----
 
@@ -85,18 +63,11 @@ namespace mmfs
         double heading;         // in degrees
         Vector<3> origin;      // in lat, lon, alt
 
-        // These two only exist because of bugs in the KF. They will be removed when™ the KF is fixed.
-        double baroVelocity;    // in m/s
-        double baroOldAltitude; // in m
-
         // Kalman Filter settings
         Filter *filter;
+        double *stateVars = nullptr;
 
         bool initialized = false;
-
-        int stage = 0;
-
-        double *stateVars = nullptr;
     };
 }
 #endif // STATE_H

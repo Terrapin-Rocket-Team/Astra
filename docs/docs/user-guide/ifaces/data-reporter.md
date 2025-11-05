@@ -1,6 +1,6 @@
 # DataReporter
 
-The **DataReporter** class is used by the **Logger** system in MMFS to log flight data from various sources. Each data reporter defines the variables to be recorded, the variable types, and the labels that appear in the output CSV file. This allows you to separate your flight data into multiple, self-contained objects that easily integrate with MMFS.
+The **DataReporter** class is used by the **Logger** system in Astra to log flight data from various sources. Each data reporter defines the variables to be recorded, the variable types, and the labels that appear in the output CSV file. This allows you to separate your flight data into multiple, self-contained objects that easily integrate with Astra.
 
 ---
 
@@ -29,7 +29,7 @@ Below is an example of how to create and use a custom **DataReporter**:
 ```cpp
 #include <DataReporter.h>
 
-using namespace mmfs;
+using namespace astra;
 
 class MyCustomReporter : public DataReporter {
 public:
@@ -44,9 +44,9 @@ public:
 
         // In the constructor, define the columns you want logged:
         // addColumn(PackedType, pointerToVar, "Label in CSV")
-        addColumn(INT, &altitude, "Altitude");
+        addColumn("%d", &altitude, "Altitude");
         addColumn(FLOAT, &velocity, "Velocity");
-        addColumn(DOUBLE_HP, &latitude, "Latitude"); // (1)!
+        addColumn("%0.7f", &latitude, "Latitude"); // (1)!
     }
 
     // Add your own update step here to modify the data.
@@ -54,7 +54,7 @@ public:
 ```
 {.annotate}
 
-1. Use `DOUBLE` for 3 decimal point precision, or `DOUBLE_HP` if you want 7 points of precision. In this example, 3 decimal points of latitude is only accurate to about 100 meters, so we record all 7 for better location precision.
+1. Use `"%0.3f"` for 3 decimal point precision, or `"%0.7f"` if you want 7 points of precision. In this example, 3 decimal points of latitude is only accurate to about 100 meters, so we record all 7 for better location precision.
 
 ### **Adding Columns**
 
@@ -89,11 +89,11 @@ Here’s a simple step-by-step guide for beginners:
 1. **Create a custom reporter**  
    Derive a new class from **DataReporter**. In your constructor, add the columns you want to record, with pointers to the variables that hold that data.
 
-2. **Register it with MMFS**  
-   Pass your **DataReporter** object to the `MMFSConfig` object (via `withOtherDataReporters(...)`) or manually to the **Logger** if you’re using a standalone approach.
+2. **Register it with Astra**  
+   Pass your **DataReporter** object to the `AstraConfig` object (via `withOtherDataReporters(...)`) or manually to the **Logger** if you’re using a standalone approach.
 
-3. **Let MMFS manage updates**  
-   Whenever `MMFSSystem::update()` (or an equivalent mechanism) is called, your reporter’s most recent data is automatically logged as a CSV row. Keep in mind that MMFS and **DataReporter** do *not* update the data stored in those variables.
+3. **Let Astra manage updates**  
+   Whenever `AstraSystem::update()` (or an equivalent mechanism) is called, your reporter’s most recent data is automatically logged as a CSV row. Keep in mind that Astra and **DataReporter** do *not* update the data stored in those variables.
 
 4. **Check CSV output**  
    After a flight (or test run), retrieve the `.csv` file and confirm your new columns (Altitude, Velocity, etc.) appear as expected with the correct data.
@@ -102,8 +102,8 @@ Here’s a simple step-by-step guide for beginners:
 
 ## **Summary**
 
-- **DataReporter** objects act as modular data sources for logging in MMFS.
-- You specify a name, define columns for logging, and let **MMFS** handle how and when the data is stored or transmitted.
+- **DataReporter** objects act as modular data sources for logging in Astra.
+- You specify a name, define columns for logging, and let **Astra** handle how and when the data is stored or transmitted.
 
 Use this class to easily add flight data logging to your project, keeping your code organized and your flight logs detailed.
 

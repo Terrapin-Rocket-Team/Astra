@@ -1,6 +1,6 @@
 #include "MockGPS.h"
 
-namespace mmfs
+namespace astra
 {
     MockGPS::MockGPS(const char *dataPath,
                      const std::string &posXColName,
@@ -26,7 +26,7 @@ namespace mmfs
 
         if (numCols == -1 || numCols > MAX_NUM_COLS)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockGPS]: Invalid number of columns read: %d", numCols);
+            LOGE("[MockGPS]: Invalid number of columns read: %d", numCols);
             return false;
         }
 
@@ -78,27 +78,27 @@ namespace mmfs
 
         if (posXColIdx == -1)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockGPS]: Failed to find posX column index for name: %s", posXColName.c_str());
+            LOGE("[MockGPS]: Failed to find posX column index for name: %s", posXColName.c_str());
             return false;
         }
         if (posYColIdx == -1)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockGPS]: Failed to find posY column index for name: %s", posYColName.c_str());
+            LOGE("[MockGPS]: Failed to find posY column index for name: %s", posYColName.c_str());
             return false;
         }
         if (posZColIdx == -1)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockGPS]: Failed to find posZ column index for name: %s", posZColName.c_str());
+            LOGE("[MockGPS]: Failed to find posZ column index for name: %s", posZColName.c_str());
             return false;
         }
         if (headingColIdx == -1)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockGPS]: Failed to find heading column index for name: %s", headingColName.c_str());
+            LOGE("[MockGPS]: Failed to find heading column index for name: %s", headingColName.c_str());
             return false;
         }
         if (fixQualityColIdx == -1)
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockGPS]: Failed to find fix quality column index for name: %s", fixQualityColName.c_str());
+            LOGE("[MockGPS]: Failed to find fix quality column index for name: %s", fixQualityColName.c_str());
             return false;
         }
 
@@ -109,7 +109,7 @@ namespace mmfs
     bool MockGPS::read()    {
         if (!dataReader.readLine(sdData))
         {
-            getLogger().recordLogData(ERROR_, 100, "[MockGPS]: Failed to read data from file!");
+            LOGE("[MockGPS]: Failed to read data from file!");
             initialized = false;
             return false;
         }
@@ -122,4 +122,4 @@ namespace mmfs
         return true;
     }
 
-} // namespace mmfs
+} // namespace astra

@@ -1,7 +1,6 @@
 #include "Matrix.h"
-#include "../RecordData/Logging/Logger.h"
 
-namespace mmfs {
+namespace astra {
 
 // Default constructor
 Matrix::Matrix()
@@ -95,7 +94,7 @@ Matrix Matrix::multiply(Matrix other)
 {
     if (this->cols != other.rows)
     {
-        getLogger().recordLogData(ERROR_, "Tried to multiple matrix with incorrect dimensions. This matrix cols: %d and other matrix rows: %d. Returning first Matrix.", cols, other.getRows());
+        LOGE("Tried to multiple matrix with incorrect dimensions. This matrix cols: %d and other matrix rows: %d. Returning first Matrix.", cols, other.getRows());
         return Matrix(this->rows, this->cols, this->array);
     }
 
@@ -144,7 +143,7 @@ Matrix Matrix::add(Matrix other)
 {
     if (this->rows != other.rows || this->cols != other.cols)
     {
-        getLogger().recordLogData(ERROR_, "Addition error: Dimensions do not match! Matrix 1: row: %d, column: %d. Matrix 2: row: %d, column %d. Returning input Matrix.", rows, cols, other.getRows(), other.getCols());
+        LOGE("Addition error: Dimensions do not match! Matrix 1: row: %d, column: %d. Matrix 2: row: %d, column %d. Returning input Matrix.", rows, cols, other.getRows(), other.getCols());
         return Matrix(this->rows, this->cols, this->array);
     }
 
@@ -171,7 +170,7 @@ Matrix Matrix::subtract(Matrix other)
 {
     if (this->rows != other.rows || this->cols != other.cols)
     {
-        getLogger().recordLogData(ERROR_, "Subtraction error: Dimensions do not match! Matrix 1: row: %d, column: %d. Matrix 2: row: %d, column %d. Returning input Matrix.", rows, cols, other.getRows(), other.getCols()); 
+        LOGE("Subtraction error: Dimensions do not match! Matrix 1: row: %d, column: %d. Matrix 2: row: %d, column %d. Returning input Matrix.", rows, cols, other.getRows(), other.getCols()); 
         return Matrix(this->rows, this->cols, this->array);
     }
 
@@ -232,7 +231,7 @@ void Matrix::luDecompositionWithPartialPivoting(double *A, int *pivot, int n)
 
         if (max == 0.0)
         {
-            getLogger().recordLogData(ERROR_, "Inversion error: Matrix is singular!");
+            LOGE("Inversion error: Matrix is singular!");
         }
 
         // Swap rows in A matrix
@@ -291,7 +290,7 @@ Matrix Matrix::inverse()
 {
     if (this->rows != this->cols)
     {
-        getLogger().recordLogData(ERROR_, "Tried to invert matrix with dimensions row: %d, column: %d. Returning input Matrix.", rows, cols);
+        LOGE("Tried to invert matrix with dimensions row: %d, column: %d. Returning input Matrix.", rows, cols);
         return Matrix(rows, cols, array);
 
     }
@@ -336,7 +335,7 @@ Matrix Matrix::inverse()
 double Matrix::trace()
 {
     if (rows != cols) {
-        getLogger().recordLogData(ERROR_, "Tried to take the trace of a matrix with dimensions row: %d, column: %d. Returning 1.", rows, cols);
+        LOGE("Tried to take the trace of a matrix with dimensions row: %d, column: %d. Returning 1.", rows, cols);
         return 1;
     }
 
@@ -384,4 +383,4 @@ void Matrix::disp()
     //     std::cout << std::endl;
     // }
 }
-} // namespace mmfs
+} // namespace astra

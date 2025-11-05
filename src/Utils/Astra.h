@@ -1,20 +1,20 @@
-#ifndef MMFS_SYSTEM_H
-#define MMFS_SYSTEM_H
+#ifndef Astra_SYSTEM_H
+#define Astra_SYSTEM_H
 
-#include "MMFSConfig.h"
+#include "AstraConfig.h"
 
-namespace mmfs
+namespace astra
 {
-    class MMFSSystem
+    class Astra
     {
     public:
-        MMFSSystem(MMFSConfig *config);
+        Astra(AstraConfig *config);
         void init();
         bool update(double ms = -1); //returns true if state update occurred
 
     private:
         bool ready = false;
-        MMFSConfig *config = nullptr;
+        AstraConfig *config = nullptr;
         double lastStateUpdate = 0, lastLoggingUpdate = 0;
     };
 }

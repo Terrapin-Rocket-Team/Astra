@@ -1,6 +1,6 @@
 # State
 
-The `State` class in MMFS serves as the central data aggregator, coordinating all sensors, optionally fusing data via a filter (e.g. a Kalman filter), and determining the current flight stage. This class is typically passed into `MMFSSystem` for high-level control of the flight software.
+The `State` class in Astra serves as the central data aggregator, coordinating all sensors, optionally fusing data via a filter (e.g. a Kalman filter), and determining the current flight stage. This class is typically passed into `AstraSystem` for high-level control of the flight software.
 
 ---
 
@@ -128,10 +128,10 @@ public:
             (sensorOK(imu) ? abs(imu->getAccelerationGlobal().z()) > 25 : false) ||
             (sensorOK(baro) ? baro->getAGLAltFt() > 60 : false)) {
 
-            getLogger().setRecordMode(FLIGHT);
+            //getLogger().setRecordMode(FLIGHT);
             stage = 1;
             timeOfLaunch = currentTime;
-            getLogger().recordLogData(INFO_, "Launch detected.");
+            LOGI("Launch detected.");
         }
     }
 };
@@ -141,20 +141,20 @@ This shows a basic launch detection using either IMU acceleration or barometric 
 
 ---
 
-## **Integration with MMFSSystem**
+## **Integration with AstraSystem**
 
-Once your `State` is initialized, pass it to MMFSSystem like so:
+Once your `State` is initialized, pass it to AstraSystem like so:
 
 ```cpp
 MyAvionicsState state(sensors, numSensors, new MyKalmanFilter());
-MMFSConfig config = MMFSConfig()
+AstraConfig config = AstraConfig()
                 .withState(&state)
                 // any other config options
                 ;
 
 ```
 
-MMFSSystem will handle calling `updateState()` and routing stage transitions.
+AstraSystem will handle calling `updateState()` and routing stage transitions.
 
 ---
 
@@ -164,7 +164,7 @@ MMFSSystem will handle calling `updateState()` and routing stage transitions.
 * You override `determineStage()` to define flight logic
 * Sensors are polled and filtered each update cycle
 * Internal state is auto-logged via `DataReporter`
-* Integrates directly with `MMFSSystem`
+* Integrates directly with `AstraSystem`
 
 ---
 

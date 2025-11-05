@@ -2,7 +2,7 @@
 #include "../../src/Sensors/GPS/GPS.h"
 #include "../../src/Sensors/IMU/IMU.h"
 
-using namespace mmfs;
+using namespace astra;
 
 class FakeBarometer : public Barometer
 {
@@ -32,15 +32,6 @@ public:
     }
     double fakeP = 0;
     double fakeT = 0;
-
-    bool isInBiasCorrectionMode()
-    {
-        return biasCorrectionMode;
-    }
-    int getMaxBufferLen()
-    {
-        return pressureBuffer.getSize();
-    }
 };
 
 class FakeGPS : public GPS
@@ -89,15 +80,6 @@ public:
     void setFixQual(int qual)
     {
         fixQual = qual;
-    }
-    bool isInBiasCorrectionMode()
-    {
-        return biasCorrectionMode;
-    }
-
-    int getMaxBufferLen()
-    {
-        return originBuffer.getSize();
     }
 };
 

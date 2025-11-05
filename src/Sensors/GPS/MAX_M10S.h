@@ -2,11 +2,11 @@
 #define MAX_M10S_H
 
 #include <Wire.h>
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
+#include <SparkFun_u-blox_GNSS_v3.h>
 #include <Arduino.h>
 #include "GPS.h"
 
-namespace mmfs
+namespace astra
 {
     class MAX_M10S : public GPS
     {

@@ -6,6 +6,7 @@
 #include <chrono>
 #include <stdarg.h>
 #include "Wire.h"
+#include "Print.h"
 #ifdef WIN32
 #include <windows.h>
 #endif
@@ -27,19 +28,16 @@ void delay(int ms);
 
 void digitalWrite(int pin, int value);
 
-class Stream
+class Stream : public Print
 {
 public:
-    void write(const char *data, int i);
-    void print(const char *data);
-    void printf(const char *data, ...);
-    void println(const char *data);
-    void println(int i);
     void begin(int baud = 9600);
+    void end();
     void clearBuffer();
     bool available();
     int readBytesUntil(char i, char *buf, size_t s);
-    void write(char &c);
+    size_t write(uint8_t b) override;
+    operator bool() { return true; }
 
     char fakeBuffer[1000];
     int cursor = 0;
@@ -47,7 +45,6 @@ public:
 
 class SerialClass : public Stream
 {
-    
 };
 
 extern SerialClass Serial;

@@ -4,9 +4,9 @@
 #include <BMI088.h>
 #include "Accel.h"
 
-namespace mmfs
+namespace astra
 {
-    class BMI088Accel : public mmfs::Accel
+    class BMI088Accel : public astra::Accel
     {
     public:
         bool read() override;

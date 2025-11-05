@@ -1,11 +1,11 @@
 #include "SerialReader.h"
-namespace mmfs
+namespace astra
 {
     SerialReader::SerialReader(const char *dataPointer)
     {
         initialized = true;
         this->dataPointer = dataPointer;
-        // getLogger().recordLogData(INFO_, "SerialReader: Initialized");
+        // LOGI("SerialReader: Initialized");
     }
 
     bool SerialReader::readColumnHeaders(int &numCols, std::string colNames[])
@@ -32,7 +32,7 @@ namespace mmfs
         }
         else
         {
-            getLogger().recordLogData(WARNING_, "SerialReader: Headers already read!");
+            LOGW("SerialReader: Headers already read!");
             return false;
         }
     }

@@ -1,23 +1,23 @@
 #include "IMU.h"
 
-namespace mmfs
+namespace astra
 {
 
     IMU::IMU(const char *name) : Sensor("IMU", name)
     {
-        addColumn(DOUBLE, &measuredAcc.x(), "AccX (m/s^2)");
-        addColumn(DOUBLE, &measuredAcc.y(), "AccY (m/s^2)");
-        addColumn(DOUBLE, &measuredAcc.z(), "AccZ (m/s^2)");
-        addColumn(DOUBLE, &measuredGyro.x(), "GyroX (rad/s)");
-        addColumn(DOUBLE, &measuredGyro.y(), "GyroY (rad/s)");
-        addColumn(DOUBLE, &measuredGyro.z(), "GyroZ (rad/s)");
-        addColumn(DOUBLE, &measuredMag.x(), "MagX (uT)");
-        addColumn(DOUBLE, &measuredMag.y(), "MagY (uT)");
-        addColumn(DOUBLE, &measuredMag.z(), "MagZ (uT)");
-        addColumn(DOUBLE, &orientation.x(), "OriX");
-        addColumn(DOUBLE, &orientation.y(), "OriY");
-        addColumn(DOUBLE, &orientation.z(), "OriZ");
-        addColumn(DOUBLE, &orientation.w(), "OriW");
+        addColumn("%0.3f", &measuredAcc.x(), "AccX (m/s^2)");
+        addColumn("%0.3f", &measuredAcc.y(), "AccY (m/s^2)");
+        addColumn("%0.3f", &measuredAcc.z(), "AccZ (m/s^2)");
+        addColumn("%0.3f", &measuredGyro.x(), "GyroX (rad/s)");
+        addColumn("%0.3f", &measuredGyro.y(), "GyroY (rad/s)");
+        addColumn("%0.3f", &measuredGyro.z(), "GyroZ (rad/s)");
+        addColumn("%0.3f", &measuredMag.x(), "MagX (uT)");
+        addColumn("%0.3f", &measuredMag.y(), "MagY (uT)");
+        addColumn("%0.3f", &measuredMag.z(), "MagZ (uT)");
+        addColumn("%0.3f", &orientation.x(), "OriX");
+        addColumn("%0.3f", &orientation.y(), "OriY");
+        addColumn("%0.3f", &orientation.z(), "OriZ");
+        addColumn("%0.3f", &orientation.w(), "OriW");
     }
     // Quaternion IMU::getOrientation()
     // {
@@ -52,7 +52,7 @@ namespace mmfs
     //     Quaternion a_b = Quaternion{0, measuredAcc};
     //     if (!(a_b.magnitude() > 0))
     //     {
-    //         getLogger().recordLogData(ERROR_, "Acceleration magnitude 0 while running quaternionBasedComplimentaryFilterSetup(). Need to record acceleration vector on setup before running this function.");
+    //         LOGE("Acceleration magnitude 0 while running quaternionBasedComplimentaryFilterSetup(). Need to record acceleration vector on setup before running this function.");
     //         return;
     //     }
     //     a_b.normalize();
@@ -71,7 +71,7 @@ namespace mmfs
     //     Quaternion m_b = Quaternion{0, measuredMag};
     //     if (!(m_b.magnitude() > 0))
     //     {
-    //         getLogger().recordLogData(ERROR_, "Magnetic magnitude 0 while running quaternionBasedComplimentaryFilterSetup(). Need to record magnetometer vector on setup before running this function.");
+    //         LOGE("Magnetic magnitude 0 while running quaternionBasedComplimentaryFilterSetup(). Need to record magnetometer vector on setup before running this function.");
     //         return;
     //     }
     //     m_b.normalize();

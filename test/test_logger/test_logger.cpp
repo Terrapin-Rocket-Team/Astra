@@ -1,187 +1,350 @@
 #include <unity.h>
-#include "../../lib/NativeTestMocks/NativeTestHelper.h"
+#include <string>
+#include <vector>
+#include <cstdint>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
+#include <iostream>
 
-// include other headers you need to test here
+// ---- Include your headers (adjust paths as needed) ----
+#include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "../../src/RecordData/DataReporter/DataReporter.h"
+#include "../../src/RecordData/Logging/DataLogger.h"
+#include "../../src/RecordData/Logging/EventLogger.h"
 
-#include "../../src/State/State.h"
-#include "../../lib/NativeTestMocks/UnitTestSensors.h"
-#include "../../lib/NativeTestMocks/MockLoggingBackend.h"
-#include "../../src/RecordData/DataReporter/DataFormatter.h"
-#include "../src/Events/DefaultEventHandler.h"
+using namespace astra;
 
-// ---
-
-// Set up and global variables or mocks for testing here
-
-class TestState : public State
+// --------------- MockSink ---------------
+// Captures all writes in-memory; simulates a healthy sink by default.
+class MockSink : public ILogSink
 {
 public:
-    TestState(Sensor **sensors, int numSensors, Filter *filter) : State(sensors, numSensors, filter) {}
-    void determineStage() override {}
+    std::string buf;
+    bool began = false;
+    bool healthy = true;
+    int beginCount = 0;
+    int flushCount = 0;
+    int endCount = 0;
+    bool prefix = false;
+
+    explicit MockSink(bool healthy_, bool prefx = false) : healthy(healthy_), prefix(prefix) {}
+
+    bool begin() override
+    {
+        began = true;
+        beginCount++;
+        return healthy;
+    }
+    bool end() override
+    {
+        endCount++;
+        began = false;
+        return true;
+    }
+    bool ok() const override { return healthy && began; }
+    bool wantsPrefix() const override { return prefix; }
+    // Make sure Print APIs work
+    size_t write(uint8_t b) override
+    {
+        buf.push_back((char)b);
+        return 1;
+    }
+    size_t write(const uint8_t *p, size_t n) override
+    {
+        buf.append((const char *)p, n);
+        return n;
+    }
+    void flush() override { flushCount++; }
+
+    using Print::write; // keep other overloads visible
 };
 
-using namespace mmfs;
-MockFileData *flightFile, *logFile, *preFlightFile;
-
-FakeGPS gps;
-FakeBarometer baro;
-Sensor *sensors[2] = {&gps, &baro};
-TestState state(sensors, 2, nullptr);
-DataReporter *arr[] = {&state, &gps, &baro};
-Logger *testLogger;
-
-// ---
-
-// These two functions are called before and after each test function, and are required in unity, even if empty.
-void setUp(void)
+// --------------- FakeReporter ---------------
+// Uses your protected addColumn<T> to build a real column chain.
+class FakeReporter : public DataReporter
 {
-    // set stuff up before each test here, if needed
-}
+public:
+    float ax = 0, ay = 0;
+    int count = 0;
 
-void tearDown(void)
-{
-    // clean stuff up after each test here, if needed
-}
-// ---
-
-// Test functions must be void and take no arguments, put them here
-
-void test_testLogger_init()
-{
-    LoggingBackendMock *m = (LoggingBackendMock *)testLogger->backend;
-    testLogger->init(arr, 3);
-    TEST_ASSERT_TRUE(testLogger->isReady());
-    TEST_ASSERT_TRUE(testLogger->backend->exists("1_FlightData.csv"));
-    TEST_ASSERT_TRUE(testLogger->backend->exists("1_Log.txt"));
-    TEST_ASSERT_TRUE(testLogger->backend->exists("1_PreFlightData.csv"));
-    flightFile = ((LoggingBackendMock *)(testLogger->backend))->getMockFileData("1_FlightData.csv");
-    logFile = ((LoggingBackendMock *)(testLogger->backend))->getMockFileData("1_Log.txt");
-    preFlightFile = ((LoggingBackendMock *)(testLogger->backend))->getMockFileData("1_PreFlightData.csv");
-}
-
-void test_recordLogData_on_ground()
-{
-
-    testLogger->recordLogData(.1, INFO_, TO_FILE, "This is a test");
-    TEST_ASSERT_EQUAL(0, flightFile->size);
-    TEST_ASSERT_EQUAL(0, preFlightFile->size);
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("0.100 - [INFO] This is a test\n", logFile->arr, 30);
-    testLogger->recordLogData(.2, INFO_, "This is another test");
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("0.100 - [INFO] This is a test\n0.200 - [INFO] This is another test\n", logFile->arr, 66);
-    TEST_ASSERT_EQUAL_STRING("0.200 - [INFO] This is another test\n", Serial.fakeBuffer);
-    testLogger->recordLogData(.3, INFO_, TO_USB, "This is a third test");
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("0.100 - [INFO] This is a test\n0.200 - [INFO] This is another test\n", logFile->arr, 66);
-    TEST_ASSERT_EQUAL_STRING("0.200 - [INFO] This is another test\n0.300 - [INFO] This is a third test\n", Serial.fakeBuffer);
-    Serial.clearBuffer();
-    testLogger->recordLogData(.4, WARNING_, TO_USB, 50, "This is a warning! #%d did not %s!", 1, "work");
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("0.100 - [INFO] This is a test\n0.200 - [INFO] This is another test\n", logFile->arr, 66);
-    TEST_ASSERT_EQUAL_STRING("0.400 - [WARNING] This is a warning! #1 did not work!\n", Serial.fakeBuffer);
-    Serial.clearBuffer();
-}
-
-void test_recordFlightData_on_ground()
-{
-    state.init(); // will record log data, so don't do this earlier in order to test log data.
-    baro.set(0, 0);
-    gps.set(0, 0, 0);
-    state.updateState(1);
-    testLogger->recordFlightData();
-    TEST_ASSERT_EQUAL(0, flightFile->size); // no data should be written to the flight data file
-    TEST_ASSERT_EQUAL(145, preFlightFile->size);
-    TEST_ASSERT_EQUAL_CHAR_ARRAY("1.000,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000," // state
-                                 "0.0000000,0.0000000,0.000,0.000,0.000,0.000,0,00:00:00,"        // gps
-                                 "0.000,0.000,44307.690,0.000\n",                                 // baro
-                                 preFlightFile->arr, 143);
-
-    gps.set(180, 180, 1000);
-    state.updateState(2);
-    testLogger->recordFlightData(); // at this point, this string is all that the buffer should have in it.
-    TEST_ASSERT_EQUAL_CHAR_ARRAY(
-        "1.000,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,"
-        "0.0000000,0.0000000,0.000,0.000,0.000,0.000,0,00:00:00,"
-        "0.000,0.000,44307.690,0.000\n"
-        "2.000,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,"
-        "180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,"
-        "0.000,0.000,44307.690,0.000\n",
-        preFlightFile->arr, 297);
-    TEST_ASSERT_EQUAL(297, preFlightFile->size);
-}
-
-void test_recordFlightData_in_flight()
-{
-    testLogger->setRecordMode(FLIGHT);
-    for (int i = 30; i < 40; i++)
+    explicit FakeReporter(const char *name) : DataReporter(name)
     {
-        state.updateState((i + 1) * .1);
-        testLogger->recordFlightData();
+        // label order defines header & CSV order
+        addColumn<float>("%.2f", &ax, "ax");
+        addColumn<float>("%.3f", &ay, "ay");
+        addColumn<int>("%d", &count, "count");
     }
-    TEST_ASSERT_EQUAL(297, preFlightFile->size); // no new data should be written to the preflight data file
-    TEST_ASSERT_EQUAL(152 * 10, flightFile->size);
-}
 
-void test_dumpData()
+    void set(float ax_, float ay_, int c)
+    {
+        ax = ax_;
+        ay = ay_;
+        count = c;
+    }
+};
+
+// A second reporter to test multi-reporter composition
+class PositionReporter : public DataReporter
 {
-    testLogger->setRecordMode(GROUND); // dump the data
-    flightFile->arr[flightFile->size] = '\0';
-    printf("%s\n", flightFile->arr);
-    TEST_ASSERT_EQUAL_CHAR_ARRAY(
-        "3.100,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.200,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.300,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.400,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.500,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.600,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.700,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.800,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "3.900,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n"
-        "4.000,0,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0.000,180.0000000,180.0000000,1000.000,0.000,0.000,0.000,0,00:00:00,0.000,0.000,44307.690,0.000\n",
-        flightFile->arr, 1520);
-}
+public:
+    double lat = 0, lon = 0;
+    explicit PositionReporter(const char *name) : DataReporter(name)
+    {
+        addColumn<double>("%.6f", &lat, "lat");
+        addColumn<double>("%.6f", &lon, "lon");
+    }
+    void set(double la, double lo)
+    {
+        lat = la;
+        lon = lo;
+    }
+};
 
-void test_gps_file_time()
+// ---------- Helpers ----------
+static void reset(MockSink &s)
 {
-    Logger l;
-    setLogger(&l);
-    TEST_ASSERT_TRUE(l.backend->exists("1_FlightData.csv"));
-    DefaultEventHandler d;
-    FakeGPS gps;
-    gps.setHasFirstFix(true);
-    gps.setDateTime(2025, 1, 15, 23, 15, 50);
-
-    getEventManager().invoke(GPSFix{"GPS_FIX"_i, &gps, true});
-
-    MockFileData *f = ((LoggingBackendMock *)(l.backend))->getMockFileData("1_FlightData.csv");
-
-    TEST_ASSERT_EQUAL_INT8(2025 - 1900, f->modify.yr2);
-    TEST_ASSERT_EQUAL_INT16(2025, f->modify.yr1);
-    TEST_ASSERT_EQUAL_INT8(1, f->modify.m);
-    TEST_ASSERT_EQUAL_INT8(15, f->modify.d);
-    TEST_ASSERT_EQUAL_INT8(23, f->modify.h);
-    TEST_ASSERT_EQUAL_INT8(15, f->modify.mm);
-    TEST_ASSERT_EQUAL_INT8(50, f->modify.s);
+    s.buf.clear();
+    s.flushCount = 0;
+}
+static std::vector<std::string> splitLines(const std::string &s)
+{
+    std::vector<std::string> out;
+    std::string cur;
+    for (char c : s)
+    {
+        if (c == '\n')
+        {
+            out.push_back(cur);
+            cur.clear();
+        }
+        else
+            cur.push_back(c);
+    }
+    if (!cur.empty())
+        out.push_back(cur);
+    return out;
 }
 
-// ---
+// ---------- Tests ----------
 
-// This is the main function that runs all the tests. It should be the last thing in the file.
-int main(int argc, char **argv)
+void test_header_single_reporter(void)
+{
+    MockSink sink(true);
+    FakeReporter rp("imu");
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+
+    // Expect header like: "imu - ax,imu - ay,imu - count"
+    // (Your implementation prints reporter name + " - " + label)
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &hdr = lines[0];
+
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("imu - ax"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("imu - ay"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("imu - count"));
+
+    // comma separation and no trailing commas (simple checks)
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find(","));
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(std::string::npos, hdr.size() ? (hdr.back() != ',') : 1, "Header ends with comma");
+}
+
+void test_append_line_single_reporter_values_and_commas(void)
+{
+    MockSink sink(true);
+    FakeReporter rp("imu");
+    rp.set(0.126f, -1.5f, 7);
+
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+    reset(sink);
+
+    TEST_ASSERT_TRUE(dl.appendLine());
+
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(1, lines.size(), "One data line expected");
+    auto &row = lines[0];
+
+    std::cout << row << std::endl;
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("0.13"));   // 0.125 -> "%.2f" -> 0.13
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("-1.500")); // "%.3f"
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("7"));
+
+    // Basic comma sanity: two commas for 3 columns, and no trailing comma
+    size_t commas = 0;
+    for (char c : row)
+        if (c == ',')
+            commas++;
+    TEST_ASSERT_EQUAL_UINT(2, commas);
+    TEST_ASSERT_TRUE(row.back() != ',');
+}
+
+void test_multi_reporter_header_and_row(void)
+{
+    MockSink sink(true);
+    FakeReporter imu("imu");
+    PositionReporter pos("gps");
+
+    imu.set(1.0f, 2.0f, 3);
+    pos.set(39.000123, -76.500789);
+
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&imu, &pos};
+
+    DataLogger dl(sinks, 1, reps, 2);
+    TEST_ASSERT_TRUE(dl.init());
+
+    auto hdrLines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(hdrLines.empty());
+    auto hdr = hdrLines[0];
+
+    // Expect "imu - ax,imu - ay,imu - count,gps - lat,gps - lon"
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("imu - ax"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("gps - lat"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("gps - lon"));
+
+    reset(sink);
+    TEST_ASSERT_TRUE(dl.appendLine());
+    auto rows = splitLines(sink.buf);
+    TEST_ASSERT_EQUAL_UINT(1, rows.size());
+    auto row = rows[0];
+
+    // Values appear in the same order as headers
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("1.00"));  // imu ax
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("2.000")); // imu ay
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("3"));     // count
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("39.000123"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, row.find("-76.500789"));
+
+    // Total commas should be (columns-1) = (3+2-1)=4
+    size_t commas = 0;
+    for (char c : row)
+        if (c == ',')
+            commas++;
+    TEST_ASSERT_EQUAL_UINT(4, commas);
+}
+
+void test_unhealthy_sink_is_skipped(void)
+{
+    MockSink bad(false); // begin() returns false -> not ok()
+    MockSink good(true);
+
+    FakeReporter rp("imu");
+    rp.set(0.5f, 0.25f, 1);
+
+    ILogSink *sinks[] = {&bad, &good};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 2, reps, 1);
+    TEST_ASSERT_TRUE(dl.init()); // 'any' will be true because good begins
+
+    // Header was written during init; now append a row
+    reset(bad);
+    reset(good);
+    TEST_ASSERT_TRUE(dl.appendLine());
+
+    // bad should remain empty; good should have data
+    TEST_ASSERT_TRUE(bad.buf.empty());
+    TEST_ASSERT_FALSE(good.buf.empty());
+}
+
+void test_empty_reporter_is_handled(void)
+{
+    // A reporter with 0 columns should not produce double-commas or blank columns.
+    class EmptyReporter : public DataReporter
+    {
+    public:
+        explicit EmptyReporter(const char *n) : DataReporter(n) {}
+    } empty("empty");
+
+    MockSink sink(true);
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&empty};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    // Header for empty reporter ideally is just a newline (implementation-dependent).
+    // We allow either empty header line or literal "empty" behavior depending on your choice.
+    // Keep this as a weak assertion: there should be exactly one newline.
+    printf("Header line: '%s'\n", lines[0].c_str());
+    TEST_ASSERT_TRUE(lines.size() == 1 && lines[0].empty());
+
+    reset(sink);
+    TEST_ASSERT_TRUE(dl.appendLine());
+    auto rows = splitLines(sink.buf);
+    // Row should exist but be empty (or minimal) rather than malformed
+    TEST_ASSERT_TRUE(rows.size() == 1);
+}
+
+void test_global_configure_and_instance(void)
+{
+    MockSink sink(true);
+    FakeReporter rp("imu");
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger::configure(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
+
+    reset(sink);
+    TEST_ASSERT_TRUE(DataLogger::instance().appendLine());
+    TEST_ASSERT_FALSE(sink.buf.empty());
+}
+
+void testWantsPrefix()
+{
+    MockSink sink(true, true);
+    FakeReporter rp("imu");
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    EventLogger el(sinks, 1);
+    TEST_ASSERT_TRUE(dl.init());
+    TEST_ASSERT_TRUE(el.init());
+
+    //expect header like "TELEM/imu - ax,imu - ay,imu - count"
+    // expect log line like "LOG/0.123 [INFO]: test message"
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &hdr = lines[0];
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("TELEM/imu - ax"));
+    reset(sink);
+    TEST_ASSERT_TRUE(el.info("test message"));
+    lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &log = lines[0];
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, log.find("LOG/"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, log.find("[INFO]: test message"));
+
+}
+
+// ---------- Unity harness ----------
+void setUp() {}
+void tearDown() {}
+
+int main(int, char **)
 {
     UNITY_BEGIN();
 
-    gps.setFixQual(3);
-
-    testLogger = &getLogger();
-    // Add your tests here
-    // RUN_TEST(test_function_name); // no parentheses after function name
-    RUN_TEST(test_testLogger_init);
-    RUN_TEST(test_recordLogData_on_ground);
-    RUN_TEST(test_recordFlightData_on_ground);
-    RUN_TEST(test_recordFlightData_in_flight);
-    RUN_TEST(test_dumpData);
-    RUN_TEST(test_gps_file_time);
+    RUN_TEST(test_header_single_reporter);
+    RUN_TEST(test_append_line_single_reporter_values_and_commas);
+    RUN_TEST(test_multi_reporter_header_and_row);
+    RUN_TEST(test_unhealthy_sink_is_skipped);
+    RUN_TEST(test_empty_reporter_is_handled);
+    RUN_TEST(test_global_configure_and_instance);
+    RUN_TEST(testWantsPrefix);
 
     UNITY_END();
-
     return 0;
 }
-// ---

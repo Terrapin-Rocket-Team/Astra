@@ -2,12 +2,9 @@
 #define GPS_H
 
 #include "../Sensor.h"
-#include "../../Constants.h"
 #include "../../Math/Vector.h"
-#include "../../RecordData/Logging/Logger.h"
-#include "../../Events/DefaultEvents.h"
 
-namespace mmfs
+namespace astra
 {
     class GPS : public Sensor
     {

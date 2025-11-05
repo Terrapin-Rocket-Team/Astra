@@ -1,7 +1,7 @@
 #include "MAX_M10S.h"
 #include "../../BlinkBuzz/BlinkBuzz.h"
 
-namespace mmfs
+namespace astra
 {
 
     MAX_M10S::MAX_M10S(const char *name, TwoWire& wire, uint8_t address) : GPS(name), m10s(), wire(&wire), address(address)

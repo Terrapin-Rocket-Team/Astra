@@ -1,6 +1,6 @@
 #include "MMC5633.h"
 
-using namespace mmfs;
+using namespace astra;
 
 MMC5633::MMC5633(const char *name, TwoWire &bus, uint8_t address) : Mag(name), magnet(0), addr(address), bus(bus)
 {

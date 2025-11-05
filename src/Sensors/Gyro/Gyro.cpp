@@ -1,6 +1,6 @@
 #include "Gyro.h"
 
-namespace mmfs
+namespace astra
 {
     Gyro::Gyro(const char *name) : Sensor("Gyroscope", name)
     {
@@ -14,4 +14,4 @@ namespace mmfs
     {
         return angVel;
     }
-} // namespace mmfs
+} // namespace astra

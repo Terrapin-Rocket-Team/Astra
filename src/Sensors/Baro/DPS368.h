@@ -8,9 +8,8 @@
 #include <Adafruit_DPS310.h>
 
 #include <Sensors/Baro/Barometer.h>
-#include <RecordData/Logging/Logger.h>
 
-namespace mmfs
+namespace astra
 {
     class DPS368 : public Barometer
     {
@@ -27,6 +26,6 @@ namespace mmfs
     };
     using DPS310 = DPS368;
 
-}; // namespace mmfs
+}; // namespace astra
 
 #endif // DPS368_H

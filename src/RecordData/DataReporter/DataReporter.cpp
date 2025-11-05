@@ -1,6 +1,6 @@
 #include "DataReporter.h"
 
-using namespace mmfs;
+using namespace astra;
 
 int DataReporter::numReporters = 0;
 
@@ -57,8 +57,6 @@ DataPoint *DataReporter::getDataPoints()
 
 void DataReporter::removeColumn(const char *label)
 {
-    if (getLogger().isReady())
-        getLogger().recordLogData(ERROR_, "Logger already initalized. Cannot remove any columns.");
     if (first == nullptr)
         return;
     if (strcmp(first->label, label) == 0)

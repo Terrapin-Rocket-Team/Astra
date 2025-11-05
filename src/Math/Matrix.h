@@ -5,8 +5,9 @@
 #include <algorithm>
 #include <cstdio>
 #include <stdint.h>
+#include "RecordData/Logging/EventLogger.h"
 
-namespace mmfs
+namespace astra
 {
     class Matrix
     {
@@ -59,5 +60,5 @@ namespace mmfs
         void luDecompositionWithPartialPivoting(double *A, int *pivot, int n);
         void solveLU(double *A, int *pivot, double *b, double *x, int n);
     };
-} // namespace mmfs
+} // namespace astra
 #endif

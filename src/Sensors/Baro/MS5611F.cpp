@@ -1,13 +1,13 @@
 
 #include "MS5611F.h"
 
-using namespace mmfs;
+using namespace astra;
 
-mmfs::MS5611::MS5611(const char *name, uint8_t addr, TwoWire *bus) : Barometer(name), ms(addr, bus) {}
+astra::MS5611::MS5611(const char *name, uint8_t addr, TwoWire *bus) : Barometer(name), ms(addr, bus) {}
 
-mmfs::MS5611::MS5611(uint8_t addr, TwoWire *bus) : Barometer("MS5611"), ms(addr, bus) {}
+astra::MS5611::MS5611(uint8_t addr, TwoWire *bus) : Barometer("MS5611"), ms(addr, bus) {}
 
-bool mmfs::MS5611::init()
+bool astra::MS5611::init()
 {
     if (!ms.begin())
     {
@@ -18,7 +18,7 @@ bool mmfs::MS5611::init()
 
     return initialized = true;
 }
-bool mmfs::MS5611::read()
+bool astra::MS5611::read()
 {
     ms.read();
     temp = ms.getTemperature();

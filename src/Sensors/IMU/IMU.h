@@ -4,9 +4,8 @@
 #include "../Sensor.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Quaternion.h"
-#include "../../Constants.h"
 
-namespace mmfs
+namespace astra
 {
 
     class IMU : public Sensor

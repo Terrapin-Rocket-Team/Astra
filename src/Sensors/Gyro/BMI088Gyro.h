@@ -4,9 +4,9 @@
 #include <BMI088.h>
 #include "Gyro.h"
 
-namespace mmfs
+namespace astra
 {
-    class BMI088Gyro : public mmfs::Gyro
+    class BMI088Gyro : public astra::Gyro
     {
     public:
         bool read() override;

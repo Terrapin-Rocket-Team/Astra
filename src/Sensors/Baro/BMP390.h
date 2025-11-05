@@ -4,7 +4,7 @@
 #include <Adafruit_BMP3XX.h>
 #include "Barometer.h"
 
-namespace mmfs
+namespace astra
 {
     class BMP390 : public Barometer
     {

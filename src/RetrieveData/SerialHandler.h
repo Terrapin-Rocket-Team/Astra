@@ -1,10 +1,9 @@
 #include <Arduino.h>
-#include "../RecordData/Logging/Logger.h"
 
 #define LS_DATE 2
 #define LS_SIZE 4
 
-namespace mmfs
+namespace astra
 
 {
     class SerialHandler
