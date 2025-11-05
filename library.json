@@ -39,6 +39,10 @@
             "url": "https://github.com/rk234"
         },
         {
+            "name": "Krish Vyas",
+            "url": "https://github.com/klzsh"
+        },
+        {
             "name": "Terrapin Rocket Team",
             "url": "https://github.com/Terrapin-Rocket-Team"
         }
@@ -81,6 +85,10 @@
             "name": "LIS3MDL",
             "version": "^2.0.0",
             "owner": "pololu"
+        },
+        {
+            "name":"Adafruit LIS331",
+            "version":"^1.0.6"
         },
         {
             "name": "MS5611",

@@ -12,6 +12,10 @@
 using namespace astra;
 const int BUZZER_PIN = 33;
 
+#ifdef STM32
+HardwareSerial Serial1(PA10, PA9);
+#endif
+
 MAX_M10S gps;
 BMI088andLIS3MDL mmfsimu;
 DPS368 baro;
