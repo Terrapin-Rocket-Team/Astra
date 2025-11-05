@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <Sensors/Accel/Accel.h>
 
-using namespace mmfs;
+using namespace astra;
 class ADXL375 : public Accel
 {
 public:

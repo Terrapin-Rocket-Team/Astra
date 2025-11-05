@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include "Mag.h"
 
-using namespace mmfs;
+using namespace astra;
 class MMC5633 : public Mag
 {
 public:
