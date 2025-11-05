@@ -11,12 +11,12 @@ namespace astra
     private:
         ILogSink **_sinks = nullptr;
         uint8_t _countSinks, _countReporters = 0;
-        bool _ok = false;
         DataReporter **_rps;
+        bool _ok = false;
         static DataLogger _global; // defined in .cpp
 
     public:
-        DataLogger(ILogSink **sinks, uint8_t numSinks, DataReporter **reporters, uint8_t numReporters) : _sinks(sinks), _countSinks(numSinks), _rps(reporters), _countReporters(numReporters) {};
+        DataLogger(ILogSink **sinks, uint8_t numSinks, DataReporter **reporters, uint8_t numReporters) : _sinks(sinks), _countSinks(numSinks), _countReporters(numReporters), _rps(reporters) {};
 
         bool init()
         {

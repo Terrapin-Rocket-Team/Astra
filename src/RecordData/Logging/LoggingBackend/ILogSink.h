@@ -93,9 +93,9 @@ namespace astra
     {
     private:
         CircBuffer<uint8_t> *buf = nullptr;
+        int size;
         bool prefix;
         bool rdy = false;
-        int size;
 
     public:
         CircBufferLog(int size, bool prefix = false) : size(size), prefix(prefix) {}

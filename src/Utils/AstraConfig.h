@@ -91,8 +91,8 @@ namespace astra
         bool bbAsync;
         unsigned int maxQueueSize = 50;
         DataReporter *reporters[50];
-        int updateInterval = 100;  // in ms
-        int loggingInterval = 100; // in ms
+        unsigned int updateInterval = 100;  // in ms
+        unsigned int loggingInterval = 100; // in ms
         double loggingRate = 10;   // in hz
         double updateRate = 10;    // in hz
 
