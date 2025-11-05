@@ -24,6 +24,8 @@ namespace astra
         TwoWire *bus;
         Adafruit_DPS310 dps;
     };
+    using DPS310 = DPS368;
+
 }; // namespace astra
 
 #endif // DPS368_H

@@ -8,8 +8,7 @@
         "type": "git",
         "url": "https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software.git"
     },
-    "authors": 
-    [
+    "authors": [
         {
             "name": "Drew Brandt",
             "url": "https://github.com/DrewBrandt"
@@ -17,7 +16,7 @@
         {
             "name": "Michael Mallamaci",
             "url": "https://github.com/mallamacimj"
-        },        
+        },
         {
             "name": "Varun Unnithan",
             "url": "https://github.com/varun-un"
@@ -49,8 +48,7 @@
     ],
     "license": "MIT",
     "homepage": "https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software",
-    "dependencies": 
-    [
+    "dependencies": [
         {
             "name": "Adafruit BMP280 Library",
             "version": "2.6.8"
@@ -64,8 +62,8 @@
             "version": "1.6.3"
         },
         {
-            "name": "GNSS v2",
-            "version": "https://github.com/sparkfun/SparkFun_u-blox_GNSS_Arduino_Library.git"
+            "name": "SparkFun u-blox GNSS v3",
+            "version": "3.1.5"
         },
         {
             "name": "RTClib",
@@ -95,23 +93,47 @@
             "version": "https://github.com/RobTillaart/MS5611.git#0.4.1"
         },
         {
+            "name": "LittleFS",
+            "version": "https://github.com/PaulStoffregen/LittleFS.git#a061862589841627424170a12a246ce5660a4f0a",
+            "platforms": [
+                "teensy"
+            ]
+        },
+        {
+            "name": "RadioMessage",
+            "version": "https://github.com/erodarob/RadioMessage.git"
+        },
+        {
             "name": "BMI088",
             "version": "https://github.com/redstonee/bmi088-arduino-esp32.git"
         },
         {
+            "name": "ADXL375",
+            "version": "https://github.com/adafruit/Adafruit_ADXL375.git"
+        },
+        {
+            "name": "LIS331",
+            "version": "https://github.com/sparkfun/SparkFun_LIS331_Arduino_Library.git"
+        },
+        {
+            "name": "MMC56x3",
+            "version": "https://github.com/adafruit/Adafruit_MMC56x3.git"
+        },
+        {
+            "name": "GNSS v2",
+            "version": "https://github.com/sparkfun/SparkFun_u-blox_GNSS_Arduino_Library.git"
+        },
+        {
             "name": "SdFat",
-            "version": "https://github.com/greiman/SdFat.git#2.3.0",
-            "platforms": ["espressif32", "ststm32"]
+            "version": "https://github.com/greiman/SdFat.git"
         }
     ],
     "frameworks": "arduino",
     "platforms": "*",
-    "build":
-    {
+    "build": {
         "libLDFMode": "deep+",
         "libCompatMode": "strict",
-        "srcFilter": 
-        [
+        "srcFilter": [
             "+<*>"
         ],
         "flags": "-Wno-unknown-pragmas",

@@ -4,12 +4,7 @@
 namespace astra
 {
 
-    MAX_M10S::MAX_M10S(const char *name, TwoWire *wire, uint8_t address) : GPS(name), m10s(), wire(wire), address(address)
-    {
-
-    }
-
-    MAX_M10S::MAX_M10S(TwoWire *wire, uint8_t address) : GPS("MAX-M10S"), m10s(), wire(wire), address(address)
+    MAX_M10S::MAX_M10S(const char *name, TwoWire& wire, uint8_t address) : GPS(name), m10s(), wire(&wire), address(address)
     {
 
     }
@@ -18,16 +13,8 @@ namespace astra
     {
         // m10s.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
 
-        int count = 0;
-        while (m10s.begin(*wire, address) == false && count < 3) // Connect to the u-blox module using Wire port
-        {
-            // Serial.println(F("u-blox GNSS not detected at default I2C address. Retrying..."));
-            delay(250);
-            count++;
-        }
         if (!m10s.begin(*wire, address))
-            return initialized = false;
-
+            initialized = false;
         m10s.setI2COutput(COM_TYPE_UBX);            // Set the I2C port to output UBX only (turn off NMEA noise)
         m10s.setNavigationFrequency(10);            // Set the update rate to 10Hz
         m10s.setDynamicModel(DYN_MODEL_AIRBORNE4g); // Set the dynamic model to airborne with 4g acceleration

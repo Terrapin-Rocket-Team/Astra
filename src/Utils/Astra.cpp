@@ -14,7 +14,7 @@ void Astra::init()
 {
     // getLogger().recordCrashReport();
     LOGI("Initializing Astra.");
-    Wire.begin();
+    Wire.begin(PB9, PB8);
     // BlinkBuzz first
     int pins = 0;
     for (int i = 0; i < 50; i++)

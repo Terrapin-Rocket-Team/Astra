@@ -10,7 +10,7 @@ bool DPS368::init()
 {
     if (!dps.begin_I2C(addr, bus))
     {
-        printf("Failed to initialize DPS368 sensor\n");
+        // printf("Failed to initialize DPS368 sensor\n");
         return initialized = false;
     }
 
@@ -24,7 +24,8 @@ bool DPS368::init()
     return initialized = true;
 }
 
-bool DPS368::read(){
+bool DPS368::read()
+{
     sensors_event_t temp_event, pressure_event;
 
     /* getEvents returns true or false depending on whether the sensors were successfully read or not */
