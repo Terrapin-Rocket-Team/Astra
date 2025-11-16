@@ -5,7 +5,6 @@
 #include "Sensors/Baro/DPS368.h"
 #include "State/State.h"
 #include "Utils/Astra.h"
-#include "RetrieveData/SerialHandler.h"
 #include "RecordData/Logging/EventLogger.h"
 #include "RecordData/Logging/DataLogger.h"
 
@@ -32,7 +31,11 @@ Astra sys(&config);
 
 CircBufferLog buf(5000, true);
 ILogSink *bufLogs[] = {&buf};
+#ifdef ENV_STM
+UARTLog uLog(Serial, 115200, true);
+#else
 UARTLog uLog(Serial1, 115200, true);
+#endif
 ILogSink *logs[] = {&uLog};
 void setup()
 {
@@ -48,12 +51,27 @@ bool handshake = false;
 void loop()
 {
     if (!handshake)
+#ifdef ENV_STM
+        if (Serial.available())
+#else
         if (Serial1.available())
+#endif
         {
+#ifdef ENV_STM
+            String s = Serial.readStringUntil('\n');
+#else
             String s = Serial1.readStringUntil('\n');
+#endif
+
             s.trim();
             if (s == "PING")
+            {
+#ifdef ENV_STM
+                Serial.println("PONG");
+#else
                 Serial1.println("PONG");
+#endif
+            }
             EventLogger::configure(logs, 1);
             buf.transfer(uLog);
             LOGI("Pi Handshake Complete.");

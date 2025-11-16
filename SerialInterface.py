@@ -1,166 +1,132 @@
 import serial
-import time
 from serial.tools import list_ports
+import time
+import csv
+import sys
+import select
 
-def find_serial_port():
-    """
-    Automatically finds and returns the first available serial port.
-    Returns:
-        str: The name of the serial port if found, otherwise None.
-    """
+# returns all serial ports open
+def select_serial_port():
     ports = list(list_ports.comports())
-    return ports[0].device if ports else None
+    print(">>List of Serial Ports ---------")
+    i = 0
+    for port in ports:
+        print(str(i) + ": " + str(port.device))
+        i+=1
 
-ser = None
-
-def writeSer(text):
-    ser.write(f"cmd/{text}\n".encode())
-
-def copyFile(ser: serial.Serial, src, dest=""):
-    if dest == "":
-        dest = src
-    writeSer(f"cp {src}")
-    with open(dest, "wb") as file:
-        time.sleep(1)
-        if not ser.readline().decode().startswith("ok"):
-            print("Arduino did not recognize \"cp\" command")
-            return
-
-        resp = ser.readline().decode().strip()
-        if resp != "Sending...":
-            print(resp)
-            return
-
-        timeout = 2  # Timeout in seconds after last received data
-        start_time = time.time()
-        while True:
-            bytes_waiting = ser.in_waiting
-            if bytes_waiting:
-                data = ser.read(bytes_waiting)
-                file.write(data)
-                start_time = time.time()  # Reset timeout on data received
-            else:
-                # Check if timeout period has elapsed since last data
-                if time.time() - start_time > timeout:
-                    break
-            time.sleep(0.1)  # Short sleep to prevent high CPU usage
-
-    print(f"Copied \"{src}\" to \"{dest}\".")
-
-def getlatestFiles(ser: serial.Serial):
-    writeSer("latest")
-    while ser.in_waiting == 0:
-        time.sleep(0.1)
-    if not ser.readline().decode().startswith("ok"):
-        print("Arduino did not recognize \"latest\" command")
-        return
-
-    num = int(ser.readline().decode().strip())
-    if num < 1:
-        print("No files found.")
-        return
-
-    copyFile(ser, f"{num}_FlightData.csv")
-    copyFile(ser, f"{num}_Log.txt")
-    copyFile(ser, f"{num}_PreFlightData.csv")
-
-def removeFile(ser: serial.Serial, path):
-    if not path:
-        print("No filepath provided.")
-        return
-    confirm = input(f"Remove \"{path}\"? [y/n]: ").lower()
-    if confirm != 'y':
-        print("Canceled.")
-        return
-
-    writeSer(f"rm {path}")
-    if not ser.readline().decode().startswith("ok"):
-        print("Arduino did not recognize \"rm\" command")
-        return
-    resp = ser.readline().decode().strip()
-    if "Removed" not in resp:
-        print(resp)
-    else:
-        print(f"Removed: \"{path}\"")
-
-def clearFiles(ser: serial.Serial):
-    confirm = input("Clear all files? [y/n]: ").lower()
-    if confirm != 'y':
-        print("Canceled.")
-        return
-
-    writeSer("clr")
-    if not ser.readline().decode().startswith("ok"):
-        print("Arduino did not recognize \"clr\" command")
-        return
-    resp = ser.readline().decode().strip()
-    print(resp if "Removed" in resp else "Error")
-
-def help():
-    print("""
-    Serial File Management Commands (Arduino-side):
-    ----------------------------------------------
-    Commands must be sent over an active serial connection.
+    selection = int(input(">>Enter choice: "))
+    serial_port = ports[selection]
     
-    1. ls         - List all files on Arduino
-    2. cp <file>  - Download a file (auto-saves to current directory)
-    3. rm <file>  - Delete a file (confirmation required)
-    4. latest     - Retrieve latest flight data files
-    5. clr        - Wipe all files (confirmation required)
-    6. help       - Show this help
-    7. exit/quit  - Exit the program
-    """)
+    return serial_port
 
-def main():
-    global ser
+
+# gets the raw serial data from the microcontroller
+def get_data_from_serial(ser:serial.Serial):
+    data = []
+    currentLine = ""
+    # Check we are not past EOF
+    while currentLine != b'|----------EOF----------|\r\n':
+        bytes = ser.readline()
+        data.append(bytes)
+        currentLine = bytes
+    # encode data as UTF-8 to make it easier to work with
+    data = [element.decode('utf-8').strip() for element in data]
+    return data
+# removes data between BOF and EOF identifiers
+def clean_data(raw_data):
+    csv_data = []
+    in_block = False
+    for line in raw_data:
+        # check for file transfer beginning and ending
+        if line == '|----------BOF----------|':
+            in_block = True
+        elif line == '|----------EOF----------|':
+            in_block = False
+        # check for BOF identifier since we will be in the same loop as when we check for it
+        if in_block and line != '|----------BOF----------|':
+            csv_data.append(line)
+    return csv_data
+# Writes data to CSV
+def write_data(cleaned_data):
+    with open("output.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        # Write the header first
+        header = cleaned_data[0].split(",")
+        writer.writerow(header)
+        # Write the rest of the data
+        for line in cleaned_data[1:]:
+            writer.writerow(line.split(","))
+
+
+# Receive a file transfer from the microcontroller and write it to output.csv.
+def _handle_file_transfer(ser: serial.Serial):
+    print(">>Starting file transfer... reading from serial")
+    raw = get_data_from_serial(ser)
+    cleaned = clean_data(raw)
+    if not cleaned:
+        print(">>No file data received.")
+        return
+    write_data(cleaned)
+    print(">>File written to output.csv")
+
+
+def interactive_loop(ser: serial.Serial):
+    file_transfer_in_progress = False
     try:
-        port = "COM30"
-        if not port:
-            print("No serial port found.")
-            return
-
-        ser = serial.Serial(port, 115200, timeout=1)
-        time.sleep(2)  # Allow Arduino to reset after connection
-        print(f"Connected to {port}")
-
         while True:
-            cmd = input("Enter command: ").strip()
-            if not cmd:
-                continue
+            # select on stdin and the serial port file descriptor
+            rlist = [sys.stdin, ser]
+            readable, _, _ = select.select(rlist, [], [])
 
-            parts = cmd.split()
-            action = parts[0].lower()
-            args = parts[1:]
+            for src in readable:
+                if src is sys.stdin:
+                    # Read one line from stdin (non-blocking because select said it's ready)
+                    line = sys.stdin.readline()
+                    if not line:
+                        print('\n>>EOF on stdin, exiting')
+                        return
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.lower() in ("exit", "quit"):
+                        print('>>Exiting')
+                        return
 
-            if action in ("exit", "quit"):
-                break
-            elif action == "help":
-                help()
-            elif action == "latest":
-                getlatestFiles(ser)
-            elif action == "cp" and args:
-                num = args[0]
-                copyFile(ser, f"{num}_FlightData.csv")
-                copyFile(ser, f"{num}_Log.txt")
-                copyFile(ser, f"{num}_PreFlightData.csv")
-            elif action == "rm" and args:
-                removeFile(ser, args[0])
-            elif action == "clr":
-                clearFiles(ser)
-            else:
-                writeSer(cmd)
-                time.sleep(0.1)
-                while ser.in_waiting > 0:
-                    print(ser.read(ser.in_waiting).decode())
-                    time.sleep(0.1); # try and wait to make sure the arduino isnt going to send more.
+                    # Send the command to the MCU
+                    ser.write(line.encode() + b"\n")
 
-    except serial.SerialException as e:
-        print(f"Serial error: {e}")
+                    parts = line.split()
+                    if parts and parts[0].lower() == 'cmd/sf':
+                        # Pause normal serial processing and handle the transfer
+                        file_transfer_in_progress = True
+                        # Small delay to give MCU time to start sending (if needed)
+                        time.sleep(0.05)
+                        _handle_file_transfer(ser)
+                        file_transfer_in_progress = False
+
+                else:
+                    # src is the serial port and it's ready to be read
+                    # If a file transfer is being handled we skip printing here
+                    if file_transfer_in_progress:
+                        # Let get_data_from_serial handle reading during transfer
+                        continue
+                    # Non-file serial data: read and print one line
+                    try:
+                        resp = ser.readline()
+                    except Exception as e:
+                        print(f">>Error reading serial: {e}")
+                        continue
+                    if resp:
+                        try:
+                            print(resp.decode('utf-8', errors='ignore').rstrip())
+                        except Exception:
+                            # Fallback if bytes can't be decoded
+                            print(resp)
     except KeyboardInterrupt:
-        print("\nExiting...")
-    finally:
-        if ser and ser.is_open:
-            ser.close()
+        print('\nInterrupted, exiting')
 
-if __name__ == "__main__":
-    main()
+
+if __name__ == '__main__':
+    serial_port = select_serial_port()
+    ser = serial.Serial(serial_port.device, baudrate=115200)
+    interactive_loop(ser)

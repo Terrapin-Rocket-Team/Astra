@@ -135,6 +135,9 @@ namespace astra
             return true;
         }
     };
+    class SDCardLog: public ILogSink {
+        
+    };
 };
 
 #endif // LOGGER_H

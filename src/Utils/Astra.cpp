@@ -2,9 +2,8 @@
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
 #include "Wire.h"
-#include "RetrieveData/SerialHandler.h"
+#include "RetrieveData/RetrieveSDCardData.h"
 #include "RecordData/Logging/DataLogger.h"
-
 using namespace astra;
 BlinkBuzz bb;
 Astra::Astra(AstraConfig *config) : config(config)
@@ -40,7 +39,12 @@ void Astra::init()
     DataLogger::configure(config->logs, config->numLogs, reporters, j);
 
     // bool log = //getLogger().init(reporters, j);
-    // getEventManager().invoke(BoolEvent{"LOGGER_INIT"_i, log});
+    getDataRetrieverInstance().handleChoices();
+    bool quitOrNoSerial = false;
+    while (!quitOrNoSerial)
+    {
+        quitOrNoSerial = getDataRetrieverInstance().handleChoices();
+    }
 
     delay(10);
     // then State
@@ -59,8 +63,9 @@ bool Astra::update(double ms)
         LOGW("Attempted to update Astra before it was initialized. Initializing it now...");
         init();
     }
-    getSerialHandler().handle();
-    // loop based on time and interval and update bb.
+    // TOOD: replace with my implementation
+    //  getSerialHandler().handle();
+    //  loop based on time and interval and update bb.
     bb.update();
     if (ms == -1)
         ms = millis();
