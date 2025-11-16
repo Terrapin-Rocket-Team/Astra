@@ -5,8 +5,8 @@
 #ifndef FILEHANDLER_H
 #define FILEHANDLER_H
 
-#include "ILogSink.h"
-#include "SdFatBoilerplate.h"
+#include "LoggingBackend/ILogSink.h"
+#include "LoggingBackend/SDFatBoilerplate.h"
 #include <Arduino.h>
 
 
