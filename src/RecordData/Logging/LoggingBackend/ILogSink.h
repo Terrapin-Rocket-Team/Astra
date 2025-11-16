@@ -2,6 +2,9 @@
 #define LOGGER_H
 #include "SerialCompat.h"
 #include "Utils/CircBuffer.h"
+#include "../../Storage/IFile.h"
+#include "../../Storage/IStorage.h"
+#include "../../Storage/StorageFactory.h"
 namespace astra
 {
 
@@ -135,9 +138,44 @@ namespace astra
             return true;
         }
     };
-    class SDCardLog: public ILogSink {
-        
+
+    class FileLogSink : public ILogSink
+    {
+    private:
+        IStorage* _backend;
+        IFile* _file;
+        const char* _filename;
+        bool _ownsBackend;
+        bool _prefix;
+
+    public:
+        /**
+         * @brief Construct FileLogSink with automatic backend creation
+         * @param filename Path to log file
+         * @param type Storage backend type (EMMC, SD_SDIO, SD_SPI, etc.)
+         * @param prefix Whether to add prefixes to log messages
+         */
+        FileLogSink(const char* filename, StorageBackend type, bool prefix = false);
+
+        /**
+         * @brief Construct FileLogSink with provided backend (advanced usage)
+         * @param filename Path to log file
+         * @param backend Pre-created storage backend (not owned by FileLogSink)
+         * @param prefix Whether to add prefixes to log messages
+         */
+        FileLogSink(const char* filename, IStorage* backend, bool prefix = false);
+
+        ~FileLogSink();
+
+        bool begin() override;
+        bool end() override;
+        bool ok() const override;
+        bool wantsPrefix() const override;
+        size_t write(uint8_t b) override;
+        size_t write(const uint8_t* buffer, size_t size) override;
+        void flush() override;
     };
+
 };
 
 #endif // LOGGER_H
