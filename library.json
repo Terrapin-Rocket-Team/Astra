@@ -114,8 +114,31 @@
         "srcFilter": [
             "+<*>"
         ],
-        "flags": "-Wno-unknown-pragmas",
+        "flags": "-Wno-unknown-pragmas -std=gnu++17",
         "extraScript": "get_version.py",
         "unflags": "-std=gnu++11"
+    },
+    "export": {
+        "exclude": [
+            "examples",
+            "test"
+        ]
+    },
+    "platforms": {
+        "ststm32": {
+            "build": {
+                "srcFilter": [
+                    "+<*>",
+                    "-<RecordData/Logging/SDCard/SDCardLog.cpp>"
+                ]
+            }
+        },
+        "espressif32": {
+            "build": {
+                "srcFilter": [
+                    "+<*>"
+                ]
+            }
+        }
     }
 }
