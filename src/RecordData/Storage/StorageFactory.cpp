@@ -4,16 +4,14 @@
 #if defined(ENV_STM)
 #include "Backends/EMMC/EMMCBackend.h"
 #include "Backends/SDCard/SDCardSDIOBackend.h"
-#include "Backends/SDCard/SDCardSPIBackend.h"
 // #include "Backends/Flash/FlashBackend.h"  // Future
 
 #elif defined(ENV_ESP)
-#include "Backends/SDCard/SDCardSPIBackend.h"
+#include "Backends/SDCard/SDCardSDMMCBackend.h"
 // #include "Backends/Flash/FlashBackend.h"  // Future
 
 #elif defined(ENV_TEENSY)
 #include "Backends/SDCard/SDCardSDIOBackend.h"
-#include "Backends/SDCard/SDCardSPIBackend.h"
 // #include "Backends/Flash/FlashBackend.h"  // Future
 #endif
 
@@ -29,9 +27,6 @@ IStorage* StorageFactory::create(StorageBackend type) {
         case StorageBackend::SD_SDIO:
             return new SDCardSDIOBackend();
 
-        case StorageBackend::SD_SPI:
-            return new SDCardSPIBackend();
-
         // case StorageBackend::INTERNAL_FLASH:
         //     return new FlashBackend();
         #endif
@@ -40,16 +35,13 @@ IStorage* StorageFactory::create(StorageBackend type) {
         case StorageBackend::SD_SDIO:
             return new SDCardSDIOBackend();
 
-        case StorageBackend::SD_SPI:
-            return new SDCardSPIBackend();
-
         // case StorageBackend::INTERNAL_FLASH:
         //     return new FlashBackend();
         #endif
 
         #if defined(ENV_ESP)
-        case StorageBackend::SD_SPI:
-            return new SDCardSPIBackend();
+        case StorageBackend::SD_SDMMC:
+            return new SDCardSDMMCBackend();
 
         // case StorageBackend::INTERNAL_FLASH:
         //     return new FlashBackend();
