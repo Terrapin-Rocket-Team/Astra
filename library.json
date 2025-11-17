@@ -104,7 +104,7 @@
             "name": "SdFat",
             "version": "https://github.com/greiman/SdFat.git#2.3.1",
             "platforms": [
-                "teensyduino"
+                "teensy"
             ]
         },
         {
