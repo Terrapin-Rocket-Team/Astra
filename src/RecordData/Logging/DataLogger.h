@@ -9,14 +9,29 @@ namespace astra
     class DataLogger
     {
     private:
-        ILogSink **_sinks = nullptr;
+        ILogSink **_sinks = nullptr;         
         uint8_t _countSinks, _countReporters = 0;
         bool _ok = false;
-        DataReporter **_rps;
+        DataReporter **_rps = nullptr;       
         static DataLogger _global; // defined in .cpp
 
     public:
-        DataLogger(ILogSink **sinks, uint8_t numSinks, DataReporter **reporters, uint8_t numReporters) : _sinks(sinks), _countSinks(numSinks), _rps(reporters), _countReporters(numReporters) {};
+        DataLogger(ILogSink **sinks, uint8_t numSinks, DataReporter **reporters, uint8_t numReporters)
+            : _countSinks(numSinks), _countReporters(numReporters)
+        { //arrays copied internally 
+            if (numSinks > 0 && sinks != nullptr)
+            {
+                _sinks = new ILogSink *[numSinks];
+                for (uint8_t i = 0; i < numSinks; ++i)
+                    _sinks[i] = sinks[i];
+            }
+            if (numReporters > 0 && reporters != nullptr)
+            {
+                _rps = new DataReporter *[numReporters];
+                for (uint8_t j = 0; j < numReporters; ++j)
+                    _rps[j] = reporters[j];
+            }
+        };
 
         bool init()
         {
@@ -43,6 +58,7 @@ namespace astra
                         else
                             _sinks[i]->write('\n');
                     }
+                    _sinks[i]->flush();
                 }
             return _ok = any;
         }
@@ -67,6 +83,7 @@ namespace astra
                     else
                         _sinks[i]->write('\n');
                 }
+                _sinks[i]->flush();
             }
             return true;
         };
