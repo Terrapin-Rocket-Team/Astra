@@ -17,14 +17,14 @@ enum class StorageBackend {
     EMMC,
     SD_SDIO,
     SD_SPI,
-    FLASH,
+    INTERNAL_FLASH,
     #elif defined(ENV_ESP)
     SD_SPI,
-    FLASH,
+    INTERNAL_FLASH,
     #elif defined(ENV_TEENSY)
     SD_SDIO,
     SD_SPI,
-    FLASH,
+    INTERNAL_FLASH,
     #endif
 };
 

@@ -6,6 +6,7 @@
 #include "../../IStorage.h"
 #include "EMMCFile.h"
 #include <STM32SD.h>
+#include <ff.h>  // For FA_OPEN_APPEND and other FatFs constants
 
 namespace astra
 {
@@ -63,7 +64,8 @@ public:
     IFile* openWrite(const char* filename, bool append = true) override {
         if (!_initialized) return nullptr;
 
-        uint8_t mode = append ? FILE_APPEND : FILE_WRITE;
+        // STM32SD uses FatFs modes: FA_WRITE | FA_OPEN_APPEND for append
+        uint8_t mode = append ? (FILE_WRITE | FA_OPEN_APPEND) : (FILE_WRITE | FA_OPEN_ALWAYS);
         File file = SD.open(filename, mode);
         if (!file) return nullptr;
 

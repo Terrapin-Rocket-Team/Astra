@@ -47,7 +47,7 @@ void example1_basicLogging() {
 void example2_redundantLogging() {
     // Write to both eMMC and flash for safety
     FileLogSink primaryLog("flight.log", StorageBackend::EMMC);
-    FileLogSink backupLog("flight.log", StorageBackend::FLASH);
+    FileLogSink backupLog("flight.log", StorageBackend::INTERNAL_FLASH);
 
     // Begin both
     primaryLog.begin();

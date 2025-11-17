@@ -69,7 +69,8 @@ public:
 
     // Status
     bool isOpen() const override {
-        return _handle ? true : false;
+        // Cast away const since STM32SD's File::operator bool() is not const
+        return const_cast<File&>(_handle) ? true : false;
     }
 };
 

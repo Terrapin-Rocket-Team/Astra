@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pio run:*)",
+      "Bash(python -m platformio:*)",
+      "Bash(python3:*)",
+      "Bash(platformio run:*)",
+      "Bash(where:*)",
+      "Bash(/c/Users/Drew/.platformio/penv/Scripts/pio.exe run -e esp32)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

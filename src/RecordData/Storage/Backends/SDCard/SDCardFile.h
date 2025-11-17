@@ -3,6 +3,7 @@
 
 #include "../../IFile.h"
 #include <SdFat.h>
+#include <utility>
 
 namespace astra
 {
@@ -18,7 +19,7 @@ private:
     FsFile _handle;
 
 public:
-    SDCardFile(FsFile handle) : _handle(handle) {}
+    SDCardFile(FsFile&& handle) : _handle(std::move(handle)) {}
 
     // Writing
     size_t write(uint8_t b) override {

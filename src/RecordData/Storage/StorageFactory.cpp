@@ -32,7 +32,7 @@ IStorage* StorageFactory::create(StorageBackend type) {
         case StorageBackend::SD_SPI:
             return new SDCardSPIBackend();
 
-        // case StorageBackend::FLASH:
+        // case StorageBackend::INTERNAL_FLASH:
         //     return new FlashBackend();
         #endif
 
@@ -43,7 +43,7 @@ IStorage* StorageFactory::create(StorageBackend type) {
         case StorageBackend::SD_SPI:
             return new SDCardSPIBackend();
 
-        // case StorageBackend::FLASH:
+        // case StorageBackend::INTERNAL_FLASH:
         //     return new FlashBackend();
         #endif
 
@@ -51,7 +51,7 @@ IStorage* StorageFactory::create(StorageBackend type) {
         case StorageBackend::SD_SPI:
             return new SDCardSPIBackend();
 
-        // case StorageBackend::FLASH:
+        // case StorageBackend::INTERNAL_FLASH:
         //     return new FlashBackend();
         #endif
 

@@ -51,53 +51,43 @@
     "dependencies": [
         {
             "name": "Adafruit BMP280 Library",
-            "version": "2.6.8"
+            "owner": "adafruit"
         },
         {
             "name": "Adafruit BMP3XX Library",
-            "version": "2.1.4"
+            "owner": "adafruit"
         },
         {
             "name": "Adafruit BNO055",
-            "version": "1.6.3"
+            "owner": "adafruit"
         },
         {
             "name": "SparkFun u-blox GNSS v3",
-            "version": "3.1.5"
+            "owner": "sparkfun"
         },
         {
             "name": "RTClib",
             "owner": "adafruit"
         },
         {
-            "name": "Bolder Flight Systems BMI088",
-            "version": "^1.0.1",
-            "owner": "bolderflight"
-        },
-        {
             "name": "Adafruit DPS310",
-            "version": "^1.1.4",
             "owner": "adafruit"
         },
         {
             "name": "LIS3MDL",
-            "version": "^2.0.0",
             "owner": "pololu"
         },
         {
-            "name":"Adafruit LIS331",
-            "version":"^1.0.6"
+            "name": "Adafruit LIS331",
+            "owner": "adafruit"
+        },
+        {
+            "name": "Adafruit MMC56x3",
+            "owner": "adafruit"
         },
         {
             "name": "MS5611",
             "version": "https://github.com/RobTillaart/MS5611.git#0.4.1"
-        },
-        {
-            "name": "LittleFS",
-            "version": "https://github.com/PaulStoffregen/LittleFS.git#a061862589841627424170a12a246ce5660a4f0a",
-            "platforms": [
-                "teensy"
-            ]
         },
         {
             "name": "RadioMessage",
@@ -108,24 +98,12 @@
             "version": "https://github.com/redstonee/bmi088-arduino-esp32.git"
         },
         {
-            "name": "ADXL375",
-            "version": "https://github.com/adafruit/Adafruit_ADXL375.git"
-        },
-        {
-            "name": "LIS331",
-            "version": "https://github.com/sparkfun/SparkFun_LIS331_Arduino_Library.git"
-        },
-        {
-            "name": "MMC56x3",
-            "version": "https://github.com/adafruit/Adafruit_MMC56x3.git"
-        },
-        {
-            "name": "GNSS v2",
-            "version": "https://github.com/sparkfun/SparkFun_u-blox_GNSS_Arduino_Library.git"
+            "name": "Adafruit ADXL375",
+            "owner": "adafruit"
         },
         {
             "name": "SdFat",
-            "version": "https://github.com/greiman/SdFat.git"
+            "version": "https://github.com/greiman/SdFat.git#2.3.1"
         }
     ],
     "frameworks": "arduino",

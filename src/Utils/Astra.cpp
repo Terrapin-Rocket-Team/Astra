@@ -2,7 +2,9 @@
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
 #include "Wire.h"
+#ifndef NATIVE
 #include "RetrieveData/RetrieveSDCardData.h"
+#endif
 #include "RecordData/Logging/DataLogger.h"
 using namespace astra;
 BlinkBuzz bb;
@@ -39,12 +41,14 @@ void Astra::init()
     DataLogger::configure(config->logs, config->numLogs, reporters, j);
 
     // bool log = //getLogger().init(reporters, j);
+#ifndef NATIVE
     getDataRetrieverInstance().handleChoices();
     bool quitOrNoSerial = false;
     while (!quitOrNoSerial)
     {
         quitOrNoSerial = getDataRetrieverInstance().handleChoices();
     }
+#endif
 
     delay(10);
     // then State

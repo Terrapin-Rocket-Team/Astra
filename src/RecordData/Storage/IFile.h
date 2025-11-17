@@ -1,6 +1,9 @@
 #ifndef IFILE_H
 #define IFILE_H
 
+#include <cstddef>
+#include <cstdint>
+
 namespace astra
 {
 
