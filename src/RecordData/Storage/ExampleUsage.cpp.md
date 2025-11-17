@@ -1,3 +1,4 @@
+```cpp
 /**
  * Example usage of the multi-platform storage system
  *
@@ -354,3 +355,4 @@ void example9_errorHandling() {
 
     Serial.println("Success!");
 }
+```
