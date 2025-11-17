@@ -9,9 +9,9 @@ namespace astra
     class DataLogger
     {
     private:
-        ILogSink **_sinks = nullptr;
+        ILogSink **_sinks = nullptr;         
         uint8_t _countSinks, _countReporters = 0;
-        DataReporter **_rps;
+        DataReporter **_rps = nullptr;       
         bool _ok = false;
         static DataLogger _global; // defined in .cpp
 
@@ -43,6 +43,7 @@ namespace astra
                         else
                             _sinks[i]->write('\n');
                     }
+                    _sinks[i]->flush();
                 }
             return _ok = any;
         }
@@ -67,6 +68,7 @@ namespace astra
                     else
                         _sinks[i]->write('\n');
                 }
+                _sinks[i]->flush();
             }
             return true;
         };
