@@ -1,6 +1,6 @@
 {
     "name": "TRT-Astra",
-    "version": "3.1.3",
+    "version": "0.1.0",
     "description": "Terrapin Rocket Team's Multi-Mission Flight Software. Designed to be used with any FC and any sensor suite.",
     "keywords": "Astra, TRT, Terrapin Rocket Team, Flight Software",
     "repository": {
@@ -11,30 +11,10 @@
         {
             "name": "Drew Brandt",
             "url": "https://github.com/DrewBrandt"
-        },
-        {
-            "name": "Michael Mallamaci",
-            "url": "https://github.com/mallamacimj"
-        },
-        {
-            "name": "Varun Unnithan",
-            "url": "https://github.com/varun-un"
-        },
+        },  
         {
             "name": "Joseph Hauerstein",
             "url": "https://github.com/jhauerst"
-        },
-        {
-            "name": "Abhi Senthilkumar",
-            "url": "https://github.com/abhi-senthilkumar"
-        },
-        {
-            "name": "Avi Komarlingam",
-            "url": "https://github.com/avikomarlingam"
-        },
-        {
-            "name": "Ramy Kaddouri",
-            "url": "https://github.com/rk234"
         },
         {
             "name": "Krish Vyas",
