@@ -1,12 +1,10 @@
 //Divyansh Srivastava 11/19/2025
 //Copied over from old MMFS
 
-
-
-#include "SerialHandler.h"
-//#include "Events/Event.h"  need something to replace event's and stuff 
+#if !defined(UNIT_TEST) && (defined(ENV_STM) || defined(ENV_ESP) || defined(ENV_TEENSY))
 
 #include "SerialHandler.h"
+//#include "Events/Event.h"  need something to replace event's and stuff
 
 void SerialHandler::handle() {
     parseSerialStream();
@@ -151,3 +149,5 @@ SerialHandler& getSerialHandler() {
     static SerialHandler instance;
     return instance;
 }
+
+#endif // !UNIT_TEST && (ENV_STM || ENV_ESP || ENV_TEENSY)

@@ -46,7 +46,7 @@ public:
     size_t write(uint8_t b) override {
 #if defined(ENV_ESP)
         if (!_isOpen || !_handle) return 0;
-        return fwrite(&b, 1, 1, _handle);
+        return fwrite(&b, sizeof(uint8_t), 1, _handle);
 #else
         return _handle.write(b);
 #endif
@@ -55,7 +55,7 @@ public:
     size_t write(const uint8_t* buffer, size_t size) override {
 #if defined(ENV_ESP)
         if (!_isOpen || !_handle) return 0;
-        return fwrite(buffer, 1, size, _handle);
+        return fwrite(buffer, sizeof(uint8_t), size, _handle);
 #else
         return _handle.write(buffer, size);
 #endif

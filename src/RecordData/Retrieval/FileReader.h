@@ -20,6 +20,9 @@ namespace astra
  */
 class FileReader {
 private:
+    static constexpr size_t READ_BUFFER_SIZE = 1024;
+    static constexpr size_t LINE_BUFFER_SIZE = 1024;
+
     IStorage* _backend;
 
 public:
@@ -54,7 +57,7 @@ public:
 
         Serial.println("|----------BOF----------|");
 
-        uint8_t buffer[512];
+        uint8_t buffer[READ_BUFFER_SIZE];
         int bytesRead;
         while ((bytesRead = file->readBytes(buffer, sizeof(buffer))) > 0) {
             Serial.write(buffer, bytesRead);
@@ -80,14 +83,14 @@ public:
         IFile* file = _backend->openRead(filename);
         if (!file || !file->isOpen()) return false;
 
-        char lineBuffer[256];
+        char lineBuffer[LINE_BUFFER_SIZE];
         int linePos = 0;
 
         while (file->available()) {
             int c = file->read();
             if (c == -1) break;
 
-            if (c == '\n' || linePos >= 255) {
+            if (c == '\n' || linePos >= (LINE_BUFFER_SIZE - 1)) {
                 lineBuffer[linePos] = '\0';
                 callback(lineBuffer);
                 linePos = 0;

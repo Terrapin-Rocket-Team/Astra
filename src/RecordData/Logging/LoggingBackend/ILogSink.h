@@ -152,7 +152,7 @@ namespace astra
         /**
          * @brief Construct FileLogSink with automatic backend creation
          * @param filename Path to log file
-         * @param type Storage backend type (EMMC, SD_SDIO, SD_SPI, etc.)
+         * @param type Storage backend type (EMMC, SD_CARD, etc.)
          * @param prefix Whether to add prefixes to log messages
          */
         FileLogSink(const char* filename, StorageBackend type, bool prefix = false);

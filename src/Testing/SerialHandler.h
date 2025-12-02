@@ -1,6 +1,8 @@
 //Divyansh Srivastava 11/19/2025
 //Copied over from old mmfs
 
+#ifndef SERIAL_HANDLER_H
+#define SERIAL_HANDLER_H
 
 #include "Data.h"
 #include <Arduino.h>
@@ -58,3 +60,5 @@ private:
 };
 
 SerialHandler &getSerialHandler();
+
+#endif // SERIAL_HANDLER_H
