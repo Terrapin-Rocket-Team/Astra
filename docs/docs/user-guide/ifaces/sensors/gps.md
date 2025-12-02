@@ -1,172 +1,533 @@
 # GPS
 
-The `GPS` class in Astra provides a standard interface for satellite-based positioning modules. Like all sensors in Astra, it inherits from [`Sensor`](sensor.md), allowing it to integrate directly with the system’s data reporting and state machine infrastructure. However, it also offers specific features like positional tracking, fix quality monitoring, and displacement-from-origin calculations.
+The `GPS` class provides a standardized interface for satellite-based positioning modules in Astra. It extends the [`Sensor`](../sensor.md) interface with GPS-specific functionality including position tracking, fix quality monitoring, and displacement calculations from an origin point.
 
 ---
 
-## **Overview**
+## Overview
 
-GPS modules output geographic location, altitude, speed, and timing information. The Astra `GPS` class manages parsing, tracking fix quality, and computing displacement from the original location, so you don’t have to.
+GPS modules provide geographic location, altitude, velocity, and timing information. The `GPS` base class handles:
+
+1. **Position tracking** - Latitude, longitude, and altitude
+2. **Origin reference** - First valid fix becomes the reference point
+3. **Displacement calculation** - Distance from origin in meters
+4. **Fix quality monitoring** - Satellite count and fix status
+5. **Time tracking** - UTC time from satellites
+
+Implementing a new GPS module requires only defining `init()` and `read()` methods.
 
 ---
 
-## **Inheritance Structure**
+## Available Methods
 
-`GPS` inherits from [`Sensor`](sensor.md), so it exposes `begin()` and `update()` as part of its standard API:
-
-* `begin()` → Initializes the module, sets the origin once a valid fix is obtained
-* `update()` → Retrieves the latest fix and updates all internal values
-
-You only need to override two methods:
+### Position Data
 
 ```cpp
-bool init() override;
-bool read() override;
+virtual Vector<3> getPos() const;              // [lat, lon, alt]
+virtual Vector<3> getDisplacement(Vector<3> origin) const;  // XYZ distance in meters
 ```
 
-* `init()` should configure the underlying hardware (e.g., set baud rate, GPS mode, power state)
-* `read()` should parse data from the GPS module and update the internal position, heading, and fix fields
+Returns current position as latitude (degrees), longitude (degrees), and altitude (meters).
 
-This mirrors the behavior seen in other sensors like [`Barometer`](barometer.md).
-
----
-
-## **Exposed Data Columns**
-
-The `GPS` class exposes the following telemetry columns:
-
-* **Latitude** (`lat`) – degrees
-* **Longitude** (`lon`) – degrees
-* **Altitude** (`alt`) – meters
-* **Fix Quality** (`fix`) – number of connected satellites (or equivalent measure)
-* **Heading** (`head`) – degrees
-
-These columns are registered using the `DataReporter` system and appear automatically in logs and telemetry.
-
----
-
-## **Displacement and Origin Tracking**
-
-The GPS class tracks three core positional vectors:
-
-* `position` – the current fix (lat, lon, alt)
-* `origin` – the first valid fix after boot (lat, lon, alt)
-* `displacement` – the relative XYZ distance (in meters) between current position and origin
-
-This makes it easy to track launch site-relative movement without needing external references.
-
-!!! note
-    The distance calculation is taken from [this](https://blog.mapbox.com/fast-geodesic-approximations-with-cheap-ruler-106f229ad016) article and [this](https://github.com/mapbox/cheap-ruler/blob/main/index.js#L475) repo. As I (Drew) understand it, it's an accurate approximation of the Vincenty formulae to find the distance between two points on the earth.
-
----
-
-## **Time and Heading Utilities**
-
-Astra GPS also tracks the time-of-day from the satellite fix. You can access it with:
-
+**Example:**
 ```cpp
-const char *getTimeOfDay() const;
+MAX_M10S gps;
+Vector<3> pos = gps.getPos();
+// pos[0] = latitude (e.g., 39.123456)
+// pos[1] = longitude (e.g., -77.654321)
+// pos[2] = altitude (e.g., 150.5 meters)
+
+Vector<3> displacement = gps.getDisplacement(launchSite);
+// displacement[0] = east/west in meters
+// displacement[1] = north/south in meters
+// displacement[2] = altitude change in meters
 ```
 
-It also computes the travel heading in degrees:
+### Fix Status
 
 ```cpp
-double getHeading() const;
+virtual bool getHasFix() const;                // Currently has valid fix
+virtual int getFixQual() const;                // Number of satellites
 ```
 
-This is generally based on the change in GPS position across updates.
+Check GPS status before using position data.
+
+**Example:**
+```cpp
+if (gps.getHasFix()) {
+    int numSats = gps.getFixQual();
+    LOGI("GPS: %d satellites", numSats);
+    Vector<3> pos = gps.getPos();
+}
+```
+
+### Heading
+
+```cpp
+virtual double getHeading() const;             // Direction of travel in degrees
+```
+
+Returns compass heading (0-360°) based on GPS velocity vector.
+
+### Time Data
+
+```cpp
+virtual const char *getTimeOfDay() const;      // "HH:MM:SS" string
+virtual int8_t getHour() const;
+virtual int8_t getMinute() const;
+virtual int8_t getSecond() const;
+virtual uint8_t getDay() const;
+virtual uint8_t getMonth() const;
+virtual uint16_t getYear() const;
+```
+
+GPS provides UTC time from satellites, useful for timestamping without an RTC.
+
+**Example:**
+```cpp
+LOGI("Current time: %s", gps.getTimeOfDay());  // "14:35:22"
+LOGI("Date: %d/%d/%d", gps.getMonth(), gps.getDay(), gps.getYear());
+```
 
 ---
 
-## **Usage Flow**
+## Logged Data Columns
 
-/// tab | Using a GPS Module
+The `GPS` class automatically registers these columns for telemetry:
 
-If you're using an Astra-supported GPS driver:
+| Column | Format | Units | Description |
+|--------|--------|-------|-------------|
+| `latitude` | `%.7f` | degrees | WGS84 latitude |
+| `longitude` | `%.7f` | degrees | WGS84 longitude |
+| `altitude_m` | `%.1f` | meters | GPS altitude |
+| `satellites` | `%d` | count | Number of satellites |
+| `heading` | `%.1f` | degrees | Direction of travel |
+
+**CSV example:**
+```csv
+...,GPS - latitude,GPS - longitude,GPS - altitude_m,GPS - satellites,GPS - heading
+...,39.1234567,-77.6543210,150.5,12,45.3
+```
+
+---
+
+## Displacement Calculation
+
+The GPS class automatically tracks displacement from the first valid fix (origin). This uses a fast geodesic approximation based on [cheap-ruler](https://github.com/mapbox/cheap-ruler) for accurate local distance calculations.
+
+The origin is set automatically on the first fix. Displacement is calculated as:
+
+- **X (East)**: Positive east, negative west
+- **Y (North)**: Positive north, negative south
+- **Z (Up)**: Altitude change in meters
+
+This makes it easy to track vehicle movement relative to launch site without complex geodesy.
+
+---
+
+## Implementing a Custom GPS
+
+To add support for a new GPS module, inherit from `GPS` and implement `init()` and `read()`:
+
+### Basic Structure
 
 ```cpp
-MyGPS gps;
-gps.begin();
+#ifndef MY_GPS_H
+#define MY_GPS_H
 
-loop() {
+#include "Sensors/GPS/GPS.h"
+#include <SomeGPSLibrary.h>
+
+namespace astra {
+
+class MyGPS : public GPS {
+public:
+    MyGPS(const char *name = "MyGPS");
+
+protected:
+    bool init() override;
+    bool read() override;
+
+private:
+    SomeGPSDriver hardware;
+};
+
+}
+
+#endif
+```
+
+### Implementation Example
+
+```cpp
+#include "MyGPS.h"
+
+using namespace astra;
+
+MyGPS::MyGPS(const char *name) : GPS(name) {
+    // GPS columns are registered by parent
+}
+
+bool MyGPS::init() {
+    // Initialize UART communication
+    hardware.begin(9600);
+
+    // Configure GPS module
+    hardware.setUpdateRate(10);  // 10Hz
+    hardware.enableGNSS(true);   // Enable all constellations
+
+    LOGI("MyGPS: Initialized successfully");
+    return true;
+}
+
+bool MyGPS::read() {
+    // Read and parse GPS data
+    if (!hardware.available()) {
+        return false;
+    }
+
+    if (hardware.parse()) {
+        // Check if we have a valid fix
+        if (hardware.fixType() >= 3) {  // 3D fix
+            // Update protected members
+            position[0] = hardware.latitude();
+            position[1] = hardware.longitude();
+            position[2] = hardware.altitude();
+
+            fixQual = hardware.numSatellites();
+            hasFix = true;
+
+            // Update heading if available
+            if (hardware.hasSpeed() && hardware.speed() > 0.5) {
+                heading = hardware.course();
+            }
+
+            // Update time
+            hr = hardware.hour();
+            min = hardware.minute();
+            sec = hardware.second();
+            day = hardware.day();
+            month = hardware.month();
+            year = hardware.year();
+
+            return true;
+        }
+    }
+
+    hasFix = false;
+    return false;
+}
+```
+
+### Important Notes
+
+1. **Position units**: Latitude/longitude in decimal degrees, altitude in meters
+2. **Fix validation**: Only update position when `fixType >= 3` (3D fix)
+3. **Heading calculation**: Usually derived from velocity vector
+4. **Time is UTC**: GPS time is always UTC, not local time
+
+---
+
+## Available Implementations
+
+Astra includes drivers for common GPS modules:
+
+### MAX_M10S
+
+u-blox MAX-M10 GNSS module (GPS, GLONASS, Galileo, BeiDou).
+
+```cpp
+#include "Sensors/GPS/MAX_M10S.h"
+
+MAX_M10S gps;
+```
+
+**Specifications:**
+- Cold start: <24s
+- Accuracy: 2.0m CEP
+- Update rate: Up to 25Hz
+- Interface: UART, I2C, SPI
+
+### SAM_M8Q
+
+u-blox SAM-M8Q concurrent GNSS module.
+
+```cpp
+#include "Sensors/GPS/SAM_M8Q.h"
+
+SAM_M8Q gps;
+```
+
+**Specifications:**
+- Cold start: <26s
+- Accuracy: 2.5m CEP
+- Update rate: Up to 10Hz
+- Interface: UART, I2C
+
+### MockGPS
+
+For testing without hardware:
+
+```cpp
+#include "Sensors/GPS/MockGPS.h"
+
+MockGPS gps;
+```
+
+Generates simulated GPS data for testing state estimation and navigation logic.
+
+---
+
+## Usage Examples
+
+### Basic Usage
+
+```cpp
+#include "Sensors/GPS/MAX_M10S.h"
+
+MAX_M10S gps;
+
+void setup() {
+    Serial.begin(115200);
+
+    if (!gps.begin()) {
+        Serial.println("GPS init failed!");
+    }
+
+    Serial.println("Waiting for GPS fix...");
+}
+
+void loop() {
     gps.update();
-    if (gps.getHasFirstFix()) {
+
+    if (gps.getHasFix()) {
         Vector<3> pos = gps.getPos();
-        Vector<3> disp = gps.getDisplacement();
+
+        Serial.print("Position: ");
+        Serial.print(pos[0], 7);  // Latitude
+        Serial.print(", ");
+        Serial.print(pos[1], 7);  // Longitude
+        Serial.print(", ");
+        Serial.print(pos[2], 1);  // Altitude
+        Serial.println(" m");
+
+        Serial.print("Satellites: ");
+        Serial.println(gps.getFixQual());
+
+        Serial.print("Time: ");
+        Serial.println(gps.getTimeOfDay());
+    } else {
+        Serial.println("No fix");
+    }
+
+    delay(1000);
+}
+```
+
+### Tracking Displacement from Origin
+
+```cpp
+MAX_M10S gps;
+Vector<3> launchSite;
+bool haveOrigin = false;
+
+void loop() {
+    gps.update();
+
+    if (gps.getHasFix()) {
+        if (!haveOrigin) {
+            // Save first fix as origin
+            launchSite = gps.getPos();
+            haveOrigin = true;
+            LOGI("Origin set: %.7f, %.7f", launchSite[0], launchSite[1]);
+        } else {
+            // Calculate displacement from origin
+            Vector<3> displacement = gps.getDisplacement(launchSite);
+
+            LOGI("Displacement: E:%.1f N:%.1f U:%.1f",
+                displacement[0], displacement[1], displacement[2]);
+        }
     }
 }
 ```
 
-GPS fixes typically take a few seconds to stabilize. Use `getHasFirstFix()` to avoid reading garbage data.
-
-///
-
-/// tab | Implementing Your Own GPS Driver
-
-To add a new GPS module:
-
-1. **Find a library** that parses NMEA or binary output from your hardware
-2. **Create a new class derived from `GPS`**:
-
-    ```cpp
-    class MyGPS : public GPS {
-        SomeLibGPS hw;
-    public:
-        bool init() override {
-            hw.begin(9600);
-            return true;
-        }
-        bool read() override {
-            hw.read();
-            if (hw.hasFix()) {
-                position = { hw.latitude(), hw.longitude(), hw.altitude() };
-                fixQual = hw.fixQuality();
-                heading = hw.headingDegrees();
-            }
-        }
-    };
-    ```
-
-3. **Call `begin()` and `update()`** as in the usage example.
-
-///
-
 ---
 
-## **Advanced Features**
+## Integration with State
 
-### **Using Bias Correction Mode**
-
-Bias correction mode in the GPS module serves the same core purpose as it does for the barometer: stabilizing the baseline reference — in this case, your origin point (lat, lon, alt). Instead of relying on a single fix, it smooths out noise and minor drift by averaging over several recent GPS readings.
-
-By default, the origin is set the first time a valid fix is obtained. If bias correction is enabled, Astra continues updating this origin using the second-to-last second of position data. This helps reduce the effect of GPS jitter or slow drift while the rocket is sitting still.
-
-Why not use the most recent second? Same reason as with pressure sensors — the moment just before launch may already contain motion. Locking in a slightly older, averaged position provides a cleaner and safer ground reference for computing AGL altitude or displacement.
-
-To toggle this feature:
+When you pass a GPS to `State`, it contributes to position and velocity estimation:
 
 ```cpp
-myGps.setBiasCorrectionMode(true);  // enable smoothing
-myGps.setBiasCorrectionMode(false); // freeze origin
+MAX_M10S gps;
+BMI088andLIS3MDL imu;
+DPS368 baro;
+
+Sensor *sensors[] = {&gps, &imu, &baro};
+State vehicleState(sensors, 3, nullptr);
 ```
-And once you're confident the rocket has launched or the vehicle is moving, lock in the reference point permanently:
+
+The `State` class uses GPS data to:
+- Set the position origin on first fix
+- Provide horizontal position (X, Y)
+- Provide altitude (Z) as a cross-check with barometer
+- Calculate velocity from position changes
+- Set the heading based on motion direction
+
+---
+
+## Coordinate Systems
+
+### GPS Coordinates
+
+GPS outputs in WGS84 geodetic coordinates:
+- **Latitude**: -90° (South Pole) to +90° (North Pole)
+- **Longitude**: -180° (West) to +180° (East)
+- **Altitude**: Meters above WGS84 ellipsoid (not sea level!)
+
+### Local Displacement
+
+Displacement is in a local ENU (East-North-Up) frame:
+- **X (East)**: Positive east, negative west
+- **Y (North)**: Positive north, negative south
+- **Z (Up)**: Positive up, negative down
+
+This matches Astra's standard coordinate system.
+
+---
+
+## Fix Quality
+
+GPS fix quality indicates positioning accuracy:
+
+| Fix Type | Satellites | Description |
+|----------|-----------|-------------|
+| No fix | 0-3 | No valid position |
+| 2D fix | 3 | Horizontal only, no altitude |
+| 3D fix | 4+ | Full 3D position |
+| DGPS | 4+ | Differential correction |
+| RTK | 5+ | Centimeter-level accuracy |
+
+Always check for at least a 3D fix (`fixQual >= 4`) before trusting position data.
+
+---
+
+## Accuracy Considerations
+
+GPS accuracy depends on several factors:
+
+1. **Satellite count**: More satellites = better accuracy
+   - 4 sats: ~10-20m
+   - 8+ sats: ~2-5m
+
+2. **Satellite geometry**: Spread out satellites are better than clustered
+
+3. **Environment**:
+   - Clear sky: Best accuracy
+   - Trees/buildings: Multipath errors
+   - Indoors: Usually no fix
+
+4. **Module quality**: Professional modules (M10) outperform hobby modules
+
+5. **Speed**: High-speed flight can reduce accuracy
+
+For best results, use GPS for slow horizontal motion and barometer for vertical motion.
+
+---
+
+## Best Practices
+
+1. **Wait for fix before use**:
+   ```cpp
+   if (!gps.getHasFix()) {
+       LOGW("No GPS fix yet");
+       return;
+   }
+   ```
+
+2. **Check satellite count**:
+   ```cpp
+   if (gps.getFixQual() < 6) {
+       LOGW("Poor GPS quality: %d satellites", gps.getFixQual());
+   }
+   ```
+
+3. **Use GPS time for logging**: GPS time is more accurate than RTC
+
+4. **Combine with barometer**: Use baro for altitude, GPS for horizontal position
+
+5. **Test antenna placement**: Metal and carbon fiber block GPS signals
+
+6. **Update at reasonable rates**: 10Hz is usually sufficient, 1Hz works for slow vehicles
+
+---
+
+## Common Issues
+
+### "GPS never gets a fix"
+
+**Causes:**
+- Antenna obscured by metal/carbon fiber
+- Indoors or poor sky visibility
+- Insufficient warm-up time
+
+**Solutions:**
+- Move antenna away from conductive materials
+- Test outdoors with clear sky view
+- Wait 30-60 seconds for cold start
+
+### "Position jumps around"
+
+**Causes:**
+- Poor satellite geometry
+- Multipath (signal reflections)
+- Low satellite count
+
+**Solutions:**
+- Wait for more satellites (8+)
+- Use filtering in State estimation
+- Check antenna placement
+
+### "Altitude doesn't match barometer"
+
+**Causes:**
+- GPS altitude is above ellipsoid, not sea level
+- GPS vertical accuracy is worse than horizontal
+- Barometer drift over time
+
+**Solutions:**
+- This is normal—use barometer for altitude
+- GPS altitude is mainly useful for cross-checking
+- Combine both in a Kalman filter
+
+---
+
+## Advanced: Time Zone Handling
+
+The GPS class includes automatic timezone detection based on longitude:
 
 ```cpp
-myGps.markLiftoff();
+void findTimeZone() {
+    // Automatically called during updates
+    // Sets hrOffset for local time
+}
 ```
 
-From that point onward, the origin stays fixed and all displacement values are computed relative to it.
+Access local time:
+```cpp
+int8_t localHour = gps.getHour() + hrOffset;
+```
 
 ---
 
-## **Summary**
+## Summary
 
-* `GPS` standardizes satellite position data in Astra
-* You only need to implement `init()` and `read()` to add new modules
-* Outputs latitude, longitude, altitude, fix quality, and heading
-* Tracks local displacement and satellite time-of-day
-* Integrates with Astra telemetry/logging and supports packed data
+- `GPS` provides standardized satellite positioning interface
+- Automatically tracks origin and displacement
+- Implement only `init()` and `read()` for new modules
+- Integrates with `State` for position estimation
+- Provides UTC time from satellites
+- Several implementations included (MAX_M10S, SAM_M8Q)
+
+For general sensor information, see the [Sensor Interface](../sensor.md) documentation.
 
 ---
-
-Written by ChatGPT. May not be fully accurate; verify against source.

@@ -1,158 +1,477 @@
 # Barometer
 
-The `Barometer` class in Astra provides an abstract base for all barometric pressure sensors, extending the functionality of the core [`Sensor`](sensor.md) interface. It not only standardizes access to pressure data, but also computes altitude from that data, enabling derived classes to easily support telemetry and flight logic.
+The `Barometer` class provides a standardized interface for barometric pressure sensors in Astra. It extends the [`Sensor`](../sensor.md) interface with pressure-specific functionality and automatically handles pressure-to-altitude conversion using standard atmospheric models.
 
 ---
 
-## **Overview**
+## Overview
 
-Barometers convert pressure readings into meaningful altitude data using standard atmospheric models. The `Barometer` base class handles this transformation internally, so implementing a new sensor requires only providing raw pressure and temperature values via `read()`.
+Barometers measure atmospheric pressure and convert it to altitude. The `Barometer` base class handles:
+
+1. **Pressure to altitude conversion** using the hypsometric formula
+2. **Automatic ground-level calibration** at initialization
+3. **Temperature compensation** for accurate readings
+4. **Telemetry registration** for pressure, temperature, and altitude
+
+Implementing a new barometer requires only defining `init()` and `read()` methods—altitude calculation is automatic.
 
 ---
 
-## **Inheritance Structure**
+## Available Methods
 
-`Barometer` inherits from [`Sensor`](sensor.md) and implements many of the required pieces:
-
-* `begin()` → Calls `init()` and handles sensor startup, including zeroing pressure to define "ground level"
-* `update()` → Calls `read()` and populates altitude, pressure, and temperature values
-
-The only two methods you must implement in a derived class is:
+### Pressure Readings
 
 ```cpp
-bool read() override;
-bool init() override;
-```
-`read()` is intended to read the physical hardware data using the library you've found or written to talk to the sensor and update Barometer's internal variables.
-`init()` is designed to use said library to initialize the sensor and write and config options that you need to set to it.
-
-Neither of these methods are intended to any kind of complex math or variable transformation, with the potential exception of unit conversions. Anything more complex should already be handeld by Baromter's `update()` or `begin()`. Just double check that this abstract class doesn't already do the calculations that you're looking for before you write redundnat code.
-
----
-
-## **Exposed Data Columns**
-
-`Barometer` automatically registers the following telemetry columns:
-
-* **Altitude** (`alt`) – computed from pressure
-* **Pressure** (`press`) – hPa
-* **Temperature** (`temp`) – °C
-
-These values are exposed via the inherited [`DataReporter`](sensor.md#datareporter-integration) API and will appear in logs and live telemetry.
-
----
-
-## **How Altitude is Calculated**
-
-The barometer uses the hypsometric formula to convert pressure to altitude, assuming standard atmosphere:
-
-```cpp
-alt = 44330.0 * (1.0 - pow(pressure_hPa / basePressure_hPa, 0.1903));
+virtual double getPressure() const;        // Pressure in Pascals
+virtual double getPressureAtm() const;     // Pressure in atmospheres
 ```
 
-Where `basePressure_hPa` is the pressure reading at ground level. This is automatically captured during `begin()`.
+Returns the most recent pressure reading.
+
+**Example:**
+```cpp
+DPS368 baro;
+double pressure = baro.getPressure();      // 101325.0 Pa (sea level)
+double atm = baro.getPressureAtm();        // 1.0 atm
+```
+
+### Temperature Readings
+
+```cpp
+virtual double getTemp() const;            // Temperature in °C
+virtual double getTempF() const;           // Temperature in °F
+```
+
+Returns temperature from the barometer's internal sensor. Useful for temperature compensation and environmental monitoring.
+
+**Example:**
+```cpp
+double tempC = baro.getTemp();             // 22.5°C
+double tempF = baro.getTempF();            // 72.5°F
+```
+
+### Altitude Readings
+
+```cpp
+virtual double getASLAltM() const;         // Altitude above sea level in meters
+virtual double getASLAltFt() const;        // Altitude above sea level in feet
+```
+
+Returns altitude calculated from current pressure using the standard atmosphere model.
+
+**Example:**
+```cpp
+double altM = baro.getASLAltM();           // 150.2 meters ASL
+double altFt = baro.getASLAltFt();         // 492.8 feet ASL
+```
 
 ---
 
-## **Usage Flow**
+## Altitude Calculation
 
-
-To implement a new barometer driver, follow these steps:
-
-1. **Choose a sensor library**
-
-   * Prefer stable and maintained libraries (e.g., Adafruit, SparkFun)
-
-2. **Wrap it in a new class derived from `Barometer`**
+The barometer uses the hypsometric formula to convert pressure to altitude:
 
 ```cpp
-class MySensor : public Barometer {
-    AdafruitBMP390 hw;
+altitude = 44330.0 * (1.0 - pow(pressure / seaLevelPressure, 0.1903));
+```
+
+Where:
+- `seaLevelPressure` = 101325 Pa (standard atmosphere at sea level)
+- Result is in meters
+
+This formula assumes standard atmospheric conditions. For maximum accuracy in non-standard conditions, you'd need to adjust the sea-level pressure reference or use GPS altitude as ground truth.
+
+---
+
+## Logged Data Columns
+
+The `Barometer` class automatically registers these columns for telemetry:
+
+| Column | Format | Units | Description |
+|--------|--------|-------|-------------|
+| `pressure_pa` | `%.2f` | Pascals | Atmospheric pressure |
+| `temp_c` | `%.1f` | °C | Temperature |
+| `alt_asl_m` | `%.2f` | meters | Altitude above sea level |
+
+**CSV example:**
+```csv
+...,Barometer - pressure_pa,Barometer - temp_c,Barometer - alt_asl_m
+...,101325.50,22.3,150.20
+...,101320.00,22.4,150.65
+```
+
+---
+
+## Implementing a Custom Barometer
+
+To add support for a new barometer sensor, inherit from `Barometer` and implement `init()` and `read()`:
+
+### Basic Structure
+
+```cpp
+#ifndef MY_BAROMETER_H
+#define MY_BAROMETER_H
+
+#include "Sensors/Baro/Barometer.h"
+#include <SomeBarometerLibrary.h>
+
+namespace astra {
+
+class MyBarometer : public Barometer {
 public:
-    bool begin(bool useBiasCorrection = true) override {
-        hw.begin();
-        return Barometer::begin(useBiasCorrection);
+    MyBarometer(const char *name = "MyBaro");
+
+protected:
+    bool init() override;
+    bool read() override;
+
+private:
+    SomeBarometerDriver hardware;
+};
+
+}
+
+#endif
+```
+
+### Implementation Example
+
+```cpp
+#include "MyBarometer.h"
+
+using namespace astra;
+
+MyBarometer::MyBarometer(const char *name) : Barometer(name) {
+    // Constructor - barometer columns are registered by parent
+}
+
+bool MyBarometer::init() {
+    // Initialize I2C communication
+    if (!hardware.begin()) {
+        LOGE("MyBarometer: Failed to initialize");
+        return false;
     }
 
-    bool read(float &pressure_hPa, float &temperature_C) override {
-        pressure_hPa = hw.readPressure();
-        temperature_C = hw.readTemperature();
+    // Configure sensor settings
+    hardware.setOversampleRate(16);  // High precision
+    hardware.setMode(CONTINUOUS);
+
+    LOGI("MyBarometer: Initialized successfully");
+    return true;
+}
+
+bool MyBarometer::read() {
+    // Read from hardware
+    if (!hardware.measurementReady()) {
+        return false;
+    }
+
+    // Update protected member variables
+    pressure = hardware.readPressure();  // Must be in Pascals
+    temp = hardware.readTemperature();   // Must be in Celsius
+
+    // Parent's update() will automatically calculate altitude
+    return true;
+}
+```
+
+### Important Notes
+
+1. **Units matter**: `pressure` must be in Pascals, `temp` in Celsius
+2. **Update protected members**: Set `pressure` and `temp` in `read()`, altitude is calculated automatically
+3. **Return false on failure**: If communication fails, return `false` to signal an error
+4. **Don't calculate altitude**: The parent class handles this automatically
+
+---
+
+## Available Implementations
+
+Astra includes drivers for several common barometers:
+
+### DPS368 / DPS310
+
+Infineon high-precision barometer. DPS310 is NRND (not recommended for new designs), use DPS368.
+
+```cpp
+#include "Sensors/Baro/DPS368.h"
+
+DPS368 baro;                           // Default: address 0x77, Wire
+DPS368 baro2("Baro2", 0x76, &Wire1);  // Custom address and I2C bus
+```
+
+**Specifications:**
+- Range: 300-1200 hPa
+- Accuracy: ±0.002 hPa (±0.02m)
+- Interface: I2C (0x76 or 0x77)
+
+### BMP390
+
+Bosch high-accuracy barometer, recommended for new designs.
+
+```cpp
+#include "Sensors/Baro/BMP390.h"
+
+BMP390 baro;
+```
+
+**Specifications:**
+- Range: 300-1250 hPa
+- Accuracy: ±0.5 Pa (±0.05m)
+- Interface: I2C or SPI
+
+### BMP280
+
+Bosch barometer. NRND, but still commonly available.
+
+```cpp
+#include "Sensors/Baro/BMP280.h"
+
+BMP280 baro;
+```
+
+**Specifications:**
+- Range: 300-1100 hPa
+- Accuracy: ±1 Pa (±0.1m)
+- Interface: I2C or SPI
+
+### MS5611F
+
+TE Connectivity high-resolution barometer.
+
+```cpp
+#include "Sensors/Baro/MS5611F.h"
+
+MS5611F baro;
+```
+
+**Specifications:**
+- Range: 10-1200 hPa
+- Accuracy: ±1.5 hPa (±15m)
+- Interface: I2C or SPI
+
+### MockBarometer
+
+For testing without hardware:
+
+```cpp
+#include "Sensors/Baro/MockBarometer.h"
+
+MockBarometer baro;
+```
+
+Generates simulated flight data for testing your state estimation and event detection logic.
+
+---
+
+## Usage Example
+
+### Basic Usage
+
+```cpp
+#include "Sensors/Baro/DPS368.h"
+
+DPS368 baro;
+
+void setup() {
+    if (!baro.begin()) {
+        Serial.println("Barometer init failed!");
+    }
+}
+
+void loop() {
+    baro.update();
+
+    Serial.print("Pressure: ");
+    Serial.print(baro.getPressure());
+    Serial.println(" Pa");
+
+    Serial.print("Altitude: ");
+    Serial.print(baro.getASLAltM());
+    Serial.println(" m");
+
+    delay(100);
+}
+```
+
+### Multiple Barometers
+
+You can use multiple barometers for redundancy:
+
+```cpp
+DPS368 baro1("Baro1", 0x77);
+DPS368 baro2("Baro2", 0x76);
+
+Sensor *sensors[] = {&baro1, &baro2};
+State vehicleState(sensors, 2, nullptr);
+
+void loop() {
+    system.update();
+
+    // Access individual barometers
+    double alt1 = baro1.getASLAltM();
+    double alt2 = baro2.getASLAltM();
+
+    // Check for sensor agreement
+    if (abs(alt1 - alt2) > 5.0) {
+        LOGW("Barometer disagreement: %.1f vs %.1f", alt1, alt2);
+    }
+}
+```
+
+**CSV output:**
+```csv
+...,Baro1 - pressure_pa,Baro1 - alt_asl_m,Baro2 - pressure_pa,Baro2 - alt_asl_m
+...,101325.0,150.2,101323.5,150.3
+```
+
+---
+
+## Integration with State
+
+When you pass barometers to `State`, their altitude data contributes to state estimation:
+
+```cpp
+DPS368 baro;
+MAX_M10S gps;
+BMI088andLIS3MDL imu;
+
+Sensor *sensors[] = {&gps, &imu, &baro};
+State vehicleState(sensors, 3, nullptr);
+```
+
+The `State` class uses barometer altitude to:
+- Provide vertical position estimates
+- Detect launch (altitude change)
+- Detect apogee (maximum altitude)
+- Detect landing (return to ground level)
+
+---
+
+## Coordinate System
+
+Barometer altitude is always **vertical** (Z-axis in Astra's coordinate system):
+
+- **Positive Z**: Upward
+- **Zero altitude**: Set at initialization (ground level)
+- **Units**: Meters (use `getASLAltM()`) or feet (use `getASLAltFt()`)
+
+When used with GPS and IMU in `State`, the barometer provides the Z component while GPS provides horizontal position.
+
+---
+
+## Calibration and Accuracy
+
+### Ground-Level Calibration
+
+The barometer automatically calibrates to ground level during `begin()`. The first pressure reading becomes the reference point for altitude calculations.
+
+**Important:** Ensure the vehicle is at rest at the desired reference altitude when calling `begin()`.
+
+### Accuracy Considerations
+
+Barometric altitude accuracy depends on:
+
+1. **Sensor precision**: DPS368 (~2cm) vs BMP280 (~10cm)
+2. **Temperature changes**: Compensated internally by most sensors
+3. **Weather changes**: Pressure varies with weather (~10 hPa = ~80m error)
+4. **Altitude range**: More accurate at lower altitudes
+
+For flights longer than a few minutes or in changing weather, combine barometer data with GPS altitude for best results.
+
+---
+
+## Best Practices
+
+1. **Initialize at rest**: Call `begin()` when the vehicle is stationary at launch site
+
+2. **Check initialization**: Always verify the sensor initialized successfully
+   ```cpp
+   if (!baro.begin()) {
+       LOGE("Barometer failed to initialize");
+   }
+   ```
+
+3. **Use multiple barometers**: Redundancy helps detect sensor failures
+
+4. **Monitor temperature**: Large temperature swings can affect accuracy
+   ```cpp
+   if (baro.getTemp() < -20 || baro.getTemp() > 80) {
+       LOGW("Barometer temperature out of normal range");
+   }
+   ```
+
+5. **Filter rapid changes**: At high speeds, use a Kalman filter to smooth altitude estimates
+
+6. **Compare with GPS**: Use GPS altitude to validate barometer readings
+
+---
+
+## Common Issues
+
+### "Altitude jumping around"
+
+**Cause:** Vibration, rapid temperature changes, or electrical noise
+
+**Solution:**
+- Add physical dampening to the sensor
+- Use lower update rates
+- Implement a Kalman filter in `State`
+
+### "Altitude drifting over time"
+
+**Cause:** Weather-related pressure changes
+
+**Solution:**
+- For short flights (<10 min), drift is usually acceptable
+- For longer missions, use GPS altitude as reference
+- Consider implementing pressure trend compensation
+
+### "Negative altitude readings"
+
+**Cause:** Pressure increased after calibration (weather changed or moved to lower elevation)
+
+**Solution:** Normal behavior. Altitude is relative to initialization point.
+
+---
+
+## Advanced: Custom Altitude Calculation
+
+If you need a different altitude calculation (e.g., for non-Earth atmospheres or custom pressure models), override the `update()` method:
+
+```cpp
+class CustomBarometer : public Barometer {
+protected:
+    bool update() override {
+        // Read sensor
+        if (!read()) {
+            return false;
+        }
+
+        // Custom altitude calculation
+        altitudeASL = myCustomAltitudeFormula(pressure);
+
         return true;
+    }
+
+private:
+    double myCustomAltitudeFormula(double pressure) {
+        // Your custom formula here
+        return 0.0;
     }
 };
 ```
 
-3. If you're using **AstraSystem**, then that's it. Pass an instance of your new barometer to State, and the software will take care of the rest. If you're not using AstraSystem, you should call `myBaro.begin()` in `setup()` and `myBaro.update()` in `loop()`, at whatever frequency you find works best.
-
 ---
 
-## **Available Built-in Drivers**
+## Summary
 
-The following sensors are currently supported in Astra:
+- `Barometer` provides a standardized interface for pressure sensors
+- Automatically calculates altitude from pressure
+- Implement only `init()` and `read()` for new sensors
+- Supports multiple simultaneous barometers
+- Integrates seamlessly with `State` for altitude tracking
+- Several high-quality implementations included (DPS368, BMP390, MS5611F)
 
-* [BMP280](https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software/blob/main/src/Sensors/Baro/BMP280.h) - [Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf) (**NRND**)
-* [BMP390](https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software/blob/main/src/Sensors/Baro/BMP390.h) - [Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp390-ds002.pdf)
-* [DPS310/DPS368](https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software/blob/main/src/Sensors/Baro/DPS310.h) - [Datasheet](https://www.infineon.com/dgdl/Infineon-DPS310-DataSheet-v01_02-EN.pdf?fileId=5546d462576f34750157750826c42242) (DPS310 is **NRND**) and [Datasheet](https://www.infineon.com/dgdl/Infineon-DPS368-DataSheet-v01_01-EN.pdf?fileId=5546d46269e1c019016a0c45105d4b40)
-* [MS5611](https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software/blob/main/src/Sensors/Baro/MS5611F.h) - [Datasheet](https://www.te.com/commerce/DocumentDelivery/DDEController?Action=showdoc&DocId=Data+Sheet%7FMS5611-01BA03%7FB3%7Fpdf%7FEnglish%7FENG_DS_MS5611-01BA03_B3.pdf%7FCAT-BLPS0036)
-
-Each of these classes derives from `Barometer` and implements the required `read()` and `init()` methods.
-
----
-
-## **Advanced Options**
-
-### **Using Bias Correction Mode**
-
-Bias correction mode helps compensate for slow pressure drift and sensor noise by continuously recalibrating the zero-altitude baseline — essentially adjusting what the barometer considers "ground level." This is especially useful when the vehicle stays on the pad for a long time before launch, or when ambient pressure changes slightly.
-
-However, it’s off by default because blindly recalibrating can be dangerous — especially if the rocket has already left the ground. See the AstraSystem docs for more on the risks and defaults.
-
-When enabled, the barometer periodically computes a new baseline using the second-to-last second of recent pressure data — not the most recent second. Why? Because launch detection systems typically rely on altitude changes to identify liftoff. Including very recent data (which may already show movement) would confuse this logic and result in a bad zero point. Using the "2nd-to-last" second instead gives you a quieter, more accurate reference without interfering with launch detection.
-
-You can enable or disable this feature at any time using:
-
-```cpp
-myBaro.setBiasCorrectionMode(true); // or false
-```
-
-And you should lock in the baseline permanently at liftoff by calling:
-
-```cpp
-myBaro.markLiftoff();
-```
-
-This disables further corrections and locks the AGL altitude reference point in place.
-
-### **Accessing Raw Data**
-
-The following methods are available for reading the latest values:
-
-```cpp
-virtual double getPressure() const; // hPa
-virtual double getTemp() const; // Deg C
-virtual double getTempF() const; //Deg F
-virtual double getPressureAtm() const; // atm
-virtual double getASLAltFt() const; // Above Sea Level - Ft
-virtual double getASLAltM() const;  // Above Sea Level - M
-virtual double getAGLAltM() const;  // Above Ground Level - M
-virtual double getAGLAltFt() const; // Above Ground Level - Ft
-```
-
-**Above Ground Level** is either denoted as alt difference since boot up, or, if you are using bias Correction, difference since bias correction was disabled.
+For general sensor information, see the [Sensor Interface](../sensor.md) documentation.
 
 ---
-
-## **Summary**
-
-* `Barometer` simplifies pressure → altitude conversion using standard math
-* Hardware implementations must only define a `read()` method
-* `begin()` auto-calibrates base pressure and `update()` calls your driver
-* Output is integrated with the Astra logging/telemetry stack via `DataReporter`
-* Easy to extend using any existing Arduino/C++ pressure sensor library
-
-!!! note
-    The `Barometer` class is meant for atmospheric sensors. Do **not** use it for water pressure sensors or sealed altimeters without modifying the pressure-to-altitude logic.
-
----
-
-Written by ChatGPT. May not be fully accurate; verify against source.

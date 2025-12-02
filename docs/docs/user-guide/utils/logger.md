@@ -1,163 +1,418 @@
-# Logger
+# Logging System
 
-!!! note
-    It is very likely that this class has minor changes to to the way it is set up in the future. Please verify that the website footer indicates the correct Astra version number.
+Astra provides two separate logging systems that work together to record both telemetry data and system events:
 
-The **Logger** class is one of the most powerful, but also one of the most complicated systems in **Astra**. It can take both log data and flight data and write them to onboard storage or USB. ~~It (by default) performs less frequent writes during pre- and post-flight periods to prevent writing unnecessary data.~~ Additionally, it can modify the date of file creation so it is accurate once an onboard GPS obtains a time fix (Not currently working). Finally, if it crashes, it will log the reason for the crash the next time it boots.
+- **DataLogger**: Automatic CSV telemetry recording from sensors and state
+- **EventLogger**: Human-readable timestamped messages with severity levels
 
-With all this functionality, there are numerous configuration options to choose from, so feel free to jump to a specific section using the table of contents on the right.
+Both loggers use a flexible backend system (`ILogSink`) that allows you to write to multiple destinations simultaneously: SD cards, internal flash, serial ports, or circular buffers.
 
-## Setup
+---
 
-The first thing to know about the **Logger** class is that it exists as a singleton, accessed via the global `//getLogger()` method. Every time you need to use any of the **Logger**’s functions, you should prefix them with `//getLogger()` followed by the function call.
+## Event Logging
 
-We **strongly** recommend using the `AstraSystem` and `AstraConfig` objects whenever you use Astra, as they handle almost all initialization tasks for you. However, all utilities can be used outside of `AstraSystem`, including **Logger**. The only difference between these two approaches is the setup. All other functions are identical.
+Event logging is for human-readable status messages, warnings, and errors. It's perfect for debugging, monitoring system state, and recording important events during operation.
 
-/// tab | With AstraSystem
+### Basic Usage
 
-Here is a list of the `AstraConfig`[^1] options relevant to **Logger**:
-
-These defaults should be fine for most use cases. The defaults are shown below:
+Use the convenient macros to log messages:
 
 ```cpp
-#include <Astra.h>
+#include "RecordData/Logging/EventLogger.h"
 
-AstraConfig config = AstraConfig()
-                    .withOtherDataReporters(DataReporter **others) // Add additional objects that can report flight data
-                    .withLogPrefixFormatting("$time - [$logType] "); // Change format string for log data (must include $time and $logType)
+LOGI("System initialized successfully");
+LOGW("GPS fix lost, using dead reckoning");
+LOGE("Barometer I2C communication failed");
 ```
 
-///
+### Message Format
 
-/// tab | Without AstraSystem
+By default, event log entries are formatted as:
 
-If you simply want to use **Logger** without `AstraSystem`, you need to call `//getLogger().init()` with the default parameters. You must pass all the DataReporter objects (including State and all its sensors) and their count. You can also pass in the buffer time and buffer interval variables. Check if it worked with `//getLogger().isReady()`. At the end of setup (after all of the data reporters are initialized), you should call `//getLogger().writeCsvHeader()` to write the initial line to the SD card.
+```
+0.123 [INFO]: System initialized successfully
+5.678 [WARNING]: GPS fix lost, using dead reckoning
+10.456 [ERROR]: Barometer I2C communication failed
+```
+
+The timestamp shows seconds since microcontroller startup, followed by the severity level and your message.
+
+### Configuration
+
+Event logging is typically configured early in `setup()`:
 
 ```cpp
-#include <Logger.h>
+#include "RecordData/Logging/EventLogger.h"
+#include "RecordData/Logging/LoggingBackend/ILogSink.h"
 
-setup() {
-    // Example:
-    DataReporter *reporters[] = { &state, &sensor1, &sensor2, ... };
-    //getLogger().init(reporters, numberOfReporters, 30, 30);
-    if (//getLogger().isReady()) {
-        //getLogger().writeCsvHeader();
-    }
+UARTLog serialLog(Serial, 115200, true);
+FileLogSink fileLog("LOG.txt", StorageBackend::SD_SPI, true);
+ILogSink *logs[] = {&serialLog, &fileLog};
+
+void setup() {
+    EventLogger::configure(logs, 2);
+
+    LOGI("Logging started");
 }
 ```
 
-///
+In this example, messages go to both serial and a file simultaneously.
+
+### Using with AstraConfig
+
+When using the `Astra` system, you can configure event logging through `AstraConfig`:
+
+```cpp
+UARTLog serialLog(Serial, 115200);
+FileLogSink fileLog("LOG.txt", StorageBackend::SD_SPI);
+ILogSink *logs[] = {&serialLog, &fileLog};
+
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withDataLogs(logs, 2);  // Event and data loggers share sinks
+
+Astra system(&config);
+```
+
+### Available Log Sinks
+
+Astra provides several built-in log sink implementations:
+
+#### UARTLog
+Logs to hardware serial ports:
+
+```cpp
+UARTLog log(Serial1, 115200, true);  // Hardware serial, 115200 baud, with prefixes
+```
+
+#### USBLog
+Logs to USB serial:
+
+```cpp
+USBLog log(Serial, 9600, true);  // USB serial, 9600 baud, with prefixes
+```
+
+#### FileLogSink
+Logs to storage (SD card, internal flash, or eMMC):
+
+```cpp
+// Automatic backend creation
+FileLogSink log("LOG.txt", StorageBackend::SD_SPI, true);
+
+// Available backend types:
+// - StorageBackend::EMMC
+// - StorageBackend::SD_SDIO
+// - StorageBackend::SD_SPI
+```
+
+#### CircBufferLog
+Logs to a circular buffer in memory (useful for buffering before storage is ready):
+
+```cpp
+CircBufferLog buffer(5000, true);  // 5000 byte buffer with prefixes
+
+// Later, transfer buffered data to another sink
+buffer.transfer(serialLog);
+```
+
+#### PrintLog
+Logs to any Arduino `Print` object:
+
+```cpp
+PrintLog customLog(myPrintObject, true);
+```
+
+### Example: Buffered Logging with Handshake
+
+This pattern is useful when you want to buffer logs until an external system (like a Pi) is ready:
+
+```cpp
+CircBufferLog bufferLog(5000, true);
+UARTLog serialLog(Serial1, 115200, true);
+ILogSink *bufferSinks[] = {&bufferLog};
+ILogSink *serialSinks[] = {&serialLog};
+
+void setup() {
+    // Start logging to buffer
+    EventLogger::configure(bufferSinks, 1);
+
+    LOGI("System starting up...");
+    system.init();
+}
+
+bool handshakeDone = false;
+
+void loop() {
+    if (!handshakeDone && Serial1.available()) {
+        String cmd = Serial1.readStringUntil('\n');
+        if (cmd == "PING") {
+            Serial1.println("PONG");
+
+            // Switch to serial logging and transfer buffer
+            EventLogger::configure(serialSinks, 1);
+            bufferLog.transfer(serialLog);
+
+            LOGI("Handshake complete, buffer transferred");
+            handshakeDone = true;
+        }
+    }
+
+    system.update();
+}
+```
 
 ---
 
-## Recording Log Data
+## Data Logging
 
-### Before You Begin
+Data logging automatically records CSV telemetry from all sensors and the state object. Unlike event logging, you don't manually log data—it happens automatically when `system.update()` is called.
 
-All log data is recorded to a file called `###_Log.txt`, where ### is an incrementor based on files already existing in the file system (So largest # = newest file). It prefixes all log entries with a timestamp and a log type. The log types are:
+### How It Works
 
-- **`INFO_`**: General system information (default).
-- **`WARNING_`**: A warning about a potential issue.
-- **`ERROR_`**: An error that has occurred.
-- **`LOG_`**: A log entry that is not an error or warning.
-- **`CUSTOM_`**: A log entry with a custom prefix.
+Every `DataReporter` (including `State` and all `Sensor` subclasses) registers its data columns automatically. The `DataLogger` handles:
 
-You can change the format of the default log types before calling `//getLogger().init()` by calling:
+1. Writing CSV headers on startup
+2. Recording data at the configured logging rate
+3. Writing to multiple destinations simultaneously
 
-```cpp
-//getLogger().setLogPrefixFormatting(const char *prefix);
+### CSV Format
+
+The CSV file includes a header row followed by data rows:
+
+```csv
+TELEM/State - position_x,State - position_y,State - position_z,GPS - latitude,GPS - longitude,...
+0.000,0.000,0.000,39.123,-77.456,...
+0.100,0.001,0.002,39.123,-77.456,...
 ```
 
-The default is `"$time - [$logType] "`, which will produce something like `0.000 - [INFO] Hello, world!`. When you call this function, you **must** include the keywords `$time` and `[$logType]`. `$time` is replaced with the time (in seconds) since the microcontroller turned on (printed with 3 decimal places), and `[$logType]` is replaced with the log type stamp. You can include any additional text you like.
+Each column is prefixed with the data reporter's name (e.g., "State", "GPS", "Baro1") followed by the variable name.
 
-You may change the log prefix for the custom log type by calling:
+### Configuration
+
+Data logging is configured via `AstraConfig`:
 
 ```cpp
-//getLogger().setCustomLogPrefix(const char *prefix);
+FileLogSink dataFile("TELEM.csv", StorageBackend::SD_SDIO, true);
+ILogSink *dataSinks[] = {&dataFile};
+
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withDataLogs(dataSinks, 1)
+                        .withLoggingRate(20);  // Log at 20Hz
+
+Astra system(&config);
 ```
 
-The default is `"$time - [CUSTOM] "`, which would output something like `0.000 - [CUSTOM] Hello, world!`. Including `$time` is recommended but not required. This method can be called at any time, and the custom prefix will remain until overridden by a subsequent call.
+### Separating Update and Logging Rates
 
-When you record log data, you can send it to the SD card, USB serial, or both. The default behavior is to record to both. These options exist in the `Dest` enum:
+You can read sensors more frequently than you log data:
 
 ```cpp
-enum Dest {
-    TO_FILE,
-    TO_USB,
-    BOTH
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withUpdateRate(50)    // Read sensors at 50Hz
+                        .withLoggingRate(20);  // Write data at 20Hz
+```
+
+This conserves storage while maintaining high sensor update rates for control algorithms.
+
+### Adding Custom Data Reporters
+
+To log custom data beyond sensors and state, implement the `DataReporter` interface:
+
+```cpp
+#include "RecordData/DataReporter/DataReporter.h"
+
+class BatteryMonitor : public DataReporter {
+public:
+    BatteryMonitor() : DataReporter("Battery") {
+        addColumn("%.2f", &voltage, "voltage");
+        addColumn("%.1f", &current, "current");
+        addColumn("%.1f", &temperature, "temp");
+    }
+
+    void update() {
+        voltage = readVoltage();
+        current = readCurrent();
+        temperature = readTemperature();
+    }
+
+private:
+    float voltage = 0.0f;
+    float current = 0.0f;
+    float temperature = 0.0f;
+
+    float readVoltage() { /* ... */ }
+    float readCurrent() { /* ... */ }
+    float readTemperature() { /* ... */ }
 };
 ```
 
-### Recording Data
-
-Once setup is complete, you can record log data using:
+Then add it to `AstraConfig`:
 
 ```cpp
-//getLogger().recordLogData(...);
+BatteryMonitor battery;
+DataReporter *reporters[] = {&battery};
+
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withOtherDataReporters(reporters);
 ```
 
-There are eight different function overloads for this method, each taking different arguments. Essentially, you specify the log type, where you want to send it (destination), and the actual data you want to log. You can optionally supply a timestamp instead of letting it be generated automatically, and you can choose to use or not use a printf-style format string followed by any number of arguments. Rather than list every overload, here are a couple of examples:
-
-```cpp
-LOGW(TO_USB, "Hello, world!");
-LOGI(TO_FILE, 50, "Hello %s", "there!");
-```
-
-!!! note
-    If you use the format string versions of the method, you **must** provide an integer representing the maximum length you expect the string to be once formatted (50 in this example).
-
-Once the data is logged to its destination, **Logger** will fire a `LogData` event with the ID `"LOG_DATA"_i`[^2]. You can listen for this event if you want to do something additional with the logged data.
+Your custom columns will appear in the CSV automatically.
 
 ---
 
-## Recording Flight Data
+## Log Sink Prefixes
 
-### Before You Begin
+Some log sinks support automatic prefixing to distinguish between different data types in the same file or stream.
 
-Flight data is stored in two files: a preflight data file and a flight data file. ~~By default, it only stores pre- and post-flight data once every 30 seconds. This is why having a robust **State** with proper launch detection is important. By default, it also stores the most recent 30 seconds of data before launch at the full data rate. You can change this behavior by modifying the buffer time and buffer interval parameters in the init function. To write all data directly to the SD card, set the buffer interval to zero. To write no data to the SD card and store everything in PSRAM until landing is detected, set the buffer interval to less than zero.~~
+When `wantsPrefix()` returns `true`, the logging system prepends:
 
-The Logger currently supports two types of file storage hardware. a MicroSD card, plugged into the slot on the Teensy, and QSPI NAND Flash, soldered onto the bottom of the board. The logger prefers using the flash memory for robustness reasons, but will fallback to the SD card if flash is not detected.
+- **`LOG/`** for event log messages
+- **`TELEM/`** for CSV telemetry data
 
-All functionality surrounding flight and preflight data is managed by an internal enum called `Mode`. By default, the mode is `GROUND`. Once you call:
+This is particularly useful when logging everything to a single serial connection where you need to parse different message types.
 
-```cpp
-//getLogger().setMode(FLIGHT);
+Example output with prefixes enabled:
+
 ```
-
-the Logger assumes the rocket has just launched and switches into flight mode. When landing is detected, simply call:
-
-```cpp
-//getLogger().setMode(GROUND);
+LOG/0.123 [INFO]: System initialized
+TELEM/State - x,State - y,GPS - lat,GPS - lon
+TELEM/0.0,0.0,39.123,-77.456
+LOG/1.234 [WARNING]: GPS fix lost
+TELEM/0.1,0.2,39.123,-77.456
 ```
-
-and the Logger will switch back to pre-/post-flight data mode.
-
-### Recording Data
-
-If you use the **AstraSystem** objects, this is done automatically when you call `system.update()` in your loop. If you are not using the **AstraSystem** objects, you must call:
-
-```cpp
-//getLogger().recordFlightData();
-```
-
-in your loop to record flight data. This method automatically detects the mode and logs the appropriate data. The order of columns in the CSV file is determined by the order of the data reporter objects passed to the Logger. If you use **AstraSystem**, this will be the **State** followed by all sensors in the order they were passed to the **State**, then anything else added later.
 
 ---
 
-## Miscellaneous
+## Storage Backends
 
-### Changing the Creation Date of Files
+Astra's flexible storage system adapts to your hardware automatically:
 
-Unfortunately, the SD card itself has no concept of real-world time. However, most flight systems have a GPS onboard, and by taking advantage of the default GPS event, **Astra** will attempt to set correct creation and modification dates for all files on the SD card, making them easier to manage later. This is handled by default through the default event handler[^2]. If you disabled the default event handler, you can still modify file dates by calling:
+### Available Backends
+
+| Backend | Platform Support | Use Case |
+|---------|-----------------|----------|
+| `SD_SPI` | All platforms | SD cards via SPI (universally compatible) |
+| `SD_SDIO` | STM32, Teensy 4.x | SD cards via SDIO (faster than SPI) |
+| `EMMC` | Some STM32 boards | Soldered eMMC storage (most robust) |
+
+### Automatic Selection
+
+The `StorageFactory` can automatically select the best available backend:
 
 ```cpp
-//getLogger().modifyFileDates(GPS *gps);
+IStorage *storage = StorageFactory::create(StorageBackend::AUTO);
 ```
 
-### CrashReport
+Priority order: EMMC → SD_SDIO → SD_SPI
 
-This is another feature of **Logger**. It has no configuration options, but it is helpful to have. If the Teensy detects a crash, a crash report object is created, and the Logger will attempt to record it in the `###_Log.txt` file on the next boot.
+### Platform-Specific Notes
 
-[^1]: [AstraConfig](mmfssys.md#mmfsconfig) from [AstraSystem](mmfssys.md)  
-[^2]: [Event](event.md)
+**Teensy:**
+- Supports SD_SPI via built-in SD card slot
+- Teensy 4.x supports SD_SDIO for improved performance
 
+**STM32:**
+- SD_SDIO requires specific pin configurations (check your board's documentation)
+- Some boards have built-in eMMC for maximum reliability
+
+**ESP32:**
+- Primarily SD_SPI support
+- Some boards support SDIO mode with compatible SD cards
+
+---
+
+## File Management
+
+### Automatic File Naming
+
+Log files are automatically numbered to avoid overwriting existing data:
+
+```
+001_LOG.txt
+002_LOG.txt
+001_TELEM.csv
+002_TELEM.csv
+```
+
+The number increments based on existing files in storage.
+
+### Retrieving Data
+
+For serial retrieval of logged data, see the [RetrieveData utility](retrieve-data.md) documentation.
+
+---
+
+## Best Practices
+
+1. **Always check logger status:**
+   ```cpp
+   if (EventLogger::available()) {
+       LOGI("Logger ready");
+   }
+   ```
+
+2. **Use appropriate log levels:**
+   - `LOGI()` for normal operation
+   - `LOGW()` for recoverable issues
+   - `LOGE()` for critical failures
+
+3. **Buffer early logs:**
+   Start with a `CircBufferLog` until storage is verified, then transfer buffered messages
+
+4. **Match logging rates to needs:**
+   High-frequency logging fills storage quickly. Use 10-20 Hz unless you have specific requirements.
+
+5. **Test storage before flight:**
+   Verify your storage backend is working in ground tests. A simple `LOGI()` message will fail gracefully if storage isn't available.
+
+6. **Use SDIO when possible:**
+   SDIO is faster and more reliable than SPI for SD cards on supported platforms
+
+---
+
+## Advanced: Manual Logger Configuration
+
+If you're not using the `Astra` system, you can configure loggers manually:
+
+```cpp
+#include "RecordData/Logging/EventLogger.h"
+#include "RecordData/Logging/DataLogger.h"
+
+UARTLog serialLog(Serial, 115200, true);
+FileLogSink dataFile("TELEM.csv", StorageBackend::SD_SPI, true);
+
+ILogSink *eventSinks[] = {&serialLog};
+ILogSink *dataSinks[] = {&dataFile};
+
+void setup() {
+    // Configure event logging
+    EventLogger::configure(eventSinks, 1);
+
+    // Configure data logging
+    State *state = &vehicleState;
+    DataReporter *reporters[] = {state};
+    for (int i = 0; i < state->getNumMaxSensors(); i++) {
+        reporters[i+1] = state->getSensors()[i];
+    }
+    DataLogger::configure(dataSinks, 1, reporters, numReporters);
+
+    if (!DataLogger::available()) {
+        LOGE("Data logger failed to initialize");
+    }
+}
+
+void loop() {
+    // Update sensors and state
+    vehicleState.update();
+
+    // Manually log data
+    DataLogger::instance().appendLine();
+}
+```
+
+Using `Astra` and `AstraConfig` handles all of this automatically.
+
+---

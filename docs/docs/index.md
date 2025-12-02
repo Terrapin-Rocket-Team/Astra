@@ -2,50 +2,61 @@
 title: Home
 hide: footer
 ---
-This page written by ChatGPT. May not be accurate or helpful.
 
-# Welcome to the Terrapin Rocket Team's Multi-Mission Flight Software (Astra) Documentation
+# Welcome to Astra Documentation
 
-Welcome to the (maybe) official documentation site for TRT's **Multi-Mission Flight Software (Astra)**—the versatile and robust flight code framework developed by the Terrapin Rocket Team (TRT). Whether you're looking to integrate Astra into your next mission, contribute to its ongoing development, or explore its unique capabilities, you've come to the right place!
-
----
-
-## 🚀 What is Astra?
-Astra is a modular and scalable flight software framework designed to meet the diverse needs of rocketry missions. Built with adaptability and reliability in mind, it provides a solid foundation for developing and deploying mission-critical systems. 
+Welcome to the official documentation for **Astra**—a flexible and robust flight software framework developed by the Terrapin Rocket Team (TRT). Whether you're building a rocket, drone, rover, or any other vehicle requiring reliable telemetry and data logging, Astra provides the foundation you need.
 
 ---
 
-## 📚 Explore the Docs
+## What is Astra?
 
-This documentation is organized into three main sections to help you navigate the Astra ecosystem:
+Astra is a modular flight software library designed for diverse vehicle platforms. Built with adaptability and reliability in mind, it handles sensor integration, state estimation, data logging, and system coordination—letting you focus on your mission-specific logic.
 
-### 1. **Getting Started**
-   - Learn how to install Astra and set it up as your base flight code framework.
-   - Step-by-step guides for configuring Astra to meet your mission's requirements.
-   - Code snippets and examples to help you hit the ground running.
+**Key Capabilities:**
 
-### 2. **Maintaining Astra**
-   - Dive into the internals of Astra to understand its architecture and core principles.
-   - Learn best practices for maintaining and updating the library.
-   - Contribution guidelines for those looking to improve Astra.
-
-### 3. **Miscellaneous Resources**
-   - Additional tools and utilities to enhance your development experience.
-   - Tips, tricks, and advanced usage scenarios.
-   - Frequently asked questions and troubleshooting.
+- **Multi-Platform Support:** Works on STM32, Teensy, and ESP32 microcontrollers
+- **Flexible Storage:** Supports SD cards (SPI/SDIO), internal flash, and eMMC depending on your platform
+- **Sensor Abstraction:** Unified interfaces for IMUs, barometers, GPS, encoders, and more
+- **Dual Logging System:** Separate data logging (CSV telemetry) and event logging (human-readable status messages)
+- **Vehicle Agnostic:** Not just for rockets—use it for any vehicle that needs sensor fusion and logging
 
 ---
 
-## ✨ Features at a Glance
-- **Modularity:** Pick and choose components to fit your mission's needs.
-- **Scalability:** From single-stage to multi-stage rockets, Astra grows with your ambitions.
-- **Open Source:** Join a community of rocketry enthusiasts and contribute to the future of Astra.
+## Documentation Overview
+
+This documentation is organized to help you get started quickly and dive deeper as needed:
+
+### **User Guide**
+- Installation and setup instructions
+- Basic usage patterns and examples
+- Interface documentation for sensors, state, filters, and data reporters
+- Utility documentation for logging, BlinkBuzz, math libraries, and more
+
+### **Maintainer Guide**
+- Architecture and design principles
+- Contributing guidelines
+- Best practices for extending Astra
+
+### **Troubleshooting & FAQ**
+- Common issues and solutions
+- Platform-specific notes
 
 ---
 
-## 🌟 Ready to Start?
-Head over to the [Getting Started](#) section to begin your journey with Astra. If you're a seasoned developer or contributor, check out the [Maintaining Astra](#) section to dive deeper into the framework.
+## Features at a Glance
 
-Together, let's push the boundaries of rocketry innovation!
+- **Modular Design:** Use only the components you need
+- **Type-Safe Sensor System:** Compile-time type checking with runtime flexibility
+- **Configurable Logging:** Control logging rates, formats, and destinations
+- **Efficient Data Recording:** Optimized for high-frequency telemetry
+- **Async Utilities:** Non-blocking LED and buzzer patterns with BlinkBuzz
+- **Math Libraries:** Built-in vectors, matrices, and quaternions for state estimation
+
+---
+
+## Ready to Start?
+
+Head to the [Installation](user-guide/installation.md) guide to get Astra set up, then check out [Basic Usage](user-guide/basic-use.md) to learn how to integrate it into your project.
 
 ---

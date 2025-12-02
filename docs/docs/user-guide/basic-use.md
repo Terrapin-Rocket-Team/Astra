@@ -1,279 +1,425 @@
 # Basic Usage
 
 !!! warning "Important!"
-    In order for PIO to recognize that you are working on a PIO project, you *must* open VSCode in the root directory of that project. that is, the directory that has the `platformio.ini` file in it. Without this, PlatformIO **will not initialize** and you will be unable to build or use proper Intellisense.
+    In order for PIO to recognize that you are working on a PIO project, you *must* open VSCode in the root directory of that project—the directory that contains the `platformio.ini` file. Without this, PlatformIO **will not initialize** and you will be unable to build or use proper IntelliSense.
 
 ---
 
 ## Intro
 
-There are very few things that need to be done in order for the absolute minimum requirements to use Astra to be met. You *must*: Extend the `State` class, pass it to an `AstraSystem` object, and call the `init` and `update` methods during setup and loop, respectively. There are, of course, many more things that you *can* do to tailor Astra to your preferences, but we'll start slow.
+Getting started with Astra requires only a few essential steps: create your sensors, pass them to a `State` object, configure an `Astra` system with `AstraConfig`, and call `init()` and `update()` in your setup and loop. Astra handles sensor reading, state estimation, and data logging automatically. You can customize behavior as needed, but let's start with the basics.
 
 ---
 
 ## Initial Integration
 
+### Creating Sensor Objects
 
-### Overriding `State`
-Let's start by extending `State`. In your `src` folder, make a new set of files called something like `NewState.h` and `NewState.cpp`.
-
-Paste these contents into them:
-
-/// tab | NewState.h
-```cpp title=""
-#ifndef NEWSTATE_H
-#define NEWSTATE_H
-
-#include <State/State.h>
-
-using namespace astra;
-class NewState : public State {
-    public:
-        NewState(Sensor **sensors, int numSensors, Filter *filter);
-        void determineStage() override;
-};
-
-#endif
-```
-///
-
-/// tab | NewState.cpp
-```cpp title=""
-#include "NewState.h"
-
-NewState::NewState(Sensor **sensors, int numSensors, Filter *filter) : State(sensors, numSensors, filter) {}
-
-void NewState::determineStage() // (1)!
-{
-    // Add whatever stage determination logic you'd like here.
-    // Here is one simplified example:
-    if (stage == 0 && acceleration.z() > 10 && position.z() > 20) 
-    {                                                             // accelerating upwards and off the pad
-        stage = 1;                                                // ascent
-        //getLogger().setRecordMode(FLIGHT);
-    }                                                             
-    else if (stage == 1 && velocity.z() < 0)                      // descending
-        stage = 2;                                                
-    else if (stage == 2 && position.z() < 20)                     
-    {                                                             // landed
-        stage = 3;
-        //getLogger().setRecordMode(GROUND);
-    }
-}
-``` 
-{.annotate}
-
-1. You may have as many stages as you like, but Astra expects you to have at least launch and land stages.
-/// 
-
-Let's briefly talk about what we've done. `State` declares a method called `#!cpp void determineStage()` that is called every time it updates. Only Astra doesn't know which stages you might care about, so you have to tell it by overriding that function. The reason it's so important to detect launch and landing is because of those calls to `//getLogger().setRecordMode()`. This changes the rate at which Astra records data, but don't worry, we'll get to all of that. Just understand that this is an important method that must make those calls to `//getLogger()` in order for data logging to work the way you want it to.[^1]
-
-### Instantiating the `State` object
-
-Now that we have our `State` object with its `determineStage` method, we can head back over to the main file to finish our integration. We need to create an actual instance of the object for us to use in the `setup` and `loop` methods. You'll notice that in the constructor we implemented, it took a `Sensor **`. If you're not all that familiar with pointers, this is basically saying "an array of pointers to `Sensor` objects". This is because we need to pass in all of the sensors that we want to use. For now, let's just use the included 'IMU', 'GPS', and 'Barometer' sensors. We can do this by creating an array of pointers to `Sensor` objects, and then passing that to the `State` constructor. There was another important parameter, the `Filter`, which is a class that we haven't talked about yet. For now, we can just pass in `nullptr` for that parameter, as we don't need to use it right now.
+First, instantiate the sensors you'll be using. Astra provides implementations for common sensor types. For this example, we'll use an IMU, GPS, and barometer:
 
 ```cpp title="main.cpp"
 #include <Arduino.h>
-#include "Astra.h"
-#include "NewState.h"
+#include "Utils/Astra.h"
+#include "State/State.h"
+#include "Sensors/GPS/MAX_M10S.h"
+#include "Sensors/IMU/BMI088andLIS3MDL.h"
+#include "Sensors/Baro/DPS368.h"
+
+using namespace astra;
 
 MAX_M10S gps;
-DPS310 baro;
-BMI088andLIS3MDL imu9dof;
-
-Sensor *sensors[] = {&gps, &baro, &imu9dof};
-
-NewState state(sensors, 3, nullptr);
-
-void setup()
-{
-
-}
-
-void loop()
-{
-  
-}
+BMI088andLIS3MDL imu;
+DPS368 baro;
 ```
 
-Here we've used the sensors that come on the Avionics' sub-team's Sensor Board v1.1, which anyone else on the team is also welcome to use. If you need to implement your own sensors, you can check out the [Sensor documentation](#) for more information.
+These are the sensors used on TRT's Avionics Sensor Board v1.1. You can substitute any compatible sensor implementation—see the [Sensor Interface](ifaces/sensor.md) documentation for available options.
 
-### Creating an `AstraConfig` object
+### Creating the Sensor Array
 
-Now, we need to create an `AstraConfig` object, which is a neat little object that follows what's called a "builder pattern". This means that we can set all of the configuration options that we want, while leaving out the options we don't care about. For our use case, the only thing we *need* to send it is the state object, but we'll set up a couple other things as well so you get an idea of the object's versatility. Here's what that looks like:
+Next, create an array of pointers to your sensors. This array will be passed to the `State` object:
 
-```cpp title="main.cpp" linenums="8" hl_lines="6-9"
-...
-Sensor *sensors[] = {&gps, &baro, &imu9dof};
-
-NewState state(sensors, 3, nullptr);
-
-AstraConfig config = AstraConfig()
-                        .withState(&state)
-                        .withBuzzerPin(13)
-                        .withBBPin(LED_BUILTIN);
-
-void setup()
-{
-...
-```
-
-So here, we're just setting the buzzer pin to 13 and the built-in LED pin to `LED_BUILTIN`, which is a constant that is defined in the Arduino framework. You can set any of the configuration options that you want by appending their methods to the end of the list, but for now, we'll just leave it at that. See the [AstraConfig documentation](#) for more information.
-
-### Creating an `AstraSystem` object
-
-Now that we have our config, we need ot actually create the `AstraSystem` object. This is a simple one-liner:
-
-```cpp title="main.cpp" linenums="13" hl_lines="7"
-...
-AstraConfig config = AstraConfig()
-                        .withState(&state)
-                        .withBuzzerPin(13)
-                        .withBBPin(LED_BUILTIN);
-
-AstraSystem system(config);
-
-void setup()
-{
-...
-```
-
-### Calling `init` and `update`
-
-Now, we just need to call the `init` and `update` methods in the `setup` and `loop` methods, respectively. Astra will take care of everything else. Yes, really. This is all the code you need to write to get a minimum working system up and running. 
-
-/// tab | New code
-```cpp title="main.cpp" linenums="17" hl_lines="5 10"
-AstraSystem computer = AstraSystem(&config);
-
-void setup()
-{
-  computer.init();
-}
-
-void loop()
-{
-  computer.update();
-}
-```
-///
-
-/// tab | Full main.cpp
-```cpp title=""
-#include <Arduino.h>
-#include "Astra.h"
-#include "NewState.h"
-
+```cpp title="main.cpp" hl_lines="4"
 MAX_M10S gps;
-DPS310 baro;
-BMI088andLIS3MDL imu9dof;
+BMI088andLIS3MDL imu;
+DPS368 baro;
+Sensor *sensors[] = {&gps, &imu, &baro};
+```
 
-Sensor *sensors[] = {&gps, &baro, &imu9dof};
+### Creating a State Object
 
-NewState state(sensors, 3, nullptr);
+The `State` class handles sensor fusion and provides unified access to vehicle position, velocity, acceleration, and orientation. Instantiate it with your sensor array and an optional Kalman filter (use `nullptr` if you don't need filtering yet):
+
+```cpp title="main.cpp" hl_lines="6"
+MAX_M10S gps;
+BMI088andLIS3MDL imu;
+DPS368 baro;
+Sensor *sensors[] = {&gps, &imu, &baro};
+
+State vehicleState(sensors, 3, nullptr);
+```
+
+The second parameter is the number of sensors in the array.
+
+### Configuring the Astra System
+
+Now create an `AstraConfig` object using the builder pattern. At minimum, you must provide the state object. You can also configure additional features like BlinkBuzz pins, update rates, and logging behavior:
+
+```cpp title="main.cpp" hl_lines="8-11"
+MAX_M10S gps;
+BMI088andLIS3MDL imu;
+DPS368 baro;
+Sensor *sensors[] = {&gps, &imu, &baro};
+
+State vehicleState(sensors, 3, nullptr);
 
 AstraConfig config = AstraConfig()
-                        .withState(&state)
+                        .withState(&vehicleState)
+                        .withBuzzerPin(13)
+                        .withBBPin(LED_BUILTIN);
+```
+
+Here we've configured a buzzer on pin 13 and the built-in LED for BlinkBuzz patterns. See the [Configuration Options](#configuration-options) section below for all available options.
+
+### Creating the Astra Object
+
+With your config ready, instantiate the main `Astra` system object:
+
+```cpp title="main.cpp" hl_lines="13"
+MAX_M10S gps;
+BMI088andLIS3MDL imu;
+DPS368 baro;
+Sensor *sensors[] = {&gps, &imu, &baro};
+
+State vehicleState(sensors, 3, nullptr);
+
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
                         .withBuzzerPin(13)
                         .withBBPin(LED_BUILTIN);
 
-AstraSystem computer = AstraSystem(&config);
+Astra system(&config);
+```
+
+### Initializing and Updating
+
+Finally, call `init()` in your `setup()` function and `update()` in your `loop()` function. That's it—Astra handles the rest:
+
+```cpp title="main.cpp" hl_lines="17 22"
+MAX_M10S gps;
+BMI088andLIS3MDL imu;
+DPS368 baro;
+Sensor *sensors[] = {&gps, &imu, &baro};
+
+State vehicleState(sensors, 3, nullptr);
+
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withBuzzerPin(13)
+                        .withBBPin(LED_BUILTIN);
+
+Astra system(&config);
 
 void setup()
 {
-  computer.init();
+    system.init();
 }
 
 void loop()
 {
-  computer.update();
+    system.update();
 }
 ```
-///
 
-### Conclusion
+### What Just Happened?
 
-That's it! You now have a fully functional Astra system that is ready to be used. You can add more sensors, change the configuration options, and customize the `NewState` class to your heart's content. See the [AstraConfig documentation](#) for more information on what you can do with the config object, and see the [State documentation](#) for more information on how to customize the state object.
+When you call `system.init()`:
+
+- All sensors are initialized
+- The state estimation system is set up
+- Logging backends are configured
+- BlinkBuzz utilities are prepared
+
+When you call `system.update()`:
+
+- All sensors are read at the configured rate
+- State variables (position, velocity, acceleration, orientation) are updated
+- Data is logged to configured destinations
+- BlinkBuzz patterns are processed
+
+You now have a fully functional telemetry system.
 
 ---
 
-## Easy Modifications
+## Configuration Options
 
-Here are few easy modifications that you can make to the system to make it more suited to your needs. If you don't see what you're looking for here, try the page relating to that specific feature, or reach out to someone on Avionics.
+The `AstraConfig` class uses a builder pattern, allowing you to chain method calls to configure only what you need. Here are the most commonly used options:
 
-### Modifying the update rate
+### Update Rates
 
-You can modify the update rate of the system by using one of two methods on the Astra Config object. They both have the same effect, and the last one called is the one used.
+Control how often sensors are read and state is updated:
 
 /// tab | withUpdateRate()
-```cpp title="" linenums="14" hl_lines="5"
+```cpp
 AstraConfig config = AstraConfig()
-                        .withState(&state)
-                        .withBuzzerPin(13)
-                        .withBBPin(LED_BUILTIN)
-                        .withUpdateRate(10); // 10Hz (100 ms between updates)
+                        .withState(&vehicleState)
+                        .withUpdateRate(10); // 10Hz (100ms between updates)
 ```
 ///
+
 /// tab | withUpdateInterval()
-```cpp title="" linenums="14" hl_lines="5"
+```cpp
 AstraConfig config = AstraConfig()
-                        .withState(&state)
-                        .withBuzzerPin(13)
-                        .withBBPin(LED_BUILTIN)
+                        .withState(&vehicleState)
                         .withUpdateInterval(100); // 100ms between updates (10Hz)
 ```
 ///
 
 !!! note
-    10 hz is the default rate. If you set it too high, the system may struggle to keep up, so we recommend keeping it at 50 hz or lower.
+    10 Hz is the default. If you set it too high, the system may struggle to keep up. We recommend staying at or below 50 Hz unless you have specific performance requirements and have tested thoroughly.
 
-### Sensor drift correction
+### Logging Rates
 
-While on the pad waiting for launch, it is very likely that the sensors will begin to drift slightly. There is a feature in Astra that allows you to correct for this until launch is detected. This correction acts by averaging out some length of sensor data, while ignoring the very most recent data. As most launch detection systems require the rocket to be noticeably off the ground and may take a few iterations to properly detect launch, the idea behind this was to stop early launch data from affecting the zeroing of the sensors.
+Control how often telemetry data is written to storage:
 
-!!! danger
-    Using this feature **requires** that you have working launch detection. If not, they will continuously attempt to correct themselves to zero, and thus report faulty data for the duration of the flight.
-
-```cpp title="" linenums="14" hl_lines="5-7"
+/// tab | withLoggingRate()
+```cpp
 AstraConfig config = AstraConfig()
-                        .withState(&state)
-                        .withBuzzerPin(13)
-                        .withBBPin(LED_BUILTIN)
-                        .withUsingSensorBiasCorrection(true); // (1)!
-                        .withSensorBiasCorrectionDataLength(2); // two seconds of data to average over, BUT
-                        .withSensorBiasCorrectionIgnore(1); // ignore the most recent 1 second of data.
+                        .withState(&vehicleState)
+                        .withLoggingRate(20); // 20Hz logging
 ```
-{.annotate}
+///
 
-1. This is false by default, however the length of collection and ignoring default to the two values below, meaning you do not have to call the methods if these values are fine for you.
+/// tab | withLoggingInterval()
+```cpp
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withLoggingInterval(50); // Log every 50ms
+```
+///
 
-### Using BlinkBuzz
+Separating update rate from logging rate lets you read sensors frequently while conserving storage space.
 
-As we saw earlier, you must add the signaling pins you want to use to the `AstraConfig` object. This is done by calling the `withBuzzerPin()` and `withBBPin()` methods. The buzzer pin is special and has some default events that utilize it. `withBBPin()` can be use to add any pin (or a second buzzer). You can add up to 50 pins.
+### Sensor Bias Correction
 
-To use a pin, you can call `#!cpp bb.onoff(int pin, int duration, int repeat = 1, int pause = duration)`. If you are in the `loop` phase of the program, you can use `#!cpp bb.aonoff(...)` to do the same thing asynchronously (i.e. beep for long periods without blocking other code execution).
+Astra can automatically zero sensors before launch by averaging readings over time:
 
-See the [BlinkBuzz documentation](#) for more usage information.
+```cpp
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withUsingSensorBiasCorrection(true) // Enable correction
+                        .withSensorBiasCorrectionDataLength(2) // Average over 2 seconds
+                        .withSensorBiasCorrectionDataIgnore(1); // Ignore the most recent 1 second
+```
 
-### Using the Logger
+This is useful for compensating for sensor drift while sitting on the pad. The system averages data over the specified length while ignoring the most recent data (to avoid including early motion in the baseline).
 
-You can modify the format of the event logger by using the `withLogPrefixFormatting()` method. This takes a string that must include the `$time` and `$logType` (case specific) keywords. It will then format all log entries accordingly. The default is 
+!!! danger "Requires Launch Detection"
+    Bias correction must be disabled once your vehicle launches. If you're extending `State`, call `sensor->useBiasCorrection(false)` when you detect launch. Without this, sensors will continuously re-zero during flight, producing garbage data.
 
-`"$time - [$logType] "`
+### BlinkBuzz Configuration
 
-To use the logger to record data, you can call `#!cpp //getLogger().recordLogData(LogType type, const char *format, ...)`. This will log the data to both the SD card and USB serial port.
+Configure pins for LED and buzzer output patterns:
 
-See the [Logger documentation](#) for more information.
+```cpp
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withBuzzerPin(13)         // Special BUZZER pin for default events
+                        .withBBPin(LED_BUILTIN)    // Additional pin for custom patterns
+                        .withBBPin(12)             // You can add up to 50 pins
+                        .withBBAsync(true, 50);    // Enable async mode with queue size
+```
 
-## Conclusion
+The buzzer pin has special default behaviors. Additional pins can be controlled via the `bb` global object. See the [BlinkBuzz documentation](utils/blinkbuzz.md) for pattern usage.
 
-This just scratches the surface of what these utilities and systems can handle (blink buzz can do infinite asynchronous morse code! ...if you need that).
+### Adding Custom Data Reporters
 
-See the [AstraConfig documentation](#) for more information on what you can do with the config object.
+If you have additional data sources beyond sensors and state (e.g., custom hardware or computed values), add them to logging:
 
-See the [State documentation](#) for more information on how to customize the state object.
+```cpp
+MyCustomReporter reporter1;
+MyCustomReporter reporter2;
+DataReporter *reporters[] = {&reporter1, &reporter2};
 
-Also check out the [Event system](#), [Sensor interface](#), [DataReporter interface](#), and [Filter interface](#) for more information on how to use some more advanced parts of the system.
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withOtherDataReporters(reporters);
+```
 
-[^1]: There are other configuration options that you can use to disregard the stage system, but we don't recommend it. Check out the [Logger documentation](#) for more information.
+See the [DataReporter documentation](ifaces/data-reporter.md) for implementation details.
 
+### Custom Log Sinks
+
+By default, Astra logs to available storage and serial. You can provide custom log sinks:
+
+```cpp
+SDCardFile mySDLog;
+UARTLog mySerialLog(Serial, 115200);
+ILogSink *logs[] = {&mySDLog, &mySerialLog};
+
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withDataLogs(logs, 2);
+```
+
+---
+
+## Using BlinkBuzz
+
+BlinkBuzz provides synchronous and asynchronous LED/buzzer patterns. After adding pins via `AstraConfig`, use the global `bb` object:
+
+```cpp
+// Synchronous (blocks)
+bb.on(LED_BUILTIN);
+bb.off(LED_BUILTIN);
+bb.onoff(LED_BUILTIN, 500);           // On for 500ms
+bb.onoff(LED_BUILTIN, 200, 3);        // Blink 3 times, 200ms each
+bb.onoff(LED_BUILTIN, 200, 3, 500);   // Blink 3 times with 500ms pauses
+
+// Asynchronous (non-blocking)
+bb.aonoff(LED_BUILTIN, 1000);         // Turn on for 1 second without blocking
+bb.aonoff(LED_BUILTIN, 100, 5);       // Blink 5 times without blocking
+bb.aonoff(LED_BUILTIN, 100, 0, 200);  // Blink indefinitely with 200ms pauses
+```
+
+Asynchronous patterns require that `system.update()` is called regularly. See the [BlinkBuzz documentation](utils/blinkbuzz.md) for advanced patterns including morse code.
+
+---
+
+## Using the Logging System
+
+Astra provides two separate logging systems:
+
+### Event Logging
+
+For human-readable status messages, use the global `EventLogger` macros:
+
+```cpp
+#include "RecordData/Logging/EventLogger.h"
+
+LOGI("System initialized successfully");
+LOGW("GPS fix lost, using dead reckoning");
+LOGE("Barometer I2C communication failed");
+```
+
+These log to configured sinks with timestamps and severity levels.
+
+### Data Logging
+
+Telemetry data logging happens automatically via the `DataLogger` system. Every `DataReporter` (including `State` and all `Sensor` subclasses) automatically registers its data columns. You don't need to manually log this data—just call `system.update()`.
+
+To access logged data, see the [Logger documentation](utils/logger.md) for file formats and retrieval methods.
+
+---
+
+## Extending State for Custom Behavior
+
+While the base `State` class works for many applications, you may want to add custom logic. Simply extend it:
+
+```cpp title="CustomState.h"
+#ifndef CUSTOM_STATE_H
+#define CUSTOM_STATE_H
+
+#include <State/State.h>
+
+using namespace astra;
+
+class CustomState : public State {
+public:
+    CustomState(Sensor **sensors, int numSensors, Filter *filter);
+
+    void update(double currentTime = -1) override;
+
+    int getFlightStage() const { return flightStage; }
+
+private:
+    int flightStage = 0;
+    void detectLaunch();
+    void detectLanding();
+};
+
+#endif
+```
+
+```cpp title="CustomState.cpp"
+#include "CustomState.h"
+#include "RecordData/Logging/EventLogger.h"
+
+CustomState::CustomState(Sensor **sensors, int numSensors, Filter *filter)
+    : State(sensors, numSensors, filter) {}
+
+void CustomState::update(double currentTime) {
+    // Call parent update to handle sensors and state estimation
+    State::update(currentTime);
+
+    // Add your custom logic
+    detectLaunch();
+    detectLanding();
+}
+
+void CustomState::detectLaunch() {
+    if (flightStage == 0 && acceleration.z() > 20) {
+        flightStage = 1;
+        LOGI("Launch detected!");
+
+        // Disable sensor bias correction after launch
+        for (int i = 0; i < numSensors; i++) {
+            sensors[i]->useBiasCorrection(false);
+        }
+    }
+}
+
+void CustomState::detectLanding() {
+    if (flightStage == 1 && velocity.z() < 0.1 && position.z() < 5) {
+        flightStage = 2;
+        LOGI("Landing detected!");
+    }
+}
+```
+
+Then use your custom state instead of the base class:
+
+```cpp title="main.cpp"
+#include "CustomState.h"
+
+// ... sensors setup ...
+
+CustomState vehicleState(sensors, 3, nullptr);
+
+AstraConfig config = AstraConfig()
+                        .withState(&vehicleState)
+                        .withUsingSensorBiasCorrection(true); // Disabled by CustomState at launch
+
+Astra system(&config);
+```
+
+---
+
+## Accessing State Data
+
+The `State` object provides getters for all estimated quantities:
+
+```cpp
+Vector<3> pos = vehicleState.getPosition();        // meters from origin
+Vector<3> vel = vehicleState.getVelocity();        // m/s
+Vector<3> accel = vehicleState.getAcceleration();  // m/s²
+Quaternion orient = vehicleState.getOrientation(); // vehicle attitude
+Vector<2> coords = vehicleState.getCoordinates();  // lat, lon in degrees
+double heading = vehicleState.getHeading();        // degrees
+```
+
+You can access this data anywhere in your code after `system.update()` has been called.
+
+---
+
+## Next Steps
+
+This covers the essentials of integrating Astra into your project. For more advanced usage:
+
+- **[State Interface](ifaces/state.md)** - Details on state estimation and customization
+- **[Sensor Interface](ifaces/sensor.md)** - Available sensors and implementing custom ones
+- **[DataReporter Interface](ifaces/data-reporter.md)** - Adding custom telemetry data
+- **[Filter Interface](ifaces/filters.md)** - Implementing Kalman filters for state estimation
+- **[Logger Documentation](utils/logger.md)** - Log file formats and data retrieval
+- **[BlinkBuzz Documentation](utils/blinkbuzz.md)** - Advanced LED and buzzer patterns
+
+---

@@ -4,67 +4,102 @@ title: User Manual - Introduction
 # The Complete Astra User's Manual
 
 !!! info
-    These docs were written in the order shown on the sidebar. You many notice that later docs somewhat rely on the reader understanding topics covered earlier. They should mostly be self-sufficient, but it's not guaranteed.
+    These docs are organized in the order shown in the sidebar. Later pages may reference concepts covered earlier, though each should be reasonably self-sufficient.
 
-    As always, if you have any questions, feel free to reach out on Slack or Github.
+    If you have questions, reach out on Slack or GitHub.
+
 ---
 
-<sub><sup><sub><sup>Now on a cool new website!</sup></sub></sup></sub>
+This is the official user's manual for TRT's Astra flight software library. It's designed as a comprehensive guide for users of all levels, from beginners to advanced developers. The manual covers everything from installation and setup to advanced features and troubleshooting.
 
-This is the official user's manual for TRT's Multi-Mission Flight Software (Astra). It is designed to be a comprehensive guide for users of all levels, from beginners to advanced developers. The manual covers everything from installation and setup to advanced features and troubleshooting.
-
-The library is essentially split into two categories: **Utilities** and **Interfaces**. 
+Astra is organized into two main categories: **Utilities** and **Interfaces**.
 
 ---
 
 ## Utilities
 
-We describe utilities as any part of the library designed to be used as-is, without the end user (you) having to overload or otherwise modify it.
-The utilities offered by Astra are:
+Utilities are parts of the library designed to be used as-is, without requiring you to extend or modify them. Astra provides the following utilities:
 
-### **[BlinkBuzz](blinkbuzz.md)**
-An (asynchronous!) utility for outputting patterned buzzes and LED blinks.
+### **[Astra System](utils/mmfssys.md)**
+The main system coordinator that manages sensors, state, logging, and BlinkBuzz. Configure it with `AstraConfig` and call `init()` and `update()` to run your telemetry system.
 
-### **[CircBuffer](circbuf.md)**
-A queue or FIFO system for storing data in a fixed-size buffer.
+### **[Data Logger & Event Logger](utils/logger.md)**
+Two separate logging systems:
+- **DataLogger**: Automatic CSV telemetry recording from all sensors and state
+- **EventLogger**: Human-readable timestamped messages with severity levels (INFO, WARNING, ERROR)
 
-### **[Logger](logger.md)**
-A simple logging utility that can log to the SD card or USB serial port.
+### **[BlinkBuzz](utils/blinkbuzz.md)**
+An asynchronous utility for creating LED blinks and buzzer patterns, including morse code. Supports both blocking and non-blocking operation.
 
-### **[RetrieveData](retrieve-data.md)**
-A system that allows transfer of flight data files over Serial, allowing retrieval of files stored in onboard flash.
+### **[CircBuffer](utils/circbuf.md)**
+A circular buffer implementation for fixed-size FIFO queues, useful for storing recent sensor data or managing log buffers.
 
-### **[Math](math.md)**
-A collection of ... math? ... objects (vectors, matrices, and quaternions) and their functions.
-
-### **[AstraSystem](mmfssys.md)**
-An object designed to handle all of the Astra functions during flight.
-
-Most of the power that Astra offers comes from the Logger and AstraSystem utilities. That is to say, those are two of the most complicated systems in the library.
+### **[Math Libraries](utils/math.md)**
+Vector, matrix, and quaternion classes with common operations for state estimation and sensor fusion calculations.
 
 ---
 
 ## Interfaces
 
-Interfaces are for any other part of the library that is not fully implemented, or otherwise is expected to be modified by the end user. Most of them are not strictly interfaces, but rather abstract classes. The following interfaces are offered by Astra:
+Interfaces are abstract classes or extensible components that you customize for your specific vehicle and mission. Astra provides these interfaces:
 
-### **[State](state.md)**
-This is the main purpose of using Astra. It is an abstract class that is used to define the state of the rocket. It is designed to be overloaded by the end user, and is used to define the behavior of the telemetry systems during flight.
+### **[State](ifaces/state.md)**
+The core state estimation class. Manages sensor fusion and provides unified access to position, velocity, acceleration, orientation, and GPS coordinates. Extend it to add custom behavior like launch detection or stage transitions.
 
-### **[DataReporter](data-reporter.md)**
-This is an interface for recording flight CSV data using Logger. State implements it, as do all of the sensors. You may extend it to add your own data reporters.
+### **[Sensor](ifaces/sensor.md)**
+The base sensor interface with type-safe specializations for:
 
-### **[Sensor](sensor.md)**
-This is the base sensor interface. There are further interfaces for each type of sensor:
+- **[Barometer](ifaces/sensors/baro.md)** - Pressure sensors providing altitude and temperature
+- **[IMU](ifaces/sensors/imu.md)** - 9DOF inertial measurement units (accelerometer, gyroscope, magnetometer)
+- **[GPS](ifaces/sensors/gps.md)** - Position and velocity from satellite navigation
+- **[Encoder](ifaces/sensors/enc.md)** - Motor encoder for rotational tracking
+- **[Light Sensor](ifaces/sensors/light.md)** - Ambient light detection
 
-- **[Barometer](baro.md)**
-- **[IMU](imu.md)** (9DOF, including accelerometer, gyroscope, and magnetometer)
-- **[GPS](gps.md)**
-- **[Encoder](enc.md)** (a motor encoder)
-- **[LightSensor](light.md)**
+### **[DataReporter](ifaces/data-reporter.md)**
+An interface for adding custom data to CSV telemetry logs. All sensors implement this, and you can extend it for your own data sources (e.g., battery voltage, custom calculations).
 
-### **[Event](event.md)**
-This is a simple, readily-extendable event system. You can create classes that listen to and fire off custom events, or overload the handler for the default events.
+### **[Filters](ifaces/filters.md)**
+A Kalman filter interface that can be passed to `State` for improved state estimation. Implement custom filters for your specific vehicle dynamics.
 
-### **[Filters](filters.md)**
-This is a basic Kalman filter interface, able to be passed into State for it to use to filter sensor data.
+---
+
+## Platform Support
+
+Astra supports multiple microcontroller platforms and storage backends:
+
+**Supported Microcontrollers:**
+- STM32 (various families)
+- Teensy (3.x, 4.x)
+- ESP32
+
+**Storage Options:**
+- SD Cards via SPI
+- SD Cards via SDIO (platform-dependent)
+- Internal flash memory
+- eMMC (platform-dependent)
+
+Platform-specific features are handled automatically based on your PlatformIO configuration.
+
+---
+
+## Design Philosophy
+
+Astra's architecture emphasizes:
+
+1. **Modularity**: Use only the components you need
+2. **Type Safety**: Sensor types are checked at compile time while maintaining runtime flexibility
+3. **Automatic Logging**: Sensors and state automatically register their data—no manual column management
+4. **Vehicle Agnostic**: Not just for rockets—suitable for drones, rovers, or any vehicle needing telemetry
+5. **Minimal Boilerplate**: Simple integration with sensible defaults
+
+---
+
+## Getting Started
+
+Ready to integrate Astra? Start with:
+
+1. **[Installation](installation.md)** - Set up your PlatformIO project
+2. **[Basic Usage](basic-use.md)** - Create your first Astra system
+3. Explore the interface and utility documentation as needed
+
+---
