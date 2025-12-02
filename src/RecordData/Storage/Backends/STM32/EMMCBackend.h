@@ -1,10 +1,8 @@
-#ifndef EMMC_BACKEND_H
-#define EMMC_BACKEND_H
-
-#if defined(ENV_STM)
+#ifndef STM32_EMMC_BACKEND_H
+#define STM32_EMMC_BACKEND_H
 
 #include "../../IStorage.h"
-#include "EMMCFile.h"
+#include "STM32File.h"
 #include <STM32SD.h>
 #include <ff.h>  // For FA_OPEN_APPEND and other FatFs constants
 
@@ -14,7 +12,6 @@ namespace astra
 /**
  * @brief IStorage implementation for eMMC using STM32 MMC interface
  *
- * Supported platforms: STM32 only
  * Uses STM32SD library to access eMMC via MMC interface (4-bit mode).
  *
  * Pin configuration (hardcoded):
@@ -58,7 +55,7 @@ public:
         File file = SD.open(filename, FILE_READ);
         if (!file) return nullptr;
 
-        return new EMMCFile(file);
+        return new STM32File(file);
     }
 
     IFile* openWrite(const char* filename, bool append = true) override {
@@ -69,7 +66,7 @@ public:
         File file = SD.open(filename, mode);
         if (!file) return nullptr;
 
-        return new EMMCFile(file);
+        return new STM32File(file);
     }
 
     bool exists(const char* filename) override {
@@ -95,6 +92,4 @@ public:
 
 } // namespace astra
 
-#endif // ENV_STM
-
-#endif // EMMC_BACKEND_H
+#endif // STM32_EMMC_BACKEND_H

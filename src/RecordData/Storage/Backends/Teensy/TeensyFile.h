@@ -1,26 +1,24 @@
-#ifndef EMMC_FILE_H
-#define EMMC_FILE_H
-
-#if defined(ENV_STM)
+#ifndef TEENSY_FILE_H
+#define TEENSY_FILE_H
 
 #include "../../IFile.h"
-#include <STM32SD.h>
+#include <SdFat.h>
+#include <utility>
 
 namespace astra
 {
 
 /**
- * @brief IFile implementation wrapping STM32SD's File class
+ * @brief IFile implementation for Teensy using SdFat's FsFile
  *
- * Supported platforms: STM32 only
- * Works with eMMC and SD cards connected via MMC interface.
+ * Wraps SdFat library's FsFile handle for SD card access via SDIO.
  */
-class EMMCFile : public IFile {
+class TeensyFile : public IFile {
 private:
-    File _handle;
+    FsFile _handle;
 
 public:
-    EMMCFile(File handle) : _handle(handle) {}
+    TeensyFile(FsFile&& handle) : _handle(std::move(handle)) {}
 
     // Writing
     size_t write(uint8_t b) override {
@@ -32,8 +30,7 @@ public:
     }
 
     bool flush() override {
-        _handle.flush();
-        return true;
+        return _handle.sync();  // SdFat uses sync() instead of flush()
     }
 
     // Reading
@@ -69,13 +66,10 @@ public:
 
     // Status
     bool isOpen() const override {
-        // Cast away const since STM32SD's File::operator bool() is not const
-        return const_cast<File&>(_handle) ? true : false;
+        return _handle.isOpen();
     }
 };
 
 } // namespace astra
 
-#endif // ENV_STM
-
-#endif // EMMC_FILE_H
+#endif // TEENSY_FILE_H

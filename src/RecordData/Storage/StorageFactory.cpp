@@ -1,12 +1,13 @@
 #include "StorageFactory.h"
 
-// Include backend implementations based on platform
+// Include platform-specific backend implementations
 #if defined(ENV_STM)
-#include "Backends/EMMC/EMMCBackend.h"
-#endif
-
-#if defined(ENV_STM) || defined(ENV_ESP) || defined(ENV_TEENSY)
-#include "Backends/SDCard/SDCardBackend.h"
+#include "Backends/STM32/EMMCBackend.h"
+#include "Backends/STM32/SDCardBackend.h"
+#elif defined(ENV_ESP)
+#include "Backends/ESP32/SDCardBackend.h"
+#elif defined(ENV_TEENSY)
+#include "Backends/Teensy/SDCardBackend.h"
 #endif
 // #include "Backends/Flash/FlashBackend.h"  // Future
 
