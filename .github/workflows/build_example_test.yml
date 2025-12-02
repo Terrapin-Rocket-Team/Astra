@@ -20,4 +20,4 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
       - name: Build Example Test
-        run: pio run --environment teensy41 
+        run: pio run
