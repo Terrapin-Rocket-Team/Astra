@@ -14,7 +14,7 @@ GPS::GPS(const char *name) : Sensor("GPS", name)
     addColumn("%0.7f", &position.y(), "Lon (deg)");
     addColumn("%0.3f", &position.z(), "Alt (m)");
     addColumn("%d", &fixQual, "Fix Quality");
-    addColumn("%s", tod, "Time of Day");
+    addColumn("%s", &tod, "Time of Day");
     hasFirstFix = false;
     hasFix = false;
 }

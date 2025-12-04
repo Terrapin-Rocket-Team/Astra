@@ -26,7 +26,6 @@ void Astra::init()
         pins++;
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
-    LOGI("Initializing Astra.");
 
     // then Logger
     DataReporter **reporters = new DataReporter *[config->numReporters + config->state->getNumMaxSensors() + 1];
@@ -38,10 +37,8 @@ void Astra::init()
     int j = i;
     for (i = 0; i < config->numReporters; i++)
         reporters[j++] = config->reporters[i];
-    LOGI("Initializing Astra.");
 
     DataLogger::configure(config->logs, config->numLogs, reporters, j);
-    LOGI("Initializing Astra.");
 
     // bool log = //getLogger().init(reporters, j);
 #ifndef NATIVE
@@ -90,7 +87,9 @@ bool Astra::update(double ms)
     if (ms - lastLoggingUpdate > config->loggingInterval)
     {
         lastLoggingUpdate = ms;
-        // getLogger().recordFlightData();
+        if (DataLogger::available()) {
+            DataLogger::instance().appendLine();
+        }
     }
 
     return didUpdate;
