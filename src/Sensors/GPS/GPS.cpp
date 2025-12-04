@@ -9,7 +9,7 @@ GPS::GPS(const char *name) : Sensor("GPS", name)
     hr = 0;
     min = 0;
     sec = 0;
-    strcpy(tod, "00:00:00");
+    snprintf(tod, 9, "%s", "00:00:00");
     addColumn("%0.7f", &position.x(), "Lat (deg)");
     addColumn("%0.7f", &position.y(), "Lon (deg)");
     addColumn("%0.3f", &position.z(), "Alt (m)");
@@ -35,7 +35,7 @@ int GPS::getFixQual() const { return fixQual; }
 void GPS::calcInitialValuesForDistance()
 {
     constexpr auto EARTH_RAD = 6378.137e3; // meters
-    constexpr auto RAD = 3.14159265358979323846 / 180.0;
+    constexpr auto RAD = 3.14159265358979323846 / 180.0; // lol
 
     constexpr auto EARTH_FLAT = 1.0 / 298.257223563; // flattening of the earth. IDK what this means
 
