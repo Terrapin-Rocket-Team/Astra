@@ -17,7 +17,7 @@ using SerialUSB_t = HWCDC;
 // ---------- STM32 (stm32duino) ----------
 #elif defined(_STM32_DEF_)
 using SerialUART_t = HardwareSerial;
-using SerialUSB_t = HardwareSerial;               // works whether it's USBSerial or USBCDC
+using SerialUSB_t = USBSerial;               // works whether it's USBSerial or USBCDC
 
 
 // ---------- NATIVE ----------

@@ -83,7 +83,7 @@ namespace astra
             return false;
 
         char pre[32];
-        const int m = snprintf(pre, sizeof(pre), "%.3f [%s]: ", millis() / 1000.0, lvl);
+        int m = snprintf(pre, sizeof(pre), "%.3f [%s]: ", millis() / 1000.0, lvl);
 
         bool wroteAny = false;
         for (uint8_t i = 0; i < _count; i++)

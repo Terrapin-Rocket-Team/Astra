@@ -56,6 +56,7 @@ namespace astra
         USBLog(SerialUSB_t &s, int baud, bool prefix = false) : s(s), baud(baud), prefix(prefix) {}
         bool begin() override
         {
+            if(!ok())
             s.begin(baud);
             return rdy = true;
         }
