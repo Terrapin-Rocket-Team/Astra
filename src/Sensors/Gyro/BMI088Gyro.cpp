@@ -15,7 +15,10 @@ namespace astra
 
     bool BMI088Gyro::init()
     {
-        return gyro.begin() > 0;
+        int err = gyro.begin();
+        if (err <= 0)
+            LOGE("BMI ERROR: %d", err);
+        return err > 0;
     }
 
     bool BMI088Gyro::read()

@@ -3,9 +3,9 @@
 
 #include "MAX_M10S.h"
 
-namespace mmfs
+namespace astra
 {
-    class SAM_M8Q : public MAX_M10S
+    class SAM_M10Q : public MAX_M10S
     {
     public:
         using MAX_M10S::MAX_M10S; // inherit ctors
