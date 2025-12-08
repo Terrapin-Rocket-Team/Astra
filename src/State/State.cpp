@@ -4,13 +4,14 @@
 
 namespace astra
 {
-    State::State(Sensor **sensors, int numSensors, Filter *filter) : DataReporter("State")
+    State::State(Sensor **sensors, int numSensors, Filter *filter, MahonyAHRS *orientationFilter) : DataReporter("State")
     {
         lastTime = 0;
         currentTime = 0;
         this->maxNumSensors = numSensors;
         this->sensors = sensors;
         this->filter = filter;
+        this->orientationFilter = orientationFilter;
 
         addColumn("%0.3f", &currentTime, "Time (s)");
         addColumn("%0.3f", &position.x(), "PX (m)");
@@ -60,6 +61,57 @@ namespace astra
             stateVars = new double[filter->getStateSize()];
         }
 
+        if (orientationFilter)
+        {
+            // Auto-calibrate orientation filter during initialization
+            // Try IMU first, fallback to separate Accel/Gyro sensors
+            IMU *imu = reinterpret_cast<IMU *>(getSensor("IMU"_i));
+            Accel *accel_sensor = reinterpret_cast<Accel *>(getSensor("Accelerometer"_i));
+            Gyro *gyro_sensor = reinterpret_cast<Gyro *>(getSensor("Gyroscope"_i));
+
+            bool hasIMU = sensorOK(imu);
+            bool hasAccelGyro = sensorOK(accel_sensor) && sensorOK(gyro_sensor);
+
+            if (hasIMU || hasAccelGyro)
+            {
+                LOGI("Auto-calibrating orientation filter...");
+                orientationFilter->setMode(MahonyMode::CALIBRATING);
+
+                // Collect calibration samples
+                const int calibSamples = 200;
+                for (int i = 0; i < calibSamples; i++)
+                {
+                    Vector<3> accel, gyro;
+
+                    if (hasIMU)
+                    {
+                        imu->update();
+                        accel = imu->getAcceleration();
+                        gyro = imu->getAngularVelocity();
+                    }
+                    else
+                    {
+                        accel_sensor->update();
+                        gyro_sensor->update();
+                        accel = accel_sensor->getAccel();
+                        gyro = gyro_sensor->getAngVel();
+                    }
+
+                    orientationFilter->update(accel, gyro, 0.01); // Assume ~100Hz
+                    delay(10);
+                }
+
+                // Initialize and switch to normal mode
+                orientationFilter->initialize();
+                orientationFilter->setMode(MahonyMode::CORRECTING);
+                LOGI("Orientation filter calibrated and ready.");
+            }
+            else
+            {
+                LOGW("No IMU or Accel/Gyro sensors available for orientation filter calibration.");
+            }
+        }
+
         numSensors = good;
 
         initialized = true;
@@ -98,7 +150,67 @@ namespace astra
     {
         GPS *gps = reinterpret_cast<GPS *>(getSensor("GPS"_i));
         IMU *imu = reinterpret_cast<IMU *>(getSensor("IMU"_i));
+        Accel *accel_sensor = reinterpret_cast<Accel *>(getSensor("Accelerometer"_i));
+        Gyro *gyro_sensor = reinterpret_cast<Gyro *>(getSensor("Gyroscope"_i));
         Barometer *baro = reinterpret_cast<Barometer *>(getSensor("Barometer"_i));
+
+        // Determine which sensors are available for orientation
+        bool hasIMU = sensorOK(imu);
+        bool hasAccelGyro = sensorOK(accel_sensor) && sensorOK(gyro_sensor);
+
+        // Update orientation filter if available
+        if (orientationFilter && (hasIMU || hasAccelGyro))
+        {
+            double dt = currentTime - lastTime;
+            Vector<3> accel, gyro;
+
+            // Get accel and gyro data from IMU or separate sensors
+            if (hasIMU)
+            {
+                accel = imu->getAcceleration();
+                gyro = imu->getAngularVelocity();
+            }
+            else
+            {
+                accel = accel_sensor->getAccel();
+                gyro = gyro_sensor->getAngVel();
+            }
+
+            // Automatic mode switching based on accelerometer magnitude
+            // If |accel| is close to 9.81 m/s^2, enable accel correction
+            // Otherwise (high-g or freefall), use gyro-only mode
+            if (orientationFilter->isInitialized())
+            {
+                double accelMag = accel.magnitude();
+                double accelError = abs(accelMag - 9.81);
+
+                // Threshold: if accel error < 1 m/s^2, trust the accelerometer
+                if (accelError < 1.0)
+                {
+                    if (orientationFilter->getMode() != MahonyMode::CORRECTING)
+                    {
+                        orientationFilter->setMode(MahonyMode::CORRECTING);
+                    }
+                }
+                else
+                {
+                    if (orientationFilter->getMode() != MahonyMode::GYRO_ONLY)
+                    {
+                        orientationFilter->setMode(MahonyMode::GYRO_ONLY);
+                    }
+                }
+            }
+
+            orientationFilter->update(accel, gyro, dt);
+
+            // Update orientation and earth-frame acceleration from filter
+            if (orientationFilter->isInitialized())
+            {
+                orientation = orientationFilter->getQuaternion();
+                // Get earth-frame acceleration (with gravity subtracted)
+                acceleration = orientationFilter->getEarthAcceleration(accel);
+            }
+        }
 
         if (filter)
         {
@@ -110,10 +222,21 @@ namespace astra
             measurements[1] = sensorOK(gps) ? coordinates.y() - origin.y() : 0;
             measurements[2] = baro->getASLAltM();
 
-            // imu x y z
-            // inputs[0] = acceleration.x() = imu->getAccelerationGlobal().x();
-            // inputs[1] = acceleration.y() = imu->getAccelerationGlobal().y();
-            // inputs[2] = acceleration.z() = imu->getAccelerationGlobal().z();
+            // Earth-frame acceleration inputs (gravity already subtracted by orientation filter)
+            // If orientation filter is available, use its earth-frame acceleration
+            // Otherwise, leave inputs as zero
+            if (orientationFilter && orientationFilter->isInitialized())
+            {
+                inputs[0] = acceleration.x();
+                inputs[1] = acceleration.y();
+                inputs[2] = acceleration.z();
+            }
+            else
+            {
+                inputs[0] = 0.0;
+                inputs[1] = 0.0;
+                inputs[2] = 0.0;
+            }
 
             stateVars[0] = position.x();
             stateVars[1] = position.y();

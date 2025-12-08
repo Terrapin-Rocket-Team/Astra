@@ -2,11 +2,14 @@
 #define STATE_H
 
 #include "../Filters/Filter.h"
+#include "../Filters/Mahony.h"
 
 // Include all the sensor classes
 #include "../Sensors/Baro/Barometer.h"
 #include "../Sensors/GPS/GPS.h"
 #include "../Sensors/IMU/IMU.h"
+#include "../Sensors/Accel/Accel.h"
+#include "../Sensors/Gyro/Gyro.h"
 #include "../Math/Vector.h"
 #include "../Math/Quaternion.h"
 
@@ -15,7 +18,7 @@ namespace astra
     class State : public DataReporter
     {
     public:
-        State(Sensor **sensors, int numSensors, Filter *filter);
+        State(Sensor **sensors, int numSensors, Filter *filter, MahonyAHRS *orientationFilter = nullptr);
         virtual ~State();
 
         // Returns false if any sensor failed to init. Check data log for failed sensor. Disables sensor if failed.
@@ -38,6 +41,10 @@ namespace astra
         virtual int getNumMaxSensors() const { return maxNumSensors; } // how many sensors were passed in the constructor
         virtual Sensor **getSensors() const { return sensors; }
         bool sensorOK(const Sensor *sensor) const;
+
+        // Orientation filter control
+        MahonyAHRS *getOrientationFilter() const { return orientationFilter; }
+        void setOrientationFilterMode(MahonyMode mode) { if (orientationFilter) orientationFilter->setMode(mode); }
 
     protected:
         double currentTime; // in s since uC turned on
@@ -66,6 +73,9 @@ namespace astra
         // Kalman Filter settings
         Filter *filter;
         double *stateVars = nullptr;
+
+        // Orientation filter (Mahony AHRS)
+        MahonyAHRS *orientationFilter;
 
         bool initialized = false;
     };
