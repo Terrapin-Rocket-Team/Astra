@@ -12,7 +12,7 @@
 
 // Sensor data structure matching your BlueRaven columns
 struct SensorData {
-    float batteryVoltage;
+    float batteryVoltage; //all floats are 4 bytes of data, buffer should be greater than 56 bytes 
     float altitude;
     float pressure;
     float temperature;
@@ -48,7 +48,7 @@ private:
     
 private:
     char line[2500];
-    uint8_t buffer[512];      // Buffer for incoming serial data
+    uint8_t buffer[512];      // Buffer for incoming serial data, each box is 1 byte so entire buffer can take 512 bytes of data 
     uint16_t bufferPos;       // Current position in buffer
     bool messageReady;        // Flag for complete message
     
