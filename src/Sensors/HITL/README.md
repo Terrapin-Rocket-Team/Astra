@@ -54,7 +54,7 @@ Format: `HITL/timestamp,ax,ay,az,gx,gy,gz,mx,my,mz,pressure,temp,lat,lon,alt,fix
 
 Example:
 ```
-HITL/1.234,0.0,0.0,9.81,0.0,0.0,0.0,20.0,10.0,-45.0,101325.0,25.0,45.123,-122.456,100.0,1,8,90.0
+HITL/1.234,0.0,0.0,9.81,0.0,0.0,0.0,20.0,10.0,-45.0,1013.25,25.0,45.123,-122.456,100.0,1,8,90.0
 ```
 
 Fields:
@@ -62,7 +62,7 @@ Fields:
 - `ax,ay,az` - Acceleration (m/s²)
 - `gx,gy,gz` - Angular velocity (rad/s)
 - `mx,my,mz` - Magnetic field (µT)
-- `pressure` - Pressure (Pa)
+- `pressure` - Pressure (hPa / mbar)
 - `temp` - Temperature (°C)
 - `lat,lon` - GPS coordinates (decimal degrees)
 - `alt` - GPS altitude MSL (m)

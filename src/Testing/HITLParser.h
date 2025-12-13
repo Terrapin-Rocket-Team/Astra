@@ -21,7 +21,7 @@ namespace astra
      * - ax,ay,az: acceleration (m/s^2)
      * - gx,gy,gz: angular velocity (rad/s)
      * - mx,my,mz: magnetic field (uT)
-     * - pressure: pressure (Pa)
+     * - pressure: pressure (hPa / mbar)
      * - temp: temperature (C)
      * - lat,lon: GPS coordinates (decimal degrees)
      * - alt: GPS altitude MSL (m)

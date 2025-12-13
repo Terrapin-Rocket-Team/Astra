@@ -102,24 +102,19 @@ namespace astra
         this->bbAsync = bbAsync;
         return *this;
     }
-    AstraConfig &AstraConfig::withOtherDataReporters(DataReporter **others)
+    AstraConfig &AstraConfig::withOtherDataReporters(DataReporter **others, uint8_t numOthers)
     {
-        for (int i = 0; i < 50; i++)
+        if (numOthers > 50 - numReporters)
         {
-            if (reporters[i] == others[i])
-            {
-                // getLogger().recordLogData(WARNING_, "Attempted to add DataReporter %s to logger, but it was already there", others[i]->getName());
-                return *this;
-            }
-            if (reporters[i] == nullptr)
-            {
-                reporters[i] = others[i];
-                // getLogger().recordLogData(LOG_, "Added DataReporter %s to logger", others[i]->getName());
-                numReporters++;
-                return *this;
-            }
+            // getLogger().recordLogData(WARNING_, "Attempted to add %d DataReporters, but only %d slots available. Capping to available slots.", numOthers, 50 - numReporters);
+            numOthers = 50 - numReporters;
         }
-        // getLogger().recordLogData(WARNING_, "Attempted to add DataReporter %s to logger, but the maximum number of reporters (50) has been reached. That's too many reporters. Why.", others[0]->getName());
+        for (uint8_t i = 0; i < numOthers; i++)
+        {
+            reporters[numReporters] = others[i];
+            // getLogger().recordLogData(LOG_, "Added DataReporter %s to logger", others[i]->getName());
+            numReporters++;
+        }
         return *this;
     }
 

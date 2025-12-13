@@ -34,7 +34,7 @@ namespace astra
             Vector<3> mag;             // Magnetic field (uT)
 
             // Barometer data
-            double pressure;           // Pressure (Pa)
+            double pressure;           // Pressure (hPa / mbar)
             double temperature;        // Temperature (C)
 
             // GPS data
@@ -67,7 +67,7 @@ namespace astra
             data.accel = Vector<3>(0, 0, -9.81);  // Default: 1G down
             data.gyro = Vector<3>(0, 0, 0);
             data.mag = Vector<3>(0, 0, 0);
-            data.pressure = 101325.0;              // Sea level
+            data.pressure = 1013.25;              // Sea level (hPa)
             data.temperature = 25.0;
             data.gps_lat = 0.0;
             data.gps_lon = 0.0;

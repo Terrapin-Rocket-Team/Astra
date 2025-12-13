@@ -1,7 +1,54 @@
 #include "ILogSink.h"
+#include <cstring>
+#include <cstdio>
 
 namespace astra
 {
+
+// Helper function to find next available filename
+static char* findNextFilename(IStorage* backend, const char* baseFilename) {
+    if (!backend) return nullptr;
+
+    // Find the extension (if any)
+    const char* dot = strrchr(baseFilename, '.');
+    char baseName[64];
+    char extension[16];
+
+    if (dot) {
+        // Split into base and extension
+        size_t baseLen = dot - baseFilename;
+        if (baseLen >= sizeof(baseName)) baseLen = sizeof(baseName) - 1;
+        strncpy(baseName, baseFilename, baseLen);
+        baseName[baseLen] = '\0';
+
+        strncpy(extension, dot, sizeof(extension) - 1);
+        extension[sizeof(extension) - 1] = '\0';
+    } else {
+        // No extension
+        strncpy(baseName, baseFilename, sizeof(baseName) - 1);
+        baseName[sizeof(baseName) - 1] = '\0';
+        extension[0] = '\0';
+    }
+
+    // Try filenames with incrementing numbers
+    static char filename[80];
+    for (int i = 0; i < 1000; i++) {
+        if (i == 0) {
+            // Try the original filename first
+            snprintf(filename, sizeof(filename), "%s%s", baseName, extension);
+        } else {
+            // Try with number suffix
+            snprintf(filename, sizeof(filename), "%s_%d%s", baseName, i, extension);
+        }
+
+        if (!backend->exists(filename)) {
+            return filename;
+        }
+    }
+
+    // If we couldn't find an available filename after 1000 attempts, return nullptr
+    return nullptr;
+}
 
 // Constructor with automatic backend creation
 FileLogSink::FileLogSink(const char* filename, StorageBackend type, bool prefix)
@@ -36,7 +83,14 @@ bool FileLogSink::begin() {
         return false;
     }
 
-    _file = _backend->openWrite(_filename, true);  // Open in append mode
+    // Find the next available filename by iterating
+    char* availableFilename = findNextFilename(_backend, _filename);
+    if (!availableFilename) {
+        return false;  // Couldn't find an available filename
+    }
+
+    // Open in write mode (not append) to create a new file
+    _file = _backend->openWrite(availableFilename, false);
     return _file && _file->isOpen();
 }
 

@@ -68,7 +68,7 @@ namespace astra
         // Add more `DataReporter` objects for Logger to record flight data from.
         // Passing in a State (via `withState()`) will also capture the state's sensors for logging, so adding them here is redundant.
         // No other `DataReporter`s added by default.
-        AstraConfig &withOtherDataReporters(DataReporter **others);
+        AstraConfig &withOtherDataReporters(DataReporter **others, uint8_t numOthers);
 
         // Remove the default event handler from the event manager.
         // Useful if you have your own that alters the behavior.
