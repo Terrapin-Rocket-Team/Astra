@@ -22,11 +22,11 @@ namespace astra
 
     class UARTLog : public ILogSink
     {
-    private:
+    protected:
         SerialUART_t &s;
         int baud;
         bool prefix;
-        bool rdy;
+        bool rdy = false;
 
     public:
         UARTLog(SerialUART_t &s, int baud, bool prefix = false) : s(s), baud(baud), prefix(prefix) {}
