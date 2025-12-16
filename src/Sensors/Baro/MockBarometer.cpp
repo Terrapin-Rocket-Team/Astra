@@ -58,8 +58,6 @@ namespace astra
             LOGE("[MockBarometer]: Failed to find temperature column index for name: %s", temperatureColName.c_str());
             return false;
         }
-
-        initialized = true;
         return true;
     }
 

@@ -1,42 +1,44 @@
-#ifndef IMU_H
-#define IMU_H
+// #ifndef IMU_H
+// #define IMU_H
 
-#include "../Sensor.h"
-#include "../../Math/Vector.h"
-#include "../../Math/Quaternion.h"
+//TODO: Completely rewrite for 6DoF and 9DoF, and allow building with Accels + Gyros + Mags
 
-namespace astra
-{
+// #include "../Sensor.h"
+// #include "../../Math/Vector.h"
+// #include "../../Math/Quaternion.h"
 
-    class IMU : public Sensor
-    {
-    public:
-        virtual ~IMU(){};
+// namespace astra
+// {
 
-        //local represents the orientation off of the initial angle. Global represents the orientation with respect to gravity
-        virtual Vector<3> getAngularVelocity();
-        virtual Vector<3> getMagField();
-        virtual Vector<3> getAcceleration();
-        // virtual double getAccelBestFilteringAtStatic() {return accel_best_filtering_at_static;};
-        // virtual void setAccelBestFilteringAtStatic(double a) {accel_best_filtering_at_static = a;};
-        // virtual double getMagBestFilteringAtStatic() {return mag_best_filtering_at_static;};
-        // virtual void setMagBestFilteringAtStatic(double m) {mag_best_filtering_at_static = m;};
+//     class IMU : public Sensor
+//     {
+//     public:
+//         virtual ~IMU(){};
 
-        // double adaptiveAccelGain(double alphaBar, double t_1 = .1, double t_2 = .2);
-        // virtual void quaternionBasedComplimentaryFilterSetup();
-        // virtual void quaternionBasedComplimentaryFilter(double dt);
+//         //local represents the orientation off of the initial angle. Global represents the orientation with respect to gravity
+//         virtual Vector<3> getAngularVelocity();
+//         virtual Vector<3> getMagField();
+//         virtual Vector<3> getAcceleration();
+//         // virtual double getAccelBestFilteringAtStatic() {return accel_best_filtering_at_static;};
+//         // virtual void setAccelBestFilteringAtStatic(double a) {accel_best_filtering_at_static = a;};
+//         // virtual double getMagBestFilteringAtStatic() {return mag_best_filtering_at_static;};
+//         // virtual void setMagBestFilteringAtStatic(double m) {mag_best_filtering_at_static = m;};
 
-    protected:
-        IMU(const char *name = "IMU");
+//         // double adaptiveAccelGain(double alphaBar, double t_1 = .1, double t_2 = .2);
+//         // virtual void quaternionBasedComplimentaryFilterSetup();
+//         // virtual void quaternionBasedComplimentaryFilter(double dt);
 
-        Vector<3> measuredAcc = Vector<3>(0, 0, 0); // Body frame acceleration in m/s/s
-        Vector<3> orientationEuler = Vector<3>(0, 0, 0);
-        Quaternion orientation = Quaternion(1, 0, 0, 0); // This is the mapping from the body to interial frame as a quaternion and can be used as such: r_I = q * r_B * q^-1
-        Vector<3> measuredGyro = Vector<3>(0, 0, 0); // Rad/s
-        Vector<3> measuredMag = Vector<3>(0, 0, 0); // Body frame mag field in uT
-        // Vector<3> initialMagField = Vector<3>(0, 0, 0);
-        // double accel_best_filtering_at_static = 0.9; // [0, 1] Higher this number, the more you trust the accelerometer
-        // double mag_best_filtering_at_static = 0.9; // [0, 1] Higher this number, the more you trust the magnetometer
-    };
-}
-#endif
+//     protected:
+//         IMU(const char *name = "IMU");
+
+//         Vector<3> measuredAcc = Vector<3>(0, 0, 0); // Body frame acceleration in m/s/s
+//         Vector<3> orientationEuler = Vector<3>(0, 0, 0);
+//         Quaternion orientation = Quaternion(1, 0, 0, 0); // This is the mapping from the body to interial frame as a quaternion and can be used as such: r_I = q * r_B * q^-1
+//         Vector<3> measuredGyro = Vector<3>(0, 0, 0); // Rad/s
+//         Vector<3> measuredMag = Vector<3>(0, 0, 0); // Body frame mag field in uT
+//         // Vector<3> initialMagField = Vector<3>(0, 0, 0);
+//         // double accel_best_filtering_at_static = 0.9; // [0, 1] Higher this number, the more you trust the accelerometer
+//         // double mag_best_filtering_at_static = 0.9; // [0, 1] Higher this number, the more you trust the magnetometer
+//     };
+// }
+// #endif

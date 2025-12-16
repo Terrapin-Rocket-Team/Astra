@@ -18,10 +18,12 @@ Astra::Astra(AstraConfig *config) : config(config)
 }
 void Astra::init()
 {
-    // getLogger().recordCrashReport();
     LOGI("Initializing Astra version %s", ASTRA_VERSION);
-    // Wire.begin(PB9, PB8); //stm32
+#ifdef ENV_STM
+    Wire.begin(PB9, PB8); // stm32
+#else
     Wire.begin();
+#endif
     // BlinkBuzz first
     int pins = 0;
     for (int i = 0; i < 50; i++)
@@ -45,23 +47,10 @@ void Astra::init()
 
     DataLogger::configure(config->logs, config->numLogs, reporters, j);
 
-    // bool log = //getLogger().init(reporters, j);
-#ifndef NATIVE
-    // getDataRetrieverInstance().handleChoices();
-    // bool quitOrNoSerial = false;
-    // while (!quitOrNoSerial)
-    // {
-    //     quitOrNoSerial = getDataRetrieverInstance().handleChoices();
-    // }
-#endif
-
     delay(10);
     // then State
     config->state->begin();
-    // getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
     ready = true;
-
-    // getLogger().writeCsvHeader();
     LOGI("Astra initialized.");
 }
 bool Astra::update(double ms)
@@ -72,7 +61,7 @@ bool Astra::update(double ms)
         LOGW("Attempted to update Astra before it was initialized. Initializing it now...");
         init();
     }
-    // TOOD: replace with my implementation
+    // TODO: replace with my implementation
     //  getSerialHandler().handle();
     //  loop based on time and interval and update bb.
     bb.update();
@@ -92,7 +81,8 @@ bool Astra::update(double ms)
     if (ms - lastLoggingUpdate > config->loggingInterval)
     {
         lastLoggingUpdate = ms;
-        if (DataLogger::available()) {
+        if (DataLogger::available())
+        {
             DataLogger::instance().appendLine();
         }
     }

@@ -13,6 +13,7 @@ namespace astra
         bool init() override;
         BMI088Gyro(const char *name = "BMI088", TwoWire &bus = Wire, uint8_t addr = 0x68);
         BMI088Gyro(TwoWire &bus, uint8_t addr = 0x68);
+
     protected:
         Bmi088Gyro gyro;
     };

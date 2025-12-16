@@ -10,8 +10,7 @@ bool DPS368::init()
 {
     if (!dps.begin_I2C(addr, bus))
     {
-        // printf("Failed to initialize DPS368 sensor\n");
-        return initialized = false;
+        return false;
     }
 
     // Set up sampling rate and oversampling
@@ -21,7 +20,7 @@ bool DPS368::init()
     // Operation mode of the sensor. See section 8.5 of the datasheet.
     dps.setMode(DPS310_CONT_PRESTEMP);
 
-    return initialized = true;
+    return true;
 }
 
 bool DPS368::read()

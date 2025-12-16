@@ -70,15 +70,8 @@ namespace astra
         // No other `DataReporter`s added by default.
         AstraConfig &withOtherDataReporters(DataReporter **others, uint8_t numOthers);
 
-        // Remove the default event handler from the event manager.
-        // Useful if you have your own that alters the behavior.
-        AstraConfig &withNoDefaultEventListener();
-
-        // Change the formatting of the log prefix.
-        // use $time and $logType to access the time and log type of the current log.
-        // Default: `"$time - [$logType] "`
-        AstraConfig &withLogPrefixFormatting(const char *prefix);
-
+        // Setup which telemetry logs will be written to on update
+        // No default
         AstraConfig &withDataLogs(ILogSink **logs, uint8_t numLogs);
 
         AstraConfig();
@@ -93,8 +86,8 @@ namespace astra
         DataReporter *reporters[50];
         unsigned int updateInterval = 100;  // in ms
         unsigned int loggingInterval = 100; // in ms
-        double loggingRate = 10;   // in hz
-        double updateRate = 10;    // in hz
+        double loggingRate = 10;            // in hz
+        double updateRate = 10;             // in hz
 
         uint8_t numReporters = 0;
     };

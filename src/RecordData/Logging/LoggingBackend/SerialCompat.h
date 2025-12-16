@@ -8,17 +8,15 @@ using SerialUART_t = HardwareSerial;  // Serial1, Serial2, ...
 using SerialUSB_t = usb_serial_class; // Serial (USB CDC)
 
 // ---------- ESP32 ----------
-#elif defined(ESP32)
+#elif defined(ENV_ESP)
 // Classic ESP32 has only UARTs. ESP32-S2/S3 may expose USB CDC as USBCDC.
 using SerialUART_t = HardwareSerial; // Serial, Serial1, Serial2
 using SerialUSB_t = HWCDC;
 
-
 // ---------- STM32 (stm32duino) ----------
-#elif defined(_STM32_DEF_)
+#elif defined(ENV_STM)
 using SerialUART_t = HardwareSerial;
-using SerialUSB_t = USBSerial;               // works whether it's USBSerial or USBCDC
-
+using SerialUSB_t = USBSerial; // works whether it's USBSerial or USBCDC
 
 // ---------- NATIVE ----------
 #elif defined(NATIVE)

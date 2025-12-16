@@ -22,7 +22,7 @@ namespace astra
     class HITLAccel : public Accel
     {
     public:
-        HITLAccel(const char* name = "HITL_Accelerometer")
+        HITLAccel(const char *name = "HITL_Accelerometer")
             : Accel(name)
         {
         }
@@ -39,7 +39,7 @@ namespace astra
         bool read() override
         {
             // Read from HITL sensor buffer
-            HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+            HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
 
             // Update acceleration vector
             acc = buffer.data.accel;

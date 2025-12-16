@@ -56,8 +56,8 @@ namespace astra
         USBLog(SerialUSB_t &s, int baud, bool prefix = false) : s(s), baud(baud), prefix(prefix) {}
         bool begin() override
         {
-            if(!ok())
-            s.begin(baud);
+            if (!ok())
+                s.begin(baud);
             return rdy = true;
         }
         bool end() override
@@ -143,9 +143,9 @@ namespace astra
     class FileLogSink : public ILogSink
     {
     private:
-        IStorage* _backend;
-        IFile* _file;
-        const char* _filename;
+        IStorage *_backend;
+        IFile *_file;
+        const char *_filename;
         bool _ownsBackend;
         bool _prefix;
 
@@ -156,7 +156,7 @@ namespace astra
          * @param type Storage backend type (EMMC, SD_CARD, etc.)
          * @param prefix Whether to add prefixes to log messages
          */
-        FileLogSink(const char* filename, StorageBackend type, bool prefix = false);
+        FileLogSink(const char *filename, StorageBackend type, bool prefix = false);
 
         /**
          * @brief Construct FileLogSink with provided backend (advanced usage)
@@ -164,7 +164,7 @@ namespace astra
          * @param backend Pre-created storage backend (not owned by FileLogSink)
          * @param prefix Whether to add prefixes to log messages
          */
-        FileLogSink(const char* filename, IStorage* backend, bool prefix = false);
+        FileLogSink(const char *filename, IStorage *backend, bool prefix = false);
 
         ~FileLogSink();
 
@@ -173,7 +173,7 @@ namespace astra
         bool ok() const override;
         bool wantsPrefix() const override;
         size_t write(uint8_t b) override;
-        size_t write(const uint8_t* buffer, size_t size) override;
+        size_t write(const uint8_t *buffer, size_t size) override;
         void flush() override;
     };
 

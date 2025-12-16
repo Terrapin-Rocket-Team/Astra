@@ -5,7 +5,8 @@
 
 namespace astra
 {
-class MockBarometer : public astra::Barometer {
+    class MockBarometer : public astra::Barometer
+    {
     private:
         SerialReader dataReader;
 
@@ -16,12 +17,13 @@ class MockBarometer : public astra::Barometer {
         std::string temperatureColName;
 
         float sdData[MAX_NUM_COLS]{0.0f};
+
     public:
-        MockBarometer(const char* dataPath, const std::string& pressureColName, const std::string& temperatureColName);
+        MockBarometer(const char *dataPath, const std::string &pressureColName, const std::string &temperatureColName);
 
         bool init() override;
         bool read() override;
     };
 }
 
-#endif //MOCKBAROMETER_H
+#endif // MOCKBAROMETER_H

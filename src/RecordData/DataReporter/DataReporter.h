@@ -2,9 +2,6 @@
 #define DATA_REPORTER_H
 
 #include <stdint.h>
-#include <cstdio>
-#include <cstring>
-#include <Arduino.h>                            // for Print
 #include "../Logging/LoggingBackend/ILogSink.h" // gives you ILogSink : Print
 
 namespace astra

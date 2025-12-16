@@ -39,7 +39,7 @@ int GPS::getFixQual() const { return fixQual; }
 //  https://blog.mapbox.com/fast-geodesic-approximations-with-cheap-ruler-106f229ad016
 void GPS::calcInitialValuesForDistance()
 {
-    constexpr auto EARTH_RAD = 6378.137e3; // meters
+    constexpr auto EARTH_RAD = 6378.137e3;               // meters
     constexpr auto RAD = 3.14159265358979323846 / 180.0; // lol
 
     constexpr auto EARTH_FLAT = 1.0 / 298.257223563; // flattening of the earth. IDK what this means
@@ -182,7 +182,7 @@ bool GPS::begin()
     hasFix = false;
     hasFirstFix = false;
     heading = 0;
-    return init();
+    return initialized = init();
 }
 
 #pragma endregion // Sensor Virtual Function Implementations

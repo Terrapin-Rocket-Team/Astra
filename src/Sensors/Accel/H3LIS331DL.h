@@ -5,8 +5,10 @@
 #include <Wire.h>
 #include "Accel.h"
 
-namespace astra {
-    class H3LIS331DL : public Accel{
+namespace astra
+{
+    class H3LIS331DL : public Accel
+    {
     public:
         H3LIS331DL(const char *name = "H3LIS331DL", TwoWire &bus = Wire, uint8_t address = 0x18);
         H3LIS331DL(uint8_t address);

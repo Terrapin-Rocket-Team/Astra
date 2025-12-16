@@ -22,7 +22,7 @@ namespace astra
     class HITLMag : public Mag
     {
     public:
-        HITLMag(const char* name = "HITL_Magnetometer")
+        HITLMag(const char *name = "HITL_Magnetometer")
             : Mag(name)
         {
         }
@@ -39,7 +39,7 @@ namespace astra
         bool read() override
         {
             // Read from HITL sensor buffer
-            HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+            HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
 
             // Update magnetic field vector
             mag = buffer.data.mag;

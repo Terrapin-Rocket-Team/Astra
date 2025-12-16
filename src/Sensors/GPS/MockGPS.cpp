@@ -102,11 +102,11 @@ namespace astra
             return false;
         }
 
-        initialized = true;
         return true;
     }
 
-    bool MockGPS::read()    {
+    bool MockGPS::read()
+    {
         if (!dataReader.readLine(sdData))
         {
             LOGE("[MockGPS]: Failed to read data from file!");

@@ -9,7 +9,7 @@ namespace astra
     class MS5611 : public Barometer
     {
     private:
-        ::MS5611 ms; // uses the name name, so namespace specification is needed
+        ::MS5611 ms; // uses the same name, so namespace specification is needed
 
     public:
         MS5611(const char *name = "MS5611", uint8_t addr = 0x76, TwoWire *bus = &Wire);

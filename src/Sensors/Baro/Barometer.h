@@ -9,12 +9,12 @@ namespace astra
     {
     public:
         virtual ~Barometer();
-        virtual double getPressure() const;
-        virtual double getTemp() const;
-        virtual double getTempF() const;
-        virtual double getPressureAtm() const;
-        virtual double getASLAltFt() const;
-        virtual double getASLAltM() const;
+        virtual double getPressure() const;    // hPa
+        virtual double getTemp() const;        // deg C
+        virtual double getTempF() const;       // deg F
+        virtual double getPressureAtm() const; // atmospheres
+        virtual double getASLAltFt() const;    // ft
+        virtual double getASLAltM() const;     // meters
 
         // Sensor virtual functions
         virtual bool update() override;

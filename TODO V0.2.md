@@ -5,9 +5,11 @@
 - [X] Add GPS velocity (NED frame)
 - [ ] Add Radio Sensor (for GPS eventually)
 - [ ] Add STM32EMMC support
+- [ ] Change init/read to int instead of bool?
 
 ## User Feedback Systems
 - [ ] Proper buzzer/LED feedback systems
+- [ ] Teensy CrashReport
 
 ## Radio & Communication
 - [ ] Radio integration (Fix transmit and logging issues)
@@ -33,11 +35,13 @@
 - [ ] Add apogee time and altitude prediction
 - [ ] Add drogue deploy detection
 - [ ] Add main deploy detection
+- [ ] make state auto-detect and build an IMU (and make 6DoF/9DoF IMU that can return values in inertial frame)
 
 ## Data Handling & Logging
 - [ ] Fix `withOtherDataReporters`
 - [ ] Add debug log
 
 ## Build & Deployment
-- [ ] Auto-increment version based on build/SHA
+- [X] Auto-increment version based on build/SHA
 - [ ] Reduce init verbosity/double init
+- [ ] Clean up comments in files

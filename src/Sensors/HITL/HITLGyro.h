@@ -22,7 +22,7 @@ namespace astra
     class HITLGyro : public Gyro
     {
     public:
-        HITLGyro(const char* name = "HITL_Gyroscope")
+        HITLGyro(const char *name = "HITL_Gyroscope")
             : Gyro(name)
         {
         }
@@ -39,7 +39,7 @@ namespace astra
         bool read() override
         {
             // Read from HITL sensor buffer
-            HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+            HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
 
             // Update angular velocity vector
             angVel = buffer.data.gyro;

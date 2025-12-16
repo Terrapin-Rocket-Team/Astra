@@ -30,11 +30,11 @@ namespace astra
 
     protected:
         GPS(const char *name = "GPS");
-        Vector<3> position;     // latitude, longitude, alt(m)
-        Vector<3> velocity;     // vN (m/s), vE (m/s), vD (m/s)
-        int fixQual = 0;        // number of satellite connections
-        bool hasFix;            // whether or not GPS is currently connected to >= 4 satellites
-        bool hasFirstFix;       // the first time it gets a fix
+        Vector<3> position; // latitude, longitude, alt(m)
+        Vector<3> velocity; // vN (m/s), vE (m/s), vD (m/s)
+        int fixQual = 0;    // number of satellite connections
+        bool hasFix;        // whether or not GPS is currently connected to >= 4 satellites
+        bool hasFirstFix;   // the first time it gets a fix
         double heading = 0;
 
         // Distance-related calculations

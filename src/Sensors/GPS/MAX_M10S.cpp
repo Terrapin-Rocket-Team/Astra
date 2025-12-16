@@ -4,9 +4,8 @@
 namespace astra
 {
 
-    MAX_M10S::MAX_M10S(const char *name, TwoWire& wire, uint8_t address) : GPS(name), m10s(), wire(&wire), address(address)
+    MAX_M10S::MAX_M10S(const char *name, TwoWire &wire, uint8_t address) : GPS(name), m10s(), wire(&wire), address(address)
     {
-
     }
 
     bool MAX_M10S::init()
@@ -26,7 +25,8 @@ namespace astra
     /*
     used to update all instance variables
     */
-    bool MAX_M10S::read()    {
+    bool MAX_M10S::read()
+    {
         if (!initialized || !m10s.getPVT() || m10s.getInvalidLlh())
             return false; // See if new data is available
 

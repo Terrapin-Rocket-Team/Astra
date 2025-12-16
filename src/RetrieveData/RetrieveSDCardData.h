@@ -1,5 +1,8 @@
 #ifndef RETRIEVE_SD_CARD_DATA_H
 #define RETRIEVE_SD_CARD_DATA_H
+
+// TODO: Investigate merging this with the other file retrievers and/or expanding to all file types
+
 /*
     This is for SPI/SDIO cards. If the SD card is connected over an SDMMC interface, use the MMC data retriever
 */
@@ -42,42 +45,41 @@ const uint8_t SD_CS_PIN = SDCARD_SS_PIN;
 #define SD_CONFIG SdSpiConfig(SD_CS_PIN, SHARED_SPI, SPI_CLOCK)
 #endif // HAS_SDIO_CLASS
 
-
 namespace astra
 {
-    class RetrieveSDCardData
-    {
-    private:
-        char *currentFileName;
-        void formatAndEraseCard();
+        class RetrieveSDCardData
+        {
+        private:
+                char *currentFileName;
+                void formatAndEraseCard();
 
 // define file format being used
 // unfortunately means recompilation needs to be done
 //          every time a different file format is used
 #if SD_FAT_TYPE == 0
-        SdFat sd;
-        File file;
+                SdFat sd;
+                File file;
 #elif SD_FAT_TYPE == 1
-        SdFat32 sd;
-        File32 file;
+                SdFat32 sd;
+                File32 file;
 #elif SD_FAT_TYPE == 2
-        SdExFat sd;
-        ExFile file;
+                SdExFat sd;
+                ExFile file;
 #elif SD_FAT_TYPE == 3
-        SdFs sd;
-        FsFile file;
+                SdFs sd;
+                FsFile file;
 #else // SD_FAT_TYPE
 #error Invalid SD_FAT_TYPE
 #endif // SD_FAT_TYPE
 
-    public:
-        bool init();
-        bool deleteFile(char *path);
-        void listFiles();
-        bool handleChoices();
-        bool readFile(char *path);
-        bool formatCard(); // TODO: implement later
-    };
-    RetrieveSDCardData &getDataRetrieverInstance();
+        public:
+                bool init();
+                bool deleteFile(char *path);
+                void listFiles();
+                bool handleChoices();
+                bool readFile(char *path);
+                bool formatCard(); // TODO: implement later
+        };
+        RetrieveSDCardData &getDataRetrieverInstance();
 }
 #endif

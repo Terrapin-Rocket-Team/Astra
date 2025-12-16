@@ -23,7 +23,7 @@ namespace astra
     class HITLBarometer : public Barometer
     {
     public:
-        HITLBarometer(const char* name = "HITL_Barometer")
+        HITLBarometer(const char *name = "HITL_Barometer")
             : Barometer(name)
         {
         }
@@ -40,7 +40,7 @@ namespace astra
         bool read() override
         {
             // Read from HITL sensor buffer
-            HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+            HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
 
             // Update pressure and temperature
             pressure = buffer.data.pressure;

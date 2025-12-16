@@ -4,7 +4,6 @@ namespace astra
 {
     BMI088Gyro::BMI088Gyro(const char *name, TwoWire &bus, uint8_t addr) : Gyro(name), gyro(bus, addr)
     {
-
     }
 
     BMI088Gyro::BMI088Gyro(TwoWire &bus, uint8_t addr) : Gyro("BMI088"), gyro(bus, addr)

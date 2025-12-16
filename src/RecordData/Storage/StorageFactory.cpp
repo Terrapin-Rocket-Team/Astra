@@ -14,24 +14,26 @@
 namespace astra
 {
 
-IStorage* StorageFactory::create(StorageBackend type) {
-    switch(type) {
-        #if defined(ENV_STM)
+    IStorage *StorageFactory::create(StorageBackend type)
+    {
+        switch (type)
+        {
+#if defined(ENV_STM)
         case StorageBackend::EMMC:
             return new EMMCBackend();
-        #endif
+#endif
 
-        #if defined(ENV_STM) || defined(ENV_ESP) || defined(ENV_TEENSY)
+#if defined(ENV_STM) || defined(ENV_ESP) || defined(ENV_TEENSY)
         case StorageBackend::SD_CARD:
             return new SDCardBackend();
-        #endif
+#endif
 
-        // case StorageBackend::INTERNAL_FLASH:
-        //     return new FlashBackend();
+            // case StorageBackend::INTERNAL_FLASH:
+            //     return new FlashBackend();
 
         default:
-            return nullptr;  // Unsupported backend on this platform
+            return nullptr; // Unsupported backend on this platform
+        }
     }
-}
 
 } // namespace astra

@@ -13,7 +13,7 @@ namespace astra
     bool BMI088Accel::init()
     {
         int err = accel.begin();
-        if(err <= 0)
+        if (err <= 0)
             LOGE("BMI ERROR: %d", err);
         return err > 0;
     }

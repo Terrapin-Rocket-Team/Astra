@@ -10,7 +10,7 @@ namespace astra
     public:
         Astra(AstraConfig *config);
         void init();
-        bool update(double ms = -1); //returns true if state update occurred
+        bool update(double ms = -1); // returns true if state update occurred
 
     private:
         bool ready = false;

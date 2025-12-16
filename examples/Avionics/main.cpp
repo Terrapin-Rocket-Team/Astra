@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include "AvionicsKF.h"
 #include "Sensors/GPS/MAX_M10S.h"
-#include "Sensors/IMU/BMI088andLIS3MDL.h"
 #include "Sensors/Baro/DPS368.h"
 #include "State/State.h"
 #include "Utils/Astra.h"
@@ -16,9 +15,8 @@ HardwareSerial Serial1(PA10, PA9);
 #endif
 
 MAX_M10S gps;
-BMI088andLIS3MDL mmfsimu;
 DPS368 baro;
-Sensor *sensors[3] = {&gps, &mmfsimu, &baro};
+Sensor *sensors[3] = {&gps, &baro};
 AvionicsKF kfilter;
 State avionicsState(sensors, 3, &kfilter);
 

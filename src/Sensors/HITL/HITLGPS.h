@@ -22,7 +22,7 @@ namespace astra
     class HITLGPS : public GPS
     {
     public:
-        HITLGPS(const char* name = "HITL_GPS")
+        HITLGPS(const char *name = "HITL_GPS")
             : GPS(name)
         {
         }
@@ -43,7 +43,7 @@ namespace astra
         bool read() override
         {
             // Read from HITL sensor buffer
-            HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+            HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
 
             // Update position (lat, lon, alt)
             position.x() = buffer.data.gps_lat;
@@ -56,7 +56,8 @@ namespace astra
             heading = buffer.data.gps_heading;
 
             // Set first fix flag if we just got a fix
-            if (hasFix && !hasFirstFix) {
+            if (hasFix && !hasFirstFix)
+            {
                 hasFirstFix = true;
                 calcInitialValuesForDistance();
             }
