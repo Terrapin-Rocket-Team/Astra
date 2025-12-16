@@ -13,6 +13,9 @@ GPS::GPS(const char *name) : Sensor("GPS", name)
     addColumn("%0.7f", &position.x(), "Lat (deg)");
     addColumn("%0.7f", &position.y(), "Lon (deg)");
     addColumn("%0.3f", &position.z(), "Alt (m)");
+    addColumn("%0.3f", &velocity.x(), "vN (m/s)");
+    addColumn("%0.3f", &velocity.y(), "vE (m/s)");
+    addColumn("%0.3f", &velocity.z(), "vD (m/s)");
     addColumn("%d", &fixQual, "Fix Quality");
     addColumn("%s", &tod, "Time of Day");
     hasFirstFix = false;
@@ -22,6 +25,8 @@ GPS::GPS(const char *name) : Sensor("GPS", name)
 GPS::~GPS() {}
 
 Vector<3> GPS::getPos() const { return position; }
+
+Vector<3> GPS::getVel() const { return velocity; }
 
 double GPS::getHeading() const { return heading; }
 
@@ -172,6 +177,7 @@ bool GPS::update()
 bool GPS::begin()
 {
     position = Vector<3>(0, 0, 0);
+    velocity = Vector<3>(0, 0, 0);
     fixQual = 0;
     hasFix = false;
     hasFirstFix = false;

@@ -33,6 +33,9 @@ namespace astra
         position.x() = m10s.getLatitude() / 10000000.0;
         position.y() = m10s.getLongitude() / 10000000.0;
         position.z() = m10s.getAltitude() / 1000.0;
+        velocity.x() = m10s.getNedNorthVel() / 1000.0;
+        velocity.y() = m10s.getNedEastVel() / 1000.0;
+        velocity.z() = m10s.getNedDownVel() / 1000.0;
         heading = m10s.getHeading();
         fixQual = m10s.getSIV();
         hr = m10s.getHour();

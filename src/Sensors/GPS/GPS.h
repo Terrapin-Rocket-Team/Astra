@@ -11,6 +11,7 @@ namespace astra
     public:
         virtual ~GPS();
         virtual Vector<3> getPos() const;
+        virtual Vector<3> getVel() const; // NED frame
         virtual int getFixQual() const;
         virtual double getHeading() const;
         virtual bool getHasFix() const;
@@ -30,6 +31,7 @@ namespace astra
     protected:
         GPS(const char *name = "GPS");
         Vector<3> position;     // latitude, longitude, alt(m)
+        Vector<3> velocity;     // vN (m/s), vE (m/s), vD (m/s)
         int fixQual = 0;        // number of satellite connections
         bool hasFix;            // whether or not GPS is currently connected to >= 4 satellites
         bool hasFirstFix;       // the first time it gets a fix
