@@ -14,7 +14,7 @@ Astra::Astra(AstraConfig *config) : config(config)
 void Astra::init()
 {
     // getLogger().recordCrashReport();
-    LOGI("Initializing Astra.");
+    LOGI("Initializing Astra version %s", ASTRA_VERSION);
     // Wire.begin(PB9, PB8); //stm32
     Wire.begin();
     // BlinkBuzz first

@@ -1,8 +1,8 @@
 # TODO - Version 0.2
 
 ## Hardware Integration & Sensors
-- [ ] Voltage Sensor code
-- [ ] Add GPS velocity
+- [X] Voltage Sensor code
+- [X] Add GPS velocity (NED frame)
 - [ ] Add Radio Sensor (for GPS eventually)
 - [ ] Add STM32EMMC support
 
