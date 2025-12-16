@@ -127,11 +127,6 @@ def get_version():
     # Construct version string
     version = f"{major}.{minor}.{commits}-{sha}-{build}"
 
-    # Update library.json with the full version string
-    data["version"] = version
-    with open("library.json", "w") as f:
-        json.dump(data, f, indent=4)
-
     return version
 
 # Call the Python script to get the version flag

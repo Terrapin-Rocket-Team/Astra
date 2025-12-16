@@ -8,6 +8,11 @@
 #include "RecordData/Logging/DataLogger.h"
 using namespace astra;
 BlinkBuzz bb;
+
+#ifndef ASTRA_VERSION
+#define ASTRA_VERSION "UNKNOWN"
+#endif
+
 Astra::Astra(AstraConfig *config) : config(config)
 {
 }
