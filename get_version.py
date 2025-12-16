@@ -60,14 +60,22 @@ def update_version_tracking(major, minor, sha, is_dirty):
 
     # Check if version changed
     if track_data.get("version") != current_version:
-        # New version! Set base commit to current HEAD
+        # New version! Find the commit where library.json was last changed to this version
         try:
+            # Get the commit where library.json was last modified
             base_commit = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"],
+                ["git", "log", "-1", "--format=%H", "library.json"],
                 text=True
             ).strip()
         except subprocess.CalledProcessError:
-            base_commit = ""
+            # Fallback to current HEAD if git command fails
+            try:
+                base_commit = subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"],
+                    text=True
+                ).strip()
+            except subprocess.CalledProcessError:
+                base_commit = ""
 
         track_data = {
             "version": current_version,
@@ -91,8 +99,14 @@ def update_version_tracking(major, minor, sha, is_dirty):
             # New commit, reset to 0
             build_num = 0
 
+        # Update SHA and build, but preserve base_commit and version
         track_data["sha"] = sha
         track_data["build"] = build_num
+        # Ensure base_commit and version are preserved
+        if "base_commit" not in track_data:
+            track_data["base_commit"] = ""
+        if "version" not in track_data:
+            track_data["version"] = current_version
 
     # Save updated tracking data
     with open(VERSION_TRACK_FILE, "w") as f:
