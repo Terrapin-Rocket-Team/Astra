@@ -5,7 +5,7 @@
     "keywords": "Astra, TRT, Terrapin Rocket Team, Flight Software",
     "repository": {
         "type": "git",
-        "url": "https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software.git"
+        "url": "https://github.com/Terrapin-Rocket-Team/Astra.git"
     },
     "authors": [
         {
@@ -26,7 +26,7 @@
         }
     ],
     "license": "MIT",
-    "homepage": "https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software",
+    "homepage": "https://github.com/Terrapin-Rocket-Team/Astra",
     "dependencies": [
         {
             "name": "Adafruit BMP280 Library",
@@ -43,10 +43,6 @@
         {
             "name": "SparkFun u-blox GNSS v3",
             "owner": "sparkfun"
-        },
-        {
-            "name": "RTClib",
-            "owner": "adafruit"
         },
         {
             "name": "Adafruit DPS310",
@@ -67,10 +63,6 @@
         {
             "name": "MS5611",
             "version": "https://github.com/RobTillaart/MS5611.git#0.4.1"
-        },
-        {
-            "name": "RadioMessage",
-            "version": "https://github.com/erodarob/RadioMessage.git"
         },
         {
             "name": "BMI088",
