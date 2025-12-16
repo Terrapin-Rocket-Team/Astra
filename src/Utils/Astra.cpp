@@ -57,7 +57,7 @@ void Astra::init()
 
     delay(10);
     // then State
-    bool state = config->state->begin();
+    config->state->begin();
     // getEventManager().invoke(BoolEvent{"STATE_INIT"_i, state});
     ready = true;
 

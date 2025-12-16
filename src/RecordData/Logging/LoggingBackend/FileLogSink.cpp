@@ -51,15 +51,17 @@ static char* findNextFilename(IStorage* backend, const char* baseFilename) {
 }
 
 // Constructor with automatic backend creation
-FileLogSink::FileLogSink(const char* filename, StorageBackend type, bool prefix)
-    : _filename(filename), _file(nullptr), _ownsBackend(true), _prefix(prefix) {
+FileLogSink::FileLogSink(const char *filename, StorageBackend type, bool prefix)
+    : _file(nullptr), _filename(filename), _ownsBackend(true), _prefix(prefix)
+{
 
     _backend = StorageFactory::create(type);
 }
 
 // Constructor with provided backend
-FileLogSink::FileLogSink(const char* filename, IStorage* backend, bool prefix)
-    : _filename(filename), _backend(backend), _file(nullptr), _ownsBackend(false), _prefix(prefix) {
+FileLogSink::FileLogSink(const char *filename, IStorage *backend, bool prefix)
+    : _backend(backend), _file(nullptr), _filename(filename), _ownsBackend(false), _prefix(prefix)
+{
 }
 
 FileLogSink::~FileLogSink() {

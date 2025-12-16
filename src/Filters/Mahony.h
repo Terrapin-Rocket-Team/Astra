@@ -15,8 +15,8 @@ namespace astra
     {
     public:
         MahonyAHRS(double Kp = 0.1, double Ki = 0.0005)
-            : _Kp(Kp), _Ki(Ki), _biasX(0.0), _biasY(0.0), _biasZ(0.0),
-              _sumAccel(), _sumGyro(), _calibSamples(0), _initialized(false), _q0(1.0, 0.0, 0.0, 0.0),
+            : _Kp(Kp), _Ki(Ki), _biasX(0.0), _biasY(0.0), _biasZ(0.0), _q0(1.0, 0.0, 0.0, 0.0),
+              _sumAccel(), _sumGyro(), _calibSamples(0), _initialized(false),
               _mode(MahonyMode::CALIBRATING)
         {
             _q = Quaternion(1.0, 0.0, 0.0, 0.0);

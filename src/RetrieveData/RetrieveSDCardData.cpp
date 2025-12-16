@@ -39,7 +39,7 @@ bool RetrieveSDCardData::readFile(char *path)
     while (file.available())
     {
         // get the current line (buffer size), stores the array in currentLine, stopping the line at any newline char
-        int n = file.fgets(currentLine, sizeof(currentLine), "\n");
+        int n = file.fgets(currentLine, sizeof(currentLine));
         // fgets returns -1 for no data, 0 for EOF, length of string otherwise
         if (n <= 0)
         {
