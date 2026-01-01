@@ -82,12 +82,19 @@ The desktop simulation parses these lines to extract state information.
 
 ## Usage
 
-### 1. Include HITL Header
+### Method 1: With SerialMessageRouter (Recommended)
+
+This is the modern, clean approach that integrates with the centralized serial routing system.
+
+#### 1. Include Headers
 ```cpp
 #include <Sensors/HITL/HITL.h>
+#include <Communication/SerialMessageRouter.h>
+
+using namespace astra;
 ```
 
-### 2. Create HITL Sensors
+#### 2. Create HITL Sensors
 ```cpp
 // Instead of hardware sensors:
 // DPS368* baro = new DPS368(0x77);
@@ -103,7 +110,72 @@ HITLGPS* gps = new HITLGPS();
 Sensor* sensors[] = {baro, accel, gyro, mag, gps};
 ```
 
-### 3. Modify Main Loop
+#### 3. Setup SerialMessageRouter
+```cpp
+SerialMessageRouter router;
+Astra* astraSys;  // Your Astra system instance
+
+void handleHITL(const char* message, const char* prefix, Stream* source) {
+    double simTime;
+    if (HITLParser::parse(message, simTime)) {
+        // Update with simulation time (NOT millis()!)
+        astraSys->update(simTime);
+        // DataLogger automatically outputs "TELEM/" data
+    } else {
+        LOGE("HITL: Failed to parse packet");
+    }
+}
+
+void setup() {
+    Serial.begin(115200);
+
+    // Initialize your Astra system...
+    // astraSys = new Astra(&config);
+
+    // Configure router to handle HITL messages
+    router.withInterface(&Serial)
+          .withListener("HITL/", handleHITL);
+}
+```
+
+#### 4. Main Loop
+```cpp
+void loop() {
+    router.update();  // Automatically handles HITL/ messages
+
+    // Rest of your code...
+}
+```
+
+**Benefits:**
+- Clean separation of concerns
+- Easy to add other message types (CMD/, RAD/, etc.)
+- Automatic prefix handling
+- Works with multiple serial interfaces simultaneously
+
+---
+
+### Method 2: Manual Parsing (Legacy)
+
+This is the original approach without SerialMessageRouter.
+
+#### 1. Include HITL Header
+```cpp
+#include <Sensors/HITL/HITL.h>
+```
+
+#### 2. Create HITL Sensors
+```cpp
+HITLBarometer* baro = new HITLBarometer();
+HITLAccel* accel = new HITLAccel();
+HITLGyro* gyro = new HITLGyro();
+HITLMag* mag = new HITLMag();
+HITLGPS* gps = new HITLGPS();
+
+Sensor* sensors[] = {baro, accel, gyro, mag, gps};
+```
+
+#### 3. Main Loop
 ```cpp
 void loop() {
     // Check for HITL data
@@ -118,7 +190,6 @@ void loop() {
                 astraSys->update(simTime);
 
                 // DataLogger automatically outputs "TELEM/" data
-                // Nothing else needed!
             } else {
                 LOGE("HITL: Failed to parse packet");
             }
@@ -126,6 +197,8 @@ void loop() {
     }
 }
 ```
+
+---
 
 ### 4. Desktop Simulation Side
 ```python

@@ -8,14 +8,17 @@
  * Include this to enable HITL simulation testing with your flight computer.
  *
  * Quick Start:
- * 1. Include this header
+ * 1. Include this header and SerialMessageRouter
  * 2. Create HITL sensors instead of hardware sensors
- * 3. In your main loop, parse incoming HITL/ messages
- * 4. Call astraSys->update(simTime) with simulation time
+ * 3. Register HITL handler with SerialMessageRouter
+ * 4. Router automatically parses HITL/ messages and calls your handler
  * 5. DataLogger automatically outputs TELEM/ messages
  *
- * Example:
+ * Example (Recommended - with SerialMessageRouter):
  *   #include <Sensors/HITL/HITL.h>
+ *   #include <Communication/SerialMessageRouter.h>
+ *
+ *   using namespace astra;
  *
  *   // Create HITL sensors
  *   HITLBarometer* baro = new HITLBarometer();
@@ -24,14 +27,29 @@
  *   HITLMag* mag = new HITLMag();
  *   HITLGPS* gps = new HITLGPS();
  *
- *   // In loop:
+ *   SerialMessageRouter router;
+ *
+ *   void setup() {
+ *       router.withInterface(&Serial)
+ *             .withListener("HITL/", [](const char* msg, const char* prefix, Stream* src) {
+ *                 double simTime;
+ *                 if (HITLParser::parse(msg, simTime)) {
+ *                     astraSys->update(simTime);
+ *                 }
+ *             });
+ *   }
+ *
+ *   void loop() {
+ *       router.update();  // Handles all serial routing including HITL
+ *   }
+ *
+ * Legacy Example (Manual parsing):
  *   if (Serial.available()) {
  *       String line = Serial.readStringUntil('\n');
  *       if (line.startsWith("HITL/")) {
  *           double simTime;
  *           if (HITLParser::parseAndInject(line.c_str(), simTime)) {
  *               astraSys->update(simTime);
- *               // TELEM/ output happens automatically via DataLogger
  *           }
  *       }
  *   }

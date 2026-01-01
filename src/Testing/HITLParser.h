@@ -10,8 +10,8 @@ namespace astra
     /**
      * HITLParser: Parser for Hardware-In-The-Loop protocol messages
      *
-     * Parses incoming "HITL/" prefixed messages from desktop simulation
-     * and populates the HITLSensorBuffer with sensor data.
+     * Parses incoming HITL messages from desktop simulation and populates
+     * the HITLSensorBuffer with sensor data.
      *
      * Protocol format:
      * HITL/timestamp,ax,ay,az,gx,gy,gz,mx,my,mz,pressure,temp,lat,lon,alt,fix,fixqual,heading
@@ -29,7 +29,17 @@ namespace astra
      * - fixqual: GPS fix quality (number of satellites)
      * - heading: GPS heading (degrees)
      *
-     * Usage:
+     * Usage with SerialMessageRouter (recommended):
+     *   SerialMessageRouter router;
+     *   router.withInterface(&Serial)
+     *         .withListener("HITL/", [](const char* msg, const char* prefix, Stream* src) {
+     *             double simTime;
+     *             if (HITLParser::parse(msg, simTime)) {
+     *                 astraSys->update(simTime);
+     *             }
+     *         });
+     *
+     * Legacy manual usage:
      *   if (Serial.available()) {
      *       String line = Serial.readStringUntil('\n');
      *       if (line.startsWith("HITL/")) {
@@ -44,22 +54,22 @@ namespace astra
     {
     public:
         /**
-         * Parse a HITL message and inject data into HITLSensorBuffer
-         * @param line Full message line including "HITL/" prefix
+         * Parse HITL data (without prefix) and inject into HITLSensorBuffer
+         * Use this with SerialMessageRouter which automatically strips the prefix.
+         *
+         * @param data CSV data without "HITL/" prefix
          * @param timestamp Output parameter for extracted simulation time
          * @return true if parsing successful, false otherwise
+         *
+         * Example: parse("1.234,0.0,0.0,9.81,...", simTime)
          */
-        static bool parseAndInject(const char *line, double &timestamp)
+        static bool parse(const char *data, double &timestamp)
         {
-            // Verify prefix
-            if (strncmp(line, "HITL/", 5) != 0)
+            if (!data)
             {
-                LOGE("HITL: Invalid prefix");
+                LOGE("HITL: Null data");
                 return false;
             }
-
-            // Skip prefix
-            const char *data = line + 5;
 
             // Get buffer instance
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
@@ -99,6 +109,37 @@ namespace astra
             timestamp = buffer.data.timestamp;
 
             return true;
+        }
+
+        /**
+         * Parse HITL data without timestamp extraction
+         */
+        static bool parse(const char *data)
+        {
+            double timestamp;
+            return parse(data, timestamp);
+        }
+
+        /**
+         * Parse a HITL message and inject data into HITLSensorBuffer
+         * Legacy method that expects full line with "HITL/" prefix.
+         *
+         * @param line Full message line including "HITL/" prefix
+         * @param timestamp Output parameter for extracted simulation time
+         * @return true if parsing successful, false otherwise
+         */
+        static bool parseAndInject(const char *line, double &timestamp)
+        {
+            // Verify prefix
+            if (strncmp(line, "HITL/", 5) != 0)
+            {
+                LOGE("HITL: Invalid prefix");
+                return false;
+            }
+
+            // Skip prefix and use the new parse method
+            const char *data = line + 5;
+            return parse(data, timestamp);
         }
 
         /**
