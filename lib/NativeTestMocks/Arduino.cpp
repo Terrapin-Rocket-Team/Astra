@@ -44,11 +44,39 @@ void Stream::clearBuffer()
 {
     cursor = 0;
     fakeBuffer[0] = '\0';
+    inputCursor = 0;
+    inputLength = 0;
+    inputBuffer[0] = '\0';
 }
 
 int Stream::readBytesUntil(char c, char *i, size_t len) {return 0;}
 
-bool Stream::available() { return true; }
+bool Stream::available()
+{
+    return inputCursor < inputLength;
+}
+
+int Stream::read()
+{
+    if (inputCursor >= inputLength) {
+        return -1;
+    }
+    return inputBuffer[inputCursor++];
+}
+
+void Stream::simulateInput(const char* data)
+{
+    if (!data) return;
+
+    inputLength = strlen(data);
+    if (inputLength >= sizeof(inputBuffer)) {
+        inputLength = sizeof(inputBuffer) - 1;
+    }
+
+    memcpy(inputBuffer, data, inputLength);
+    inputBuffer[inputLength] = '\0';
+    inputCursor = 0;
+}
 
 size_t Stream::write(uint8_t b) { fakeBuffer[cursor++] = b; return 1;}
 

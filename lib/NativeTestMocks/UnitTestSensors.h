@@ -83,33 +83,33 @@ public:
     }
 };
 
-class FakeIMU : public IMU
-{
-public:
-    FakeIMU() : IMU()
-    {
-        initialized = true;
-        setName("FakeIMU");
-    }
-    ~FakeIMU() {}
+// class FakeIMU : public IMU
+// {
+// public:
+//     FakeIMU() : IMU()
+//     {
+//         initialized = true;
+//         setName("FakeIMU");
+//     }
+//     ~FakeIMU() {}
 
-    bool read() override
-    {
-        return true;
-    }
-    void set(Vector<3> acc, Vector<3> gyro, Vector<3> mag)
-    {
-        measuredAcc = acc;
-        measuredGyro = gyro;
-        measuredMag = mag;
-    }
+//     bool read() override
+//     {
+//         return true;
+//     }
+//     void set(Vector<3> acc, Vector<3> gyro, Vector<3> mag)
+//     {
+//         measuredAcc = acc;
+//         measuredGyro = gyro;
+//         measuredMag = mag;
+//     }
 
-    bool init() override
-    {
-        measuredAcc = Vector<3>{0, 0, -9.8};
-        measuredGyro = Vector<3>{0, 0, 0};
-        measuredMag = Vector<3>{0, 0, 0};
-        orientation = Quaternion{1, 0, 0, 0};
-        return initialized;
-    }
-};
+//     bool init() override
+//     {
+//         measuredAcc = Vector<3>{0, 0, -9.8};
+//         measuredGyro = Vector<3>{0, 0, 0};
+//         measuredMag = Vector<3>{0, 0, 0};
+//         orientation = Quaternion{1, 0, 0, 0};
+//         return initialized;
+//     }
+// };

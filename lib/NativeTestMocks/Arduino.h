@@ -28,6 +28,14 @@ void delay(int ms);
 
 void digitalWrite(int pin, int value);
 
+// Constrain function (Arduino-compatible)
+template<typename T>
+T constrain(T value, T min_val, T max_val) {
+    if (value < min_val) return min_val;
+    if (value > max_val) return max_val;
+    return value;
+}
+
 class Stream : public Print
 {
 public:
@@ -35,12 +43,21 @@ public:
     void end();
     void clearBuffer();
     bool available();
+    int read();
     int readBytesUntil(char i, char *buf, size_t s);
     size_t write(uint8_t b) override;
     operator bool() { return true; }
 
+    // For simulating incoming data in tests
+    void simulateInput(const char* data);
+
     char fakeBuffer[1000];
     int cursor = 0;
+
+    // Input buffer for read operations
+    char inputBuffer[1000];
+    int inputCursor = 0;
+    int inputLength = 0;
 };
 
 class SerialClass : public Stream
