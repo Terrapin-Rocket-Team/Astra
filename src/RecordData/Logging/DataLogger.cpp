@@ -9,6 +9,32 @@ namespace astra
     {
     }
 
+    void DataLogger::printHeaderTo(ILogSink *sink)
+    {
+        if (!sink || !sink->ok())
+            return;
+
+        if (sink->wantsPrefix() && _countReporters > 0 && _rps[0]->getNumColumns() > 0)
+            sink->print("TELEM/");
+
+        for (int j = 0; j < _countReporters; j++)
+        {
+            DataPoint *d = _rps[j]->getDataPoints();
+            while (d != nullptr)
+            {
+                sink->printf("%s - %s", _rps[j]->getName(), d->label);
+                if (d != _rps[j]->getLastPoint())
+                    sink->write(',');
+                d = d->next;
+            }
+            if (j != _countReporters - 1)
+                sink->write(',');
+            else
+                sink->write('\n');
+        }
+        sink->flush();
+    }
+
     bool DataLogger::init()
     {
         bool any = false;
@@ -16,25 +42,7 @@ namespace astra
             if (_sinks[i]->begin())
             {
                 any = true;
-                if (_sinks[i]->wantsPrefix() && _countReporters > 0 && _rps[0]->getNumColumns() > 0)
-                    _sinks[i]->print("TELEM/");
-
-                for (int j = 0; j < _countReporters; j++)
-                {
-                    DataPoint *d = _rps[j]->getDataPoints();
-                    while (d != nullptr)
-                    {
-                        _sinks[i]->printf("%s - %s", _rps[j]->getName(), d->label);
-                        if (d != _rps[j]->getLastPoint())
-                            _sinks[i]->write(',');
-                        d = d->next;
-                    }
-                    if (j != _countReporters - 1)
-                        _sinks[i]->write(',');
-                    else
-                        _sinks[i]->write('\n');
-                }
-                _sinks[i]->flush();
+                printHeaderTo(_sinks[i]);
             }
         return _ok = any;
     }

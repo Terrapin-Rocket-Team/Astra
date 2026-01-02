@@ -28,7 +28,7 @@ public:
     int endCount = 0;
     bool prefix = false;
 
-    explicit MockSink(bool healthy_, bool prefx = false) : healthy(healthy_), prefix(prefix) {}
+    explicit MockSink(bool healthy_, bool prefx = false) : healthy(healthy_), prefix(prefx) {}
 
     bool begin() override
     {
@@ -329,6 +329,130 @@ void testWantsPrefix()
 
 }
 
+void test_printHeaderTo_single_sink(void)
+{
+    MockSink sink1(true, true);
+    MockSink sink2(true, true);
+    FakeReporter rp("accel");
+
+    ILogSink *sinks[] = {&sink1};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+
+    // Clear sink1 and initialize sink2
+    reset(sink1);
+    sink2.begin();  // Must call begin() so ok() returns true
+
+    // Print header to a different sink
+    dl.printHeaderTo(&sink2);
+
+    // Verify sink1 is still empty (header not printed there)
+    TEST_ASSERT_TRUE_MESSAGE(sink1.buf.empty(), "Sink1 should be empty after printHeaderTo sink2");
+
+    // Verify sink2 has the header
+    TEST_ASSERT_FALSE_MESSAGE(sink2.buf.empty(), "Sink2 should have header");
+    auto lines = splitLines(sink2.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &hdr = lines[0];
+
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("TELEM/"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("accel - ax"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("accel - ay"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("accel - count"));
+}
+
+void test_printHeaderTo_with_prefix(void)
+{
+    MockSink sinkWithPrefix(true, true);
+    FakeReporter rp("gyro");
+
+    ILogSink *sinks[] = {&sinkWithPrefix};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+    reset(sinkWithPrefix);
+
+    dl.printHeaderTo(&sinkWithPrefix);
+
+    auto lines = splitLines(sinkWithPrefix.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &hdr = lines[0];
+
+    // Should have TELEM/ prefix
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("TELEM/gyro - ax"));
+}
+
+void test_printHeaderTo_without_prefix(void)
+{
+    MockSink sinkNoPrefix(true, false);  // false = no prefix
+    FakeReporter rp("mag");
+
+    ILogSink *sinks[] = {&sinkNoPrefix};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    TEST_ASSERT_TRUE(dl.init());
+    reset(sinkNoPrefix);
+
+    dl.printHeaderTo(&sinkNoPrefix);
+
+    auto lines = splitLines(sinkNoPrefix.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &hdr = lines[0];
+
+    // Should NOT have TELEM/ prefix
+    TEST_ASSERT_EQUAL(std::string::npos, hdr.find("TELEM/"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("mag - ax"));
+}
+
+void test_printHeaderTo_unhealthy_sink(void)
+{
+    MockSink unhealthySink(false, true);  // unhealthy sink
+    FakeReporter rp("baro");
+
+    ILogSink *sinks[] = {&unhealthySink};
+    DataReporter *reps[] = {&rp};
+
+    DataLogger dl(sinks, 1, reps, 1);
+    // init() will fail because sink is unhealthy
+    TEST_ASSERT_FALSE(dl.init());
+
+    // printHeaderTo should handle unhealthy sink gracefully (no crash)
+    dl.printHeaderTo(&unhealthySink);
+
+    // Buffer should be empty because sink is not ok()
+    TEST_ASSERT_TRUE_MESSAGE(unhealthySink.buf.empty(), "Unhealthy sink should not receive header");
+}
+
+void test_printHeaderTo_multi_reporter(void)
+{
+    MockSink sink(true, true);
+    FakeReporter rp1("accel");
+    PositionReporter rp2("gps");
+
+    ILogSink *sinks[] = {&sink};
+    DataReporter *reps[] = {&rp1, &rp2};
+
+    DataLogger dl(sinks, 1, reps, 2);
+    TEST_ASSERT_TRUE(dl.init());
+    reset(sink);
+
+    dl.printHeaderTo(&sink);
+
+    auto lines = splitLines(sink.buf);
+    TEST_ASSERT_FALSE(lines.empty());
+    auto &hdr = lines[0];
+
+    // Should have both reporters' columns
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("accel - ax"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("accel - ay"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("gps - lat"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("gps - lon"));
+}
+
 // ---------- Unity harness ----------
 void setUp() {}
 void tearDown() {}
@@ -344,6 +468,13 @@ int main(int, char **)
     RUN_TEST(test_empty_reporter_is_handled);
     RUN_TEST(test_global_configure_and_instance);
     RUN_TEST(testWantsPrefix);
+
+    // New tests for printHeaderTo
+    RUN_TEST(test_printHeaderTo_single_sink);
+    RUN_TEST(test_printHeaderTo_with_prefix);
+    RUN_TEST(test_printHeaderTo_without_prefix);
+    RUN_TEST(test_printHeaderTo_unhealthy_sink);
+    RUN_TEST(test_printHeaderTo_multi_reporter);
 
     UNITY_END();
     return 0;
