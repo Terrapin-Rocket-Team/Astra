@@ -285,6 +285,74 @@ void test_earth_frame_acceleration_with_motion(void) {
     TEST_ASSERT_FLOAT_WITHIN(1.0, 10.0, earthAccel.z());
 }
 
+// Test 9b: Earth frame acceleration with TILTED sensor
+void test_earth_frame_acceleration_tilted(void) {
+    MahonyAHRS ahrs;
+
+    // Calibrate upright
+    Vector<3> accel_calib_upright(0.0, 0.0, 9.81);
+    Vector<3> gyro(0.0, 0.0, 0.0);
+
+    for (int i = 0; i < 100; i++) {
+        ahrs.calibrate(accel_calib_upright, gyro);
+    }
+
+    ahrs.initialize();
+    ahrs.setMode(MahonyMode::GYRO_ONLY);  // Use gyro-only so we can set a specific orientation
+
+    // Rotate 90 degrees about X-axis (now Y points down)
+    double rotation_rate = M_PI / 2.0;  // 90 deg/s
+    Vector<3> gyro_rot(rotation_rate, 0.0, 0.0);
+    double dt = 0.01;
+
+    for (int i = 0; i < 100; i++) {  // 1 second = 90 degrees
+        ahrs.update(accel_calib_upright, gyro_rot, dt);
+    }
+
+    // Now sensor is rotated 90° - Y-axis points down (toward earth)
+    // If we measure just gravity, body frame sees: (0, 9.81, 0)
+    // In earth frame, this should be (0, 0, 0) after gravity subtraction
+    Vector<3> accel_body_tilted(0.0, 9.81, 0.0);
+    Vector<3> earthAccel = ahrs.getEarthAcceleration(accel_body_tilted);
+
+    printf("Tilted sensor test:\n");
+    printf("  Earth accel: x=%f, y=%f, z=%f\n", earthAccel.x(), earthAccel.y(), earthAccel.z());
+
+    // Should be near zero (gravity in body frame should map to gravity in earth frame)
+    TEST_ASSERT_FLOAT_WITHIN(1.0, 0.0, earthAccel.x());
+    TEST_ASSERT_FLOAT_WITHIN(1.0, 0.0, earthAccel.y());
+    TEST_ASSERT_FLOAT_WITHIN(1.0, 0.0, earthAccel.z());
+}
+
+// Test 9c: Earth frame acceleration with lateral body acceleration
+void test_earth_frame_acceleration_lateral(void) {
+    MahonyAHRS ahrs;
+
+    // Calibrate upright
+    Vector<3> accel_calib(0.0, 0.0, 9.81);
+    Vector<3> gyro(0.0, 0.0, 0.0);
+
+    for (int i = 0; i < 100; i++) {
+        ahrs.calibrate(accel_calib, gyro);
+    }
+
+    ahrs.initialize();
+    ahrs.setMode(MahonyMode::CORRECTING);
+
+    // Sensor is upright, but accelerating sideways (X-direction in body frame)
+    // Body measures: 5 m/s² in +X, plus gravity in +Z
+    Vector<3> accel_body(5.0, 0.0, 9.81);
+    Vector<3> earthAccel = ahrs.getEarthAcceleration(accel_body);
+
+    printf("Lateral accel test:\n");
+    printf("  Earth accel: x=%f, y=%f, z=%f\n", earthAccel.x(), earthAccel.y(), earthAccel.z());
+
+    // Should see 5 m/s² in earth X-axis, nothing in Y or Z
+    TEST_ASSERT_FLOAT_WITHIN(1.0, 5.0, earthAccel.x());
+    TEST_ASSERT_FLOAT_WITHIN(1.0, 0.0, earthAccel.y());
+    TEST_ASSERT_FLOAT_WITHIN(1.0, 0.0, earthAccel.z());
+}
+
 // Test 10: Gyro bias removal
 void test_gyro_bias_removal(void) {
     MahonyAHRS ahrs;
@@ -441,6 +509,8 @@ int main(int argc, char **argv) {
     RUN_TEST(test_reset);
     RUN_TEST(test_earth_frame_acceleration);
     RUN_TEST(test_earth_frame_acceleration_with_motion);
+    RUN_TEST(test_earth_frame_acceleration_tilted);
+    RUN_TEST(test_earth_frame_acceleration_lateral);
 
     UNITY_END();
 
