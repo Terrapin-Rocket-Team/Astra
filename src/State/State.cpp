@@ -103,7 +103,7 @@ namespace astra
 
                 // Initialize and switch to normal mode
                 orientationFilter->initialize();
-                orientationFilter->setMode(MahonyMode::CORRECTING);
+                orientationFilter->setMode(MahonyMode::GYRO_ONLY);
                 LOGI("Orientation filter calibrated and ready.");
             }
             else
