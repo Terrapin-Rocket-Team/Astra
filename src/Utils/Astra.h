@@ -12,6 +12,7 @@ namespace astra
         Astra(AstraConfig *config);
         void init();
         bool update(double ms = -1); // returns true if state update occurred
+        SerialMessageRouter* getMessageRouter() { return messageRouter; }
 
     private:
         bool ready = false;
