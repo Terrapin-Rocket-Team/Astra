@@ -146,18 +146,15 @@ namespace astra
         /**
          * Computes the acceleration in Earth frame, compensating gravity.
          * @param accel : raw accelerometer reading (m/s^2)
-         * @return       : Vector<3> acceleration in Earth frame (X-east, Y-north, Z-up)
+         * @return       : Vector<3> acceleration in Earth frame (NED: X-north, Y-east, Z-down)
          */
         Vector<3> getEarthAcceleration(const Vector<3> &accel) const
         {
-            // Rotate body accel into Earth frame: a_e = q_rel ⊗ [0, a] ⊗ q_rel*
-            Quaternion qRel = getQuaternion();
-            Vector<3> a = accel;
-            // pure quaternion
-            Quaternion qa(0.0, a.x(), a.y(), a.z());
-            Quaternion rotated = qRel.conjugate() * qa * qRel;
-            Vector<3> earthAcc(rotated.x(), rotated.y(), rotated.z());
-            // subtract gravity
+            // _q rotates FROM earth TO body (earth vectors → body vectors)
+            // To rotate body acceleration to earth frame, use the inverse: _q.conjugate()
+            Quaternion qInv = _q.conjugate();
+            Vector<3> earthAcc = qInv.rotateVector(accel);
+            // Subtract gravity in NED frame (gravity is +Z direction, subtracting gives actual accel)
             earthAcc.z() -= 9.81;
             return earthAcc;
         }
