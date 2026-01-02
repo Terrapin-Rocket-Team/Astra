@@ -101,7 +101,7 @@ namespace astra
                 Vector<3> vAcc = _q.rotateVector(Vector<3>(0.0, 0.0, 1.0));
 
                 // 3. Error between measured and predicted gravity
-                Vector<3> e = a.cross(vAcc);
+                Vector<3> e = vAcc.cross(a);
 
                 // 4. Update gyroscope bias
                 _biasX += _Ki * e.x() * dt;
@@ -110,17 +110,17 @@ namespace astra
 
                 // 5. Corrected angular velocity with accel feedback
                 gCorr = Vector<3>(
-                    -gyro.x() - _biasX + _Kp * e.x(),
-                    -gyro.y() - _biasY + _Kp * e.y(),
-                    -gyro.z() - _biasZ + _Kp * e.z());
+                    -gyro.x() + _biasX + _Kp * e.x(),
+                    -gyro.y() + _biasY + _Kp * e.y(),
+                    -gyro.z() + _biasZ + _Kp * e.z());
             }
             else // GYRO_ONLY mode
             {
                 // Pure gyro integration, no accel correction
                 gCorr = Vector<3>(
-                    -gyro.x() - _biasX,
-                    -gyro.y() - _biasY,
-                    -gyro.z() - _biasZ);
+                    -gyro.x() + _biasX,
+                    -gyro.y() + _biasY,
+                    -gyro.z() + _biasZ);
             }
 
             // 6. Quaternion derivative: omega ⊗ q
