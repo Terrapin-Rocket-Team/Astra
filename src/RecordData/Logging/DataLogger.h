@@ -20,6 +20,7 @@ namespace astra
 
         bool init();
         bool appendLine();
+        void printHeaderTo(ILogSink *sink);
 
         static void configure(ILogSink **sinks, uint8_t numSinks, DataReporter **reporters, uint8_t numReporters);
         static DataLogger &instance();

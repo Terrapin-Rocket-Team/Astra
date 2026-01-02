@@ -6,6 +6,8 @@
 #include "RetrieveData/RetrieveSDCardData.h"
 #endif
 #include "RecordData/Logging/DataLogger.h"
+#include "RecordData/Logging/LoggingBackend/ILogSink.h"
+#include <cstring>
 using namespace astra;
 BlinkBuzz bb;
 
@@ -13,9 +15,31 @@ BlinkBuzz bb;
 #define ASTRA_VERSION "UNKNOWN"
 #endif
 
-Astra::Astra(AstraConfig *config) : config(config)
+Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 {
 }
+
+void Astra::handleCommandMessage(const char* message, const char* prefix, Stream* source)
+{
+    if (!message || !source)
+        return;
+
+    // Check if command is "HEADER"
+    if (strcmp(message, "HEADER") == 0)
+    {
+        // Create a temporary PrintLog wrapper to send header to the requesting stream
+        PrintLog tempLog(*source, true);  // true = wants prefix
+        if (tempLog.begin())
+        {
+            if (DataLogger::available())
+            {
+                DataLogger::instance().printHeaderTo(&tempLog);
+            }
+            tempLog.end();
+        }
+    }
+}
+
 void Astra::init()
 {
     LOGI("Initializing Astra version %s", ASTRA_VERSION);
@@ -47,6 +71,11 @@ void Astra::init()
 
     DataLogger::configure(config->logs, config->numLogs, reporters, j);
 
+    // Setup SerialMessageRouter for command handling
+    messageRouter = new SerialMessageRouter(4, 8, 256);
+    messageRouter->withInterface(&Serial)
+                  .withListener("CMD/", handleCommandMessage);
+
     delay(10);
     // then State
     config->state->begin();
@@ -61,9 +90,13 @@ bool Astra::update(double ms)
         LOGW("Attempted to update Astra before it was initialized. Initializing it now...");
         init();
     }
-    // TODO: replace with my implementation
-    //  getSerialHandler().handle();
-    //  loop based on time and interval and update bb.
+
+    // Update SerialMessageRouter to handle incoming commands
+    if (messageRouter)
+    {
+        messageRouter->update();
+    }
+
     bb.update();
     if (ms == -1)
         ms = millis();

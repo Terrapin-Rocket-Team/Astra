@@ -2,6 +2,7 @@
 #define Astra_SYSTEM_H
 
 #include "AstraConfig.h"
+#include "Communication/SerialMessageRouter.h"
 
 namespace astra
 {
@@ -16,6 +17,9 @@ namespace astra
         bool ready = false;
         AstraConfig *config = nullptr;
         double lastStateUpdate = 0, lastLoggingUpdate = 0;
+        SerialMessageRouter *messageRouter = nullptr;
+
+        static void handleCommandMessage(const char* message, const char* prefix, Stream* source);
     };
 }
 #endif
