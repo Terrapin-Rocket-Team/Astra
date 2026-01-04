@@ -4,13 +4,14 @@
 #include <Arduino.h>
 #include "Math/Quaternion.h"
 #include "Math/Vector.h"
-#include "Eigen/Dense"
+#include <ArduinoEigen.h>
 #include <vector>
 
 // need to add magnetomater to Mahony filter to correct accumulated gyrscope drift. Magnetometer spits 
 // out strenght of Earth magnetic field in x, y, z components. Has its own calibration process with 
 // soft and hard iron dependencies. Calibration: MOtioncal (program from pjrc)
 
+using namespace astra;
 
 class MahonyAHRS
 {
@@ -44,16 +45,13 @@ public:
 
  // Compute magnetometer calibration matrices from collected samples
 // This implements ellipsoid fitting to find hard and soft iron corrections
-void computeMagCalibration() {
+    void computeMagCalibration() {
     int data_nums = _magCalibBuffer.size();
     
     // Need sufficient samples for calibration (at least 9 parameters to solve)
     if (data_nums < 100) {
         return;
     }
-
-    hard_iron = []; //store hard iron biases
-    soft_iron = [][]; //store soft iron biases 
     
     // Convert vector buffer to Eigen matrix for computation
     Eigen::MatrixXd data(data_nums, 3);
@@ -116,8 +114,8 @@ void computeMagCalibration() {
     // Perform eigenvalue decomposition on the centered ellipsoid
     // This gives us the principal axes and radii
     Eigen::EigenSolver<Eigen::Matrix3d> eig(R.block<3, 3>(0, 0) / (-R(3, 3)));
-    Eigen::Matrix3d eigen_vectors = eig.pseudoEigenvectors();
-    Eigen::Matrix3d eigen_values = eig.pseudoEigenvalueMatrix();
+    Eigen::Matrix3d eigen_vectors = eig.eigenvectors();
+    Eigen::Matrix3d eigen_values = eig.eigenvalues();
     
     // Ensure all eigenvalues are positive (flip eigenvector if needed)
     for (int i = 0; i < 3; i++) {
@@ -128,7 +126,8 @@ void computeMagCalibration() {
     }
     
     // Compute the radii of the ellipsoid from eigenvalues
-    Eigen::Vector3d radii = (1.0 / eigen_values.diagonal().array()).sqrt();
+    Eigen::Array3d radii = (1.0 / eigen_values.array().sqrt()).matrix();
+    Eigen::Vector3d radii_v = radii;
     
     // Build soft-iron correction matrix
     // This transforms the ellipsoid into a sphere with radius = smallest radius
@@ -169,8 +168,8 @@ void computeMagCalibration() {
     _sumMag.x() = soft_iron[0][0] * temp.x() + soft_iron[0][1] * temp.y() + soft_iron[0][2] * temp.z();
     _sumMag.y() = soft_iron[1][0] * temp.x() + soft_iron[1][1] * temp.y() + soft_iron[1][2] * temp.z();
     _sumMag.z() = soft_iron[2][0] * temp.x() + soft_iron[2][1] * temp.y() + soft_iron[2][2] * temp.z();
-    _bufferClear() //clear buffer
-}
+    _bufferClear(); //clear buffer
+    }
 
 // Apply calibration to a single raw magnetometer reading
 // Returns calibrated measurement with hard and soft iron corrections applied
@@ -314,8 +313,10 @@ private:
     Vector<3> _sumAccel, _sumGyro, _sumMag; //vectors 
     int _calibSamples; //number of samples?
     bool _initialized;
-    vector<Vector<3>> _magCalibBuffer; //temporary buffer to hold mag samples 
+    std::vector<Vector<3>> _magCalibBuffer; //temporary buffer to hold mag samples 
     bool _magCalibrated = false;
+    std::vector<double> hard_iron;
+    std::vector<double> soft_iron[3];
 
 };
 
