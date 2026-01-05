@@ -2,10 +2,11 @@
 #define MAHONY_H
 
 #include <Arduino.h>
-#include "Math/Quaternion.h"
-#include "Math/Vector.h"
 #include <ArduinoEigen.h>
 #include <vector>
+#include "Math/Matrix.h"
+#include "Math/Quaternion.h"
+#include "Math/Vector.h"
 
 // need to add magnetomater to Mahony filter to correct accumulated gyrscope drift. Magnetometer spits 
 // out strenght of Earth magnetic field in x, y, z components. Has its own calibration process with 
@@ -17,48 +18,34 @@ class MahonyAHRS
 {
 public:
 
-
     MahonyAHRS(double Kp = 0.1, double Ki = 0.0005)
         : _Kp(Kp), _Ki(Ki), _biasX(0.0), _biasY(0.0), _biasZ(0.0),
           _sumAccel(), _sumGyro(), _sumMag(), _calibSamples(0), _q(1.0, 0, 0, 0) /*0 rotation quaternion*/, 
           _q0(1.0, 0.0, 0.0, 0.0)/*0 rotation quaternion, but with floats*/, _initialized(false)
     {
     }
-
-
-//used to clear the temporary buffer
-
-    void _bufferClear(){
-        if(_magCalibrated){
-            _magCalibBuffer.clear();
-            _magCalibBuffer.shrink_to_fit();
-        }
-    }
-
     
     //mag needs its own calibration because it needs dynamic, 3D rotation; static samples aren't enough.
     //using eigen matrices to perform c++ calculation of calibrations, cannot seem to find a way to offload the calibration math.
     //found algorithm to calculate the matrices at: https://github.com/TonyPhh/magnetometer-calibration/blob/master/magnetometer_calibrate.cpp
-    //Note: I have downloaded a large repo (Eigen) in order to perform the array/matrices/etc. calculations. It is heavy for 
-    //teensy, but it only needs to call it once. If there is another way, please let me know. 
 
 
  // Compute magnetometer calibration matrices from collected samples
 // This implements ellipsoid fitting to find hard and soft iron corrections
     void computeMagCalibration() {
-    int data_nums = _magCalibBuffer.size();
+    Matrix magCalib(_calibSamples, 3, new double[_calibSamples * 3]);
     
     // Need sufficient samples for calibration (at least 9 parameters to solve)
-    if (data_nums < 100) {
+    if (_calibSamples < 100) {
         return;
     }
     
     // Convert vector buffer to Eigen matrix for computation
-    Eigen::MatrixXd data(data_nums, 3);
-    for (int i = 0; i < data_nums; i++) {
-        data(i, 0) = _magCalibBuffer[i].x();
-        data(i, 1) = _magCalibBuffer[i].y();
-        data(i, 2) = _magCalibBuffer[i].z();
+    Eigen::MatrixXd data(_calibSamples, 3); //dynamically sized matrix, could change later on
+    for (int i = 0; i < _calibSamples; i++) {
+        data(i, 0) = magCalib.get(i, 0);
+        data(i, 1) = magCalib.get(i, 1);
+        data(i, 2) = magCalib.get(i, 2);
     }
     
     // Extract individual columns for easier manipulation
@@ -68,7 +55,7 @@ public:
     
     // Build design matrix D with quadratic terms for ellipsoid fitting
     // Each row: [x², y², z², 2xy, 2xz, 2yz, 2x, 2y, 2z]
-    Eigen::MatrixXd D(data_nums, 9);
+    Eigen::MatrixXd D(_calibSamples, 9);
     D.col(0) = data_x.array().square();              // x²
     D.col(1) = data_y.array().square();              // y²
     D.col(2) = data_z.array().square();              // z²
@@ -82,21 +69,24 @@ public:
     // Solve least squares: D'*D*v = D'*ones
     // This finds the ellipsoid parameters that best fit the data
     Eigen::MatrixXd A_v = D.transpose() * D;
-    Eigen::MatrixXd b_v = D.transpose() * Eigen::MatrixXd::Ones(data_nums, 1);
+    Eigen::MatrixXd b_v = (D.transpose() )* Eigen::MatrixXd::Ones(D.rows(), 1);
     Eigen::MatrixXd x_v = A_v.lu().solve(b_v);
     
     // Form the algebraic representation of the ellipsoid as a 4x4 matrix
     // This represents the quadratic form: v'*A*v = 0
-    Eigen::Matrix4d A;
-    A << x_v(0), x_v(3), x_v(4), x_v(6),
-         x_v(3), x_v(1), x_v(5), x_v(7),
-         x_v(4), x_v(5), x_v(2), x_v(8),
-         x_v(6), x_v(7), x_v(8), -1.0;
+    Eigen::MatrixXd A;
+    A.resize(4,4);
+    A<<x_v(0),x_v(3),x_v(4),x_v(6),
+        x_v(3),x_v(1),x_v(5),x_v(7),
+        x_v(4),x_v(5),x_v(2),x_v(8),
+            x_v(6),x_v(7),x_v(8),-1.0;
     
     // Extract the center of the ellipsoid (hard-iron offset)
     // Solve: -A[0:3,0:3] * center = [x_v(6), x_v(7), x_v(8)]
     Eigen::Matrix3d A_center = -A.block<3, 3>(0, 0);
-    Eigen::Vector3d b_center(x_v(6), x_v(7), x_v(8));
+    Eigen::MatrixXd b_center;
+    b_center.resize(3,1);
+    b_center<<x_v(6),x_v(7),x_v(8);
     Eigen::Vector3d x_center = A_center.lu().solve(b_center);
     
     // Store hard-iron correction (offset to center the ellipsoid)
@@ -105,29 +95,34 @@ public:
     hard_iron[2] = x_center(2);
     
     // Create translation matrix to move ellipsoid to origin
-    Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-    T.block<1, 3>(3, 0) = x_center.transpose();
+    Eigen::MatrixXd T=Eigen::MatrixXd::Identity(4,4);
+    T.block<1,3>(3,0)=x_center.transpose();
     
     // Transform ellipsoid to centered position
-    Eigen::Matrix4d R = T * A * T.transpose();
+    Eigen::MatrixXd R=T*A*T.transpose();
     
     // Perform eigenvalue decomposition on the centered ellipsoid
     // This gives us the principal axes and radii
-    Eigen::EigenSolver<Eigen::Matrix3d> eig(R.block<3, 3>(0, 0) / (-R(3, 3)));
-    Eigen::Matrix3d eigen_vectors = eig.eigenvectors();
-    Eigen::Matrix3d eigen_values = eig.eigenvalues();
+    Eigen::EigenSolver<Eigen::MatrixXd> eig(R.block<3,3>(0,0)/(-R(3,3)));
+    Eigen::MatrixXd eigen_vectors=eig.pseudoEigenvectors();
+    Eigen::MatrixXd eigen_values=eig.pseudoEigenvalueMatrix();
     
     // Ensure all eigenvalues are positive (flip eigenvector if needed)
-    for (int i = 0; i < 3; i++) {
-        if (eigen_values(i, i) < 0) {
-            eigen_values(i, i) = -eigen_values(i, i);
-            eigen_vectors.col(i) = -eigen_vectors.col(i);
-        }
+    if(eigen_values(0,0)<0){
+        eigen_values(0,0)=-eigen_values(0,0);
+        eigen_vectors.col(0)=-1*eigen_values.col(0);
+    }
+    if(eigen_values(1,1)<0){
+        eigen_values(1,1)=-eigen_values(1,1);
+        eigen_vectors.col(1)=-1*eigen_values.col(1);
+    }
+    if(eigen_values(2,2)<0){
+        eigen_values(2,2)=-eigen_values(2,2);
+        eigen_vectors.col(2)=-1*eigen_values.col(2);
     }
     
     // Compute the radii of the ellipsoid from eigenvalues
-    Eigen::Array3d radii = (1.0 / eigen_values.array().sqrt()).matrix();
-    Eigen::Vector3d radii_v = radii;
+    Eigen::MatrixXd radii=(1/(eigen_values.diagonal().array())).array().sqrt();
     
     // Build soft-iron correction matrix
     // This transforms the ellipsoid into a sphere with radius = smallest radius
@@ -308,15 +303,15 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
 
 private:
     double _Kp, _Ki; //tuning parameters for mahony filter
-    double _biasX, _biasY, _biasZ; //biases?
+    double _biasX, _biasY, _biasZ; //biases = averages 
     Quaternion _q, _q0; //rotation quaternion 
-    Vector<3> _sumAccel, _sumGyro, _sumMag; //vectors 
-    int _calibSamples; //number of samples?
+    Vector<3> _sumAccel, _sumGyro, _sumMag; //vectors which hold sum of accel, gyro, mag readings for calibration
+    int _calibSamples; //number of samples
     bool _initialized;
-    std::vector<Vector<3>> _magCalibBuffer; //temporary buffer to hold mag samples 
     bool _magCalibrated = false;
-    std::vector<double> hard_iron;
-    std::vector<double> soft_iron[3];
+    Vector<3> hard_iron; //astra vector to hold hard iron calibration values, used the entire flight 
+    double* arr = new double[9]();
+    astra::Matrix soft_iron(3, 3, arr); //3x3 matrix to hold soft iron calibration values, used the entire flight
 
 };
 
