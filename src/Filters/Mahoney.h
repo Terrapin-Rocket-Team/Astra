@@ -18,11 +18,12 @@ class MahonyAHRS
 {
 public:
 
-    MahonyAHRS(double Kp = 0.1, double Ki = 0.0005)
+    MahonyAHRS(float Kp = 0.1, float Ki = 0.0005)
         : _Kp(Kp), _Ki(Ki), _biasX(0.0), _biasY(0.0), _biasZ(0.0),
-          _sumAccel(), _sumGyro(), _sumMag(), _calibSamples(0), _q(1.0, 0, 0, 0) /*0 rotation quaternion*/, 
-          _q0(1.0, 0.0, 0.0, 0.0)/*0 rotation quaternion, but with floats*/, _initialized(false)
+          _sumAccel(), _sumGyro(), _calibSamples(0), _q(1.0, 0, 0, 0), //change number of samples here
+          _q0(1.0, 0.0, 0.0, 0.0), _initialized(false),  _magData(_calibSamples), _magCalibrated(false)
     {
+
     }
     
     //mag needs its own calibration because it needs dynamic, 3D rotation; static samples aren't enough.
@@ -32,8 +33,8 @@ public:
 
  // Compute magnetometer calibration matrices from collected samples
 // This implements ellipsoid fitting to find hard and soft iron corrections
+//stores results in hard_iron and soft_iron members
     void computeMagCalibration() {
-    Matrix magCalib(_calibSamples, 3, new double[_calibSamples * 3]);
     
     // Need sufficient samples for calibration (at least 9 parameters to solve)
     if (_calibSamples < 100) {
@@ -43,11 +44,14 @@ public:
     // Convert vector buffer to Eigen matrix for computation
     Eigen::MatrixXd data(_calibSamples, 3); //dynamically sized matrix, could change later on
     for (int i = 0; i < _calibSamples; i++) {
-        data(i, 0) = magCalib.get(i, 0);
-        data(i, 1) = magCalib.get(i, 1);
-        data(i, 2) = magCalib.get(i, 2);
+        data(i, 0) = _magData[i].x();
+        data(i, 1) = _magData[i].y();
+        data(i, 2) = _magData[i].z();
     }
     
+    _magData.clear(); // free up vector memory
+    _magData.shrink_to_fit();  // frees heap memory
+
     // Extract individual columns for easier manipulation
     Eigen::MatrixXd data_x = data.col(0);
     Eigen::MatrixXd data_y = data.col(1);
@@ -123,48 +127,35 @@ public:
     
     // Compute the radii of the ellipsoid from eigenvalues
     Eigen::MatrixXd radii=(1/(eigen_values.diagonal().array())).array().sqrt();
-    
-    // Build soft-iron correction matrix
-    // This transforms the ellipsoid into a sphere with radius = smallest radius
-    Eigen::Matrix3d map = eigen_vectors.transpose();       // Rotation to principal axes
-    Eigen::Matrix3d inv_map = eigen_vectors;               // Rotation back
-    
-    // Scale matrix to normalize radii
-    Eigen::Matrix3d scale_matrix = Eigen::Matrix3d::Identity();
-    scale_matrix(0, 0) = radii(0);
-    scale_matrix(1, 1) = radii(1);
-    scale_matrix(2, 2) = radii(2);
-    
-    // Normalize to smallest radius to preserve magnitude
-    Eigen::Matrix3d scale = scale_matrix.inverse() * radii.minCoeff();
-    
-    // Final soft-iron correction: rotate -> scale -> rotate back
-    Eigen::Matrix3d soft_corr_matrix = inv_map * scale * map;
-    
+
+    Eigen::MatrixXd map=eigen_vectors.transpose();
+    Eigen::MatrixXd inv_map=eigen_vectors;
+    Eigen::MatrixXd scale_first=Eigen::MatrixXd::Identity(3,3);
+
+    scale_first(0,0)=radii(0);
+    scale_first(1,1)=radii(1);
+    scale_first(2,2)=radii(2);
+
+    Eigen::MatrixXd scale=scale_first.inverse()*radii.minCoeff();
+    Eigen::MatrixXd soft_corr=inv_map*scale*map;
+    Eigen::MatrixXd hard_corr=x_center;
+ 
     // Store soft-iron correction matrix
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            soft_iron[i][j] = soft_corr_matrix(i, j);
+            soft_iron(i, j) = soft_corr(i, j);
         }
     }
+
+    //store hard-iron correction vector
+    hard_iron = Vector<3>(hard_corr(0), hard_corr(1), hard_corr(2));
     
     // Mark calibration as complete
     _magCalibrated = true;
 
-    
-    // Apply calibration corrections to the accumulated _sumMag vector
-    // Step 1: Apply hard-iron offset
-    Vector<3> temp;
-    temp.x() = _sumMag.x() - hard_iron[0];
-    temp.y() = _sumMag.y() - hard_iron[1];
-    temp.z() = _sumMag.z() - hard_iron[2];
-    
-    // Step 2: Apply soft-iron correction and update _sumMag
-    _sumMag.x() = soft_iron[0][0] * temp.x() + soft_iron[0][1] * temp.y() + soft_iron[0][2] * temp.z();
-    _sumMag.y() = soft_iron[1][0] * temp.x() + soft_iron[1][1] * temp.y() + soft_iron[1][2] * temp.z();
-    _sumMag.z() = soft_iron[2][0] * temp.x() + soft_iron[2][1] * temp.y() + soft_iron[2][2] * temp.z();
-    _bufferClear(); //clear buffer
     }
+
+
 
 // Apply calibration to a single raw magnetometer reading
 // Returns calibrated measurement with hard and soft iron corrections applied
@@ -183,19 +174,20 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
     
     // Step 2: Apply soft-iron correction (transform ellipsoid to sphere)
     Vector<3> corrected;
-    corrected.x() = soft_iron[0][0] * temp.x() + soft_iron[0][1] * temp.y() + soft_iron[0][2] * temp.z();
-    corrected.y() = soft_iron[1][0] * temp.x() + soft_iron[1][1] * temp.y() + soft_iron[1][2] * temp.z();
-    corrected.z() = soft_iron[2][0] * temp.x() + soft_iron[2][1] * temp.y() + soft_iron[2][2] * temp.z();
+    corrected.x() = soft_iron(0,0) * temp.x() + soft_iron(0,1) * temp.y() + soft_iron(0,2) * temp.z();
+    corrected.y() = soft_iron(1,0) * temp.x() + soft_iron(1,1) * temp.y() + soft_iron(1,2) * temp.z();
+    corrected.z() = soft_iron(2,0) * temp.x() + soft_iron(2,1) * temp.y() + soft_iron(2,2) * temp.z();
     
     return corrected;
 }
 
 
     // Collect static samples before launch
-    void calibrate(const Vector<3> &accel, const Vector<3> &gyro)
+    void calibrate(const Vector<3> &accel, const Vector<3> &gyro, const Vector<3> &mag)
     {
         _sumAccel += accel;
         _sumGyro += gyro;
+        _magData.emplace_back(mag);
         _calibSamples++;
     }
 
@@ -305,13 +297,14 @@ private:
     double _Kp, _Ki; //tuning parameters for mahony filter
     double _biasX, _biasY, _biasZ; //biases = averages 
     Quaternion _q, _q0; //rotation quaternion 
-    Vector<3> _sumAccel, _sumGyro, _sumMag; //vectors which hold sum of accel, gyro, mag readings for calibration
+    Vector<3> _sumAccel, _sumGyro; //vectors which hold sum of accel, gyro readings for calibration
     int _calibSamples; //number of samples
     bool _initialized;
-    bool _magCalibrated = false;
+    bool _magCalibrated;
+    std::vector<Vector<3>> _magData; //dynamic array to hold mag samples for calibration, it doubles in memory when full!!
+
     Vector<3> hard_iron; //astra vector to hold hard iron calibration values, used the entire flight 
-    double* arr = new double[9]();
-    astra::Matrix soft_iron(3, 3, arr); //3x3 matrix to hold soft iron calibration values, used the entire flight
+    Matrix soft_iron{3, 3, new double[9]()}; //astra matrix to hold soft iron calibration values, used the entire flight
 
 };
 
