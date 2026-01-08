@@ -20,7 +20,7 @@ public:
 
     MahonyAHRS(float Kp = 0.1, float Ki = 0.0005)
         : _Kp(Kp), _Ki(Ki), _biasX(0.0), _biasY(0.0), _biasZ(0.0),
-          _sumAccel(), _sumGyro(), _calibSamples(0), _q(1.0, 0, 0, 0), //change number of samples here
+          _sumAccel(), _sumGyro(), _sumMag(), _calibSamples(0), _q(1.0, 0, 0, 0), //change number of samples here
           _q0(1.0, 0.0, 0.0, 0.0), _initialized(false),  _magData(_calibSamples), _magCalibrated(false)
     {
 
@@ -187,6 +187,7 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
     {
         _sumAccel += accel;
         _sumGyro += gyro;
+        _sumMag += mag;
         _magData.emplace_back(mag);
         _calibSamples++;
     }
@@ -198,11 +199,17 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
             return;
         Vector<3> avgA = _sumAccel * (1.0 / _calibSamples);
         Vector<3> avgG = _sumGyro * (1.0 / _calibSamples);
+        Vector<3> avgM = _sumMag * (1.0 / _calibSamples);
+        computeMagCalibration(); //compute mag calibration matrices and store results in soft_iron and hard_iron
 
         // Set gyro bias
         _biasX = avgG.x();
         _biasY = avgG.y();
         _biasZ = avgG.z();
+
+        //mag calibration for inital orientation
+        Vector<3> calibratedMag = calibrateMag(avgM);
+        calibratedMag.normalize();
 
         // Align initial orientation so body Z matches gravity
         Vector<3> bodyDown = avgA;
@@ -297,7 +304,7 @@ private:
     double _Kp, _Ki; //tuning parameters for mahony filter
     double _biasX, _biasY, _biasZ; //biases = averages 
     Quaternion _q, _q0; //rotation quaternion 
-    Vector<3> _sumAccel, _sumGyro; //vectors which hold sum of accel, gyro readings for calibration
+    Vector<3> _sumAccel, _sumGyro, _sumMag; //vectors which hold sum of accel, gyro readings for calibration
     int _calibSamples; //number of samples
     bool _initialized;
     bool _magCalibrated;
