@@ -232,19 +232,35 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
         _q.normalize();
 
         //adding magnetometer to initial alignment to correct yaw
-        Vector<3> magProjection = calibratedMag - (bodyDown * calibratedMag.dot(bodyDown));
-        magProjection.normalize();
+        Vector<3> magToEarthFrame = _q.conjugate().rotateVector(calibratedMag);
 
-        Vector<3> earthMag(0.0, 1.0, 0.0); //assume magnetic field points along Earth +Y axis
-        Vector<3> northExpected = _q.rotateVector(earthMag); //rotate to body frame and invert
-        Vector<3> northProjection = northExpected - (bodyDown * northExpected.dot(bodyDown)); //projection onto the bodys x, y plane
-        northProjection.normalize();
+        //in earth frame, magnetic heading is simply the x and y components
+        Vector<3> magHorizontal(magToEarthFrame.x(), magToEarthFrame.y(), 0.0);
+        magHorizontal.normalize();
 
-        Vector<3> magAxis = northProjection.cross(magProjection);
-        if (magAxis.magnitude() < 1e-6){
-            
+        //expected magnetic north in ENU frame (North = +Y)
+        Vector<3> earthMagNorth(0.0, 1.0, 0.0);
+
+
+        //find yaw correction angle between mag heading and earth x axis
+        double yaw = magHorizontal.dot(earthMagNorth);
+        yaw = constrain(yaw, -1.0, 1.0);
+        double yawAngle = acos(yaw);
+
+        //determine sign of yaw angle using cross product
+        Vector<3> cross = earthMagNorth.cross(magHorizontal);
+        if (cross.z() < 0.0)
+        {
+            yawAngle = -yawAngle;
         }
 
+
+        Vector<3> yawAxis(0.0, 0.0, 1.0); //yaw in Earth Frame
+
+        Quaternion yawCorrection;
+        yawCorrection.fromAxisAngle(yawAxis, yawAngle);
+        _q = yawCorrection * _q; //fix quaternion with yaw correction
+        _q.normalize();
 
 
         // Store initial orientation for relative output
@@ -267,7 +283,7 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
             return;
 
         // 1. Normalize accelerometer measurement
-        Vector<3> a = accel * -1.0; // invert so gravity is positive Z
+        Vector<3> a = accel; // gravity is positive Z
         a.normalize();
 
         // 2. Estimated gravity direction in body frame
@@ -276,12 +292,37 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
         // 3. Error between measured and estimated gravity
         Vector<3> e = a.cross(vAcc);
 
-        // 4. Update gyroscope bias (integral action)
+        // 4. Magnetometer correction
+        Vector<3> calibratedMag = calibrateMag(mag);
+        calibratedMag.normalize();
+
+        // 5. estimated magnetic field direction in Earth Frame (ENU)
+        Vector<3> vMag = _q.rotateVector(Vector<3>(0.0, 1.0, 0.0));
+
+            // 6. Error between measured and estimated mag field
+            Vector<3> mag_horizontal = calibratedMag - (vAcc * calibratedMag.dot(vAcc)); //projection of heading onto Earth horizontal plane
+            mag_horizontal.normalize();
+        
+            // Remove vertical component from expected magnetometer
+            Vector<3> vMag_horizontal = vMag - (vAcc * vMag.dot(vAcc));
+            vMag_horizontal.normalize();
+        
+            // Error between measured and estimated magnetic field (yaw correction)
+            Vector<3> eMag = mag_horizontal.cross(vMag_horizontal);
+
+        // 8. Combine errors
+            //tuning will be required for mag, assume 0.2 for now
+
+            float magWeight = 0.2;
+            e += eMag * magWeight;
+
+
+        // 9. Update gyroscope bias (integral action)
         _biasX += _Ki * e.x() * dt;
         _biasY += _Ki * e.y() * dt;
         _biasZ += _Ki * e.z() * dt;
 
-        // 5. Corrected angular velocity (gyroscope measurements compensated for bias and error)
+        // 10. Corrected angular velocity (gyroscope measurements compensated for bias and error)
         Vector<3> gCorr(
             -gyro.x() - _biasX + _Kp * e.x(),
             -gyro.y() - _biasY + _Kp * e.y(),
@@ -289,7 +330,7 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
 
         Quaternion qDot = Quaternion(0.0, gCorr.x(), gCorr.y(), gCorr.z()) * _q * 0.5;
 
-        // 7. Integrate and normalize
+        // 11. Integrate and normalize
         _q = _q + (qDot * dt);
         _q.normalize();
     }
