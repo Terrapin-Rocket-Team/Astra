@@ -231,6 +231,22 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
         _q.fromAxisAngle(axis, angle);
         _q.normalize();
 
+        //adding magnetometer to initial alignment to correct yaw
+        Vector<3> magProjection = calibratedMag - (bodyDown * calibratedMag.dot(bodyDown));
+        magProjection.normalize();
+
+        Vector<3> earthMag(0.0, 1.0, 0.0); //assume magnetic field points along Earth +Y axis
+        Vector<3> northExpected = _q.rotateVector(earthMag); //rotate to body frame and invert
+        Vector<3> northProjection = northExpected - (bodyDown * northExpected.dot(bodyDown)); //projection onto the bodys x, y plane
+        northProjection.normalize();
+
+        Vector<3> magAxis = northProjection.cross(magProjection);
+        if (magAxis.magnitude() < 1e-6){
+            
+        }
+
+
+
         // Store initial orientation for relative output
         _q0 = _q;
         _initialized = true;
