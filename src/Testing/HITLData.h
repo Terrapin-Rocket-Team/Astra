@@ -4,7 +4,7 @@
 #ifndef HITL_DATA_H
 #define HITL_DATA_H
 
-#include <RadioMessage.h>
+#include <Data.h>
 
 class HITLData : public Data {
     public: 
@@ -16,7 +16,7 @@ class HITLData : public Data {
 
     private:
         //these are the data memebers that we need to run the Avionics algorithms on 
-        
+
         float batteryVoltage;
         float temperature;
         float pressure;
