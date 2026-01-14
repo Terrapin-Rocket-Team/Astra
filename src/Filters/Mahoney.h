@@ -357,7 +357,22 @@ Vector<3> calibrateMag(const Vector<3> &raw) {
 
     bool isInitialized() const { return _initialized; }
 
-private:
+    void reset() //for simulating the filter, used to reset everything 
+    {
+        _biasX = _biasY = _biasZ = 0.0;
+        _q = Quaternion(1.0, 0.0, 0.0, 0.0);
+        _q0 = _q;
+        _initialized = false;
+
+        _sumAccel = Vector<3>();
+        _sumGyro  = Vector<3>();
+        _sumMag   = Vector<3>();
+        _calibSamples = 0;
+        _magCalibrated = false;
+    }
+
+
+
     double _Kp, _Ki; //tuning parameters for mahony filter
     double _biasX, _biasY, _biasZ; //biases = averages 
     Quaternion _q, _q0; //rotation quaternion 
