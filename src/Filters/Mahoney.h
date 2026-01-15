@@ -1,7 +1,7 @@
 #ifndef MAHONY_H
 #define MAHONY_H
 
-#include <Arduino.h>
+// #include <Arduino.h>
 #include <ArduinoEigen.h>
 #include <vector>
 #include "Math/Matrix.h"
