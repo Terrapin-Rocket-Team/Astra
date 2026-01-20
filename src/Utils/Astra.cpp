@@ -1,6 +1,7 @@
 #include "Astra.h"
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
+#include "Sensors/Sensor.h"
 #include "Wire.h"
 #ifndef NATIVE
 #include "RetrieveData/RetrieveSDCardData.h"
@@ -17,6 +18,11 @@ BlinkBuzz bb;
 
 Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 {
+    // Setup sensor manager with sensors from config
+    if (config->sensors && config->numSensors > 0)
+    {
+        sensorManager.setSensors(config->sensors, config->numSensors);
+    }
 }
 
 void Astra::handleCommandMessage(const char* message, const char* prefix, Stream* source)
@@ -58,18 +64,22 @@ void Astra::init()
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
-    // then Logger
-    DataReporter **reporters = new DataReporter *[config->numReporters + config->state->getNumMaxSensors() + 1];
+    // Initialize sensors via SensorManager
+    sensorManager.initAll();
+
+    // then Logger - combine sensors and other reporters
+    Sensor **sensors = sensorManager.getSensors();
+    int numSensors = sensorManager.getCount();
+    DataReporter **reporters = new DataReporter *[config->numReporters + numSensors + 1];
 
     reporters[0] = config->state;
     int i = 1;
-    for (; i < config->state->getNumMaxSensors() + 1; i++)
-        reporters[i] = config->state->getSensors()[i - 1];
-    int j = i;
-    for (i = 0; i < config->numReporters; i++)
-        reporters[j++] = config->reporters[i];
+    for (int s = 0; s < numSensors; s++)
+        reporters[i++] = sensors[s];
+    for (int r = 0; r < config->numReporters; r++)
+        reporters[i++] = config->reporters[r];
 
-    DataLogger::configure(config->logs, config->numLogs, reporters, j);
+    DataLogger::configure(config->logs, config->numLogs, reporters, i);
 
     // Setup SerialMessageRouter for command handling
     messageRouter = new SerialMessageRouter(4, 8, 256);
@@ -78,7 +88,10 @@ void Astra::init()
 
     delay(10);
     // then State
-    config->state->begin();
+    if (config->state)
+    {
+        config->state->begin(&sensorManager);
+    }
     ready = true;
     LOGI("Astra initialized.");
 }
@@ -101,16 +114,67 @@ bool Astra::update(double ms)
     if (ms == -1)
         ms = millis();
 
-    if (ms - lastStateUpdate > config->updateInterval)
+    // Convert ms to seconds for State time tracking (HITL compatibility)
+    double currentTime = ms / 1000.0;
+
+    if (!config->state)
     {
-        lastStateUpdate = ms;
-        if (config->state)
-            config->state->update();
-        else
-            LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
+        LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
+        return didUpdate;
+    }
+
+    // Sensor update - highest frequency
+    if (ms - lastSensorUpdate > config->sensorUpdateInterval)
+    {
+        lastSensorUpdate = ms;
+        sensorManager.updateAll();
         didUpdate = true;
     }
 
+    // Orientation update - runs after sensors
+    if (didUpdate && config->state)
+    {
+        double gyro[3], accel[3];
+        bool hasAccel = sensorManager.getAccelData(accel);
+        bool hasGyro = sensorManager.getGyroData(gyro);
+
+        if (hasAccel && hasGyro)
+        {
+            double dt = currentTime - (lastOrientationUpdate / 1000.0);
+            config->state->updateOrientation(gyro, accel, dt);
+            lastOrientationUpdate = ms;
+        }
+    }
+
+    // Prediction step - run at predict rate
+    if (ms - lastPredictUpdate > config->predictInterval)
+    {
+        lastPredictUpdate = ms;
+        config->state->predictState(currentTime);
+    }
+
+    // Measurement update - run at measurement update rate
+    if (ms - lastMeasurementUpdate > config->measurementUpdateInterval)
+    {
+        lastMeasurementUpdate = ms;
+
+        // Extract GPS and barometer data
+        double gpsLat, gpsLon, gpsAlt, baroAlt;
+        bool hasGPS = sensorManager.getGPSData(&gpsLat, &gpsLon, &gpsAlt);
+        bool hasBaro = sensorManager.getBaroAltitude(&baroAlt);
+
+        config->state->updateMeasurements(gpsLat, gpsLon, gpsAlt, baroAlt, hasGPS, hasBaro, currentTime);
+
+        // Update position/velocity tracking
+        double heading;
+        bool hasFix;
+        if (sensorManager.getGPSHeading(&heading) && sensorManager.getGPSHasFix(&hasFix))
+        {
+            config->state->updatePositionVelocity(gpsLat, gpsLon, heading, hasFix);
+        }
+    }
+
+    // Logging update
     if (ms - lastLoggingUpdate > config->loggingInterval)
     {
         lastLoggingUpdate = ms;
@@ -118,6 +182,12 @@ bool Astra::update(double ms)
         {
             DataLogger::instance().appendLine();
         }
+    }
+
+    // Keep backward compatibility with old updateInterval (deprecated)
+    if (ms - lastStateUpdate > config->updateInterval)
+    {
+        lastStateUpdate = ms;
     }
 
     return didUpdate;

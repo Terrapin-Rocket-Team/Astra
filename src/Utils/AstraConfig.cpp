@@ -18,6 +18,14 @@ namespace astra
         this->state = state;
         return *this;
     }
+
+    AstraConfig &AstraConfig::withSensors(Sensor **sensors, int numSensors)
+    {
+        this->sensors = sensors;
+        this->numSensors = numSensors;
+        LOGI("Added %d sensors to Astra", numSensors);
+        return *this;
+    }
     AstraConfig &AstraConfig::withUpdateRate(double updateRate)
     {
         if (this->updateRate == updateRate)
@@ -127,6 +135,54 @@ namespace astra
         for (uint8_t i = 0; i < numLogs; i++)
             this->logs[i] = logs[i];
         this->numLogs = numLogs;
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withSensorUpdateRate(double sensorUpdateRate)
+    {
+        this->sensorUpdateRate = sensorUpdateRate;
+        this->sensorUpdateInterval = 1000.0 / sensorUpdateRate;
+        LOGI("Sensor update rate set to %.2f Hz (%.2f ms interval)", sensorUpdateRate, this->sensorUpdateInterval);
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withSensorUpdateInterval(unsigned int sensorUpdateInterval)
+    {
+        this->sensorUpdateInterval = sensorUpdateInterval;
+        this->sensorUpdateRate = 1000.0 / sensorUpdateInterval;
+        LOGI("Sensor update interval set to %u ms (%.2f Hz)", sensorUpdateInterval, this->sensorUpdateRate);
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withPredictRate(double predictRate)
+    {
+        this->predictRate = predictRate;
+        this->predictInterval = 1000.0 / predictRate;
+        LOGI("Predict rate set to %.2f Hz (%.2f ms interval)", predictRate, this->predictInterval);
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withPredictInterval(unsigned int predictInterval)
+    {
+        this->predictInterval = predictInterval;
+        this->predictRate = 1000.0 / predictInterval;
+        LOGI("Predict interval set to %u ms (%.2f Hz)", predictInterval, this->predictRate);
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withMeasurementUpdateRate(double measurementUpdateRate)
+    {
+        this->measurementUpdateRate = measurementUpdateRate;
+        this->measurementUpdateInterval = 1000.0 / measurementUpdateRate;
+        LOGI("Measurement update rate set to %.2f Hz (%.2f ms interval)", measurementUpdateRate, this->measurementUpdateInterval);
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withMeasurementUpdateInterval(unsigned int measurementUpdateInterval)
+    {
+        this->measurementUpdateInterval = measurementUpdateInterval;
+        this->measurementUpdateRate = 1000.0 / measurementUpdateInterval;
+        LOGI("Measurement update interval set to %u ms (%.2f Hz)", measurementUpdateInterval, this->measurementUpdateRate);
         return *this;
     }
 

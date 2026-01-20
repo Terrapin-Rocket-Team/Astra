@@ -189,9 +189,8 @@ public:
 void test_withOtherDataReporters_integration_with_datalogger(void)
 {
     // Create a minimal State with no sensors
-    Sensor **sensors = nullptr;
     Filter *filter = nullptr;
-    State state(sensors, 0, filter, nullptr);
+    State state(filter, nullptr);
 
     // Create custom reporters
     TestReporter customReporter1("custom1");

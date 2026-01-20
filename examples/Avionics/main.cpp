@@ -16,13 +16,14 @@ HardwareSerial Serial1(PA10, PA9);
 
 MAX_M10S gps;
 DPS368 baro;
-Sensor *sensors[3] = {&gps, &baro};
+Sensor *sensors[2] = {&gps, &baro};
 AvionicsKF kfilter;
-State avionicsState(sensors, 3, &kfilter);
+State avionicsState(&kfilter);
 
 AstraConfig config = AstraConfig()
                          .withBBPin(LED_BUILTIN)
                          .withBuzzerPin(BUZZER_PIN)
+                         .withSensors(sensors, 2)
                          .withState(&avionicsState);
 
 Astra sys(&config);

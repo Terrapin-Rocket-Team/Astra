@@ -8,14 +8,19 @@ namespace astra
 {
     class State;
     class DataReporter;
+    class Sensor;
     class AstraConfig
     {
         friend class Astra;
 
     public:
-        // Add state (and its sensors) to Astra's knowledge.
+        // Add state to Astra's knowledge.
         // No default.
         AstraConfig &withState(State *state);
+
+        // Add sensors to Astra's knowledge. Astra will manage updating them.
+        // No default.
+        AstraConfig &withSensors(Sensor **sensors, int numSensors);
 
         // Set a sensor/state update rate (in hz).
         // Mutually exclusive with `withUpdateInterval()`. Last one called will take effect.
@@ -26,6 +31,33 @@ namespace astra
         // Mutually exclusive with `withUpdateRate()`. Last one called will take effect.
         // Default `100`.
         AstraConfig &withUpdateInterval(unsigned int updateInterval);
+
+        // Set sensor read rate (in hz). Sensors will be polled at this rate.
+        // Default `30`.
+        AstraConfig &withSensorUpdateRate(double sensorUpdateRate);
+
+        // Set sensor read interval (in ms). Sensors will be polled at this interval.
+        // Mutually exclusive with `withSensorUpdateRate()`. Last one called will take effect.
+        // Default `33` (~30 Hz).
+        AstraConfig &withSensorUpdateInterval(unsigned int sensorUpdateInterval);
+
+        // Set Kalman filter prediction rate (in hz). Filter prediction step runs at this rate.
+        // Default `30`.
+        AstraConfig &withPredictRate(double predictRate);
+
+        // Set Kalman filter prediction interval (in ms). Filter prediction step runs at this interval.
+        // Mutually exclusive with `withPredictRate()`. Last one called will take effect.
+        // Default `33` (~30 Hz).
+        AstraConfig &withPredictInterval(unsigned int predictInterval);
+
+        // Set measurement update rate (in hz). Filter measurement update step runs at this rate.
+        // Default `20`.
+        AstraConfig &withMeasurementUpdateRate(double measurementUpdateRate);
+
+        // Set measurement update interval (in ms). Filter measurement update step runs at this interval.
+        // Mutually exclusive with `withMeasurementUpdateRate()`. Last one called will take effect.
+        // Default `50` (20 Hz).
+        AstraConfig &withMeasurementUpdateInterval(unsigned int measurementUpdateInterval);
 
         // Set the rate at which logs will be written to the SD card (in hz).
         // Mutually exclusive with `withLoggingInterval()`. Last one called will take effect.
@@ -78,16 +110,26 @@ namespace astra
 
     private:
         State *state = nullptr;
+        Sensor **sensors = nullptr;
+        int numSensors = 0;
         int pins[50];
         ILogSink *logs[50];
         uint8_t numLogs = 0;
         bool bbAsync;
         unsigned int maxQueueSize = 50;
         DataReporter *reporters[50];
-        unsigned int updateInterval = 100;  // in ms
+        unsigned int updateInterval = 100;  // in ms (deprecated, use specific intervals)
         unsigned int loggingInterval = 100; // in ms
         double loggingRate = 10;            // in hz
-        double updateRate = 10;             // in hz
+        double updateRate = 10;             // in hz (deprecated, use specific rates)
+
+        // New split update intervals
+        unsigned int sensorUpdateInterval = 33;      // in ms (~30 Hz)
+        unsigned int predictInterval = 33;           // in ms (~30 Hz)
+        unsigned int measurementUpdateInterval = 50; // in ms (20 Hz)
+        double sensorUpdateRate = 30;                // in hz
+        double predictRate = 30;                     // in hz
+        double measurementUpdateRate = 20;           // in hz
 
         uint8_t numReporters = 0;
     };

@@ -17,20 +17,25 @@
 
 namespace astra
 {
+    class SensorManager;
+
     class State : public DataReporter
     {
     public:
-        State(Sensor **sensors, int numSensors, Filter *filter, MahonyAHRS *orientationFilter = nullptr);
+        State(Filter *filter, MahonyAHRS *orientationFilter = nullptr);
         virtual ~State();
 
         // Returns false if any sensor failed to init. Check data log for failed sensor. Disables sensor if failed.
-        virtual bool begin();
+        virtual bool begin(SensorManager *sensorManager = nullptr);
 
         // Updates the state with the most recent sensor data. CurrentTime is the time in seconds since the uC was turned on. If not provided, the state will use the current time.
         virtual void update(double currentTime = -1);
 
-        // sensor functions
-        virtual Sensor *getSensor(SensorType type, int sensorNum = 1) const; // get a sensor of a certain type. 1 indexed. i.e. getSensor(GPS, 1) gets the first GPS sensor.
+        // Split update methods for different update rates - now receive primitive data
+        virtual void updateOrientation(double *gyro, double *accel, double dt);
+        virtual void predictState(double currentTime = -1);
+        virtual void updateMeasurements(double gpsLat, double gpsLon, double gpsAlt, double baroAlt, bool hasGPS, bool hasBaro, double currentTime = -1);
+        virtual void updatePositionVelocity(double lat, double lon, double heading, bool hasFix);
 
         // State Getters
         virtual Vector<3> getPosition() const { return position; }         // in m away from point of launch (inertial frame)
@@ -39,9 +44,6 @@ namespace astra
         virtual Quaternion getOrientation() const { return orientation; }
         virtual Vector<2> getCoordinates() const { return coordinates; } // lat lon in decimal degrees
         virtual double getHeading() const { return heading; }            // degrees
-        virtual int getNumMaxSensors() const { return maxNumSensors; }   // how many sensors were passed in the constructor
-        virtual Sensor **getSensors() const { return sensors; }
-        bool sensorOK(const Sensor *sensor) const;
 
         // Orientation filter control
         MahonyAHRS *getOrientationFilter() const { return orientationFilter; }
@@ -54,17 +56,6 @@ namespace astra
     protected:
         double currentTime; // in s since uC turned on
         double lastTime;
-
-        int maxNumSensors; // how many sensors were passed in the constructor
-        Sensor **sensors;
-        int numSensors; // how many sensors are actually enabled
-
-        // ----
-
-        virtual void updateSensors();
-        virtual void updateVariables();
-
-        // ----
 
         // State variables
         Vector<3> position;     // in m from launch position

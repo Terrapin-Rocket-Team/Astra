@@ -4,7 +4,7 @@
 - [X] Voltage Sensor code
 - [X] Add GPS velocity (NED frame)
 - [ ] Add Radio Sensor (for GPS eventually)
-- [ ] Add STM32EMMC support
+- [ ] Add STM32 EMMC support
 - [ ] Change init/read to int instead of bool?
 
 ## User Feedback Systems
@@ -26,6 +26,7 @@
 ### Mahony Filter
 - [ ] Unit test Mahony (At least Python visual test)
 - [ ] Mahony magnetometer integration
+- [ ] Initial Tilt estimation
 
 ### Kalman Filter
 - [ ] KF testing

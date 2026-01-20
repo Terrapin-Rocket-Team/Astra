@@ -83,4 +83,46 @@ namespace astra
         P = getF(dt) * P * getF(dt).transpose() + getQ(dt);
     }
 
+    // Split predict/update methods for different update rates
+    void LinearKalmanFilter::predict(double dt, Matrix control)
+    {
+        predictState(dt, control);
+        covarianceExtrapolate(dt);
+    }
+
+    void LinearKalmanFilter::predict(double dt, double *controlVars)
+    {
+        Matrix controlMatrix(controlSize, 1, controlVars);
+        predict(dt, controlMatrix);
+    }
+
+    void LinearKalmanFilter::update(Matrix measurement)
+    {
+        calculateKalmanGain();
+        estimateState(measurement);
+        covarianceUpdate();
+    }
+
+    void LinearKalmanFilter::update(double *measurements)
+    {
+        Matrix measurementMatrix(measurementSize, 1, measurements);
+        update(measurementMatrix);
+    }
+
+    void LinearKalmanFilter::getState(double *state) const
+    {
+        for (int i = 0; i < stateSize; ++i)
+        {
+            state[i] = X(i, 0);
+        }
+    }
+
+    void LinearKalmanFilter::setState(double *state)
+    {
+        for (int i = 0; i < stateSize; ++i)
+        {
+            X(i, 0) = state[i];
+        }
+    }
+
 } // namespace astra

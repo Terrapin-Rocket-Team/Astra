@@ -34,6 +34,17 @@ public:
     int getStateSize() const override { return stateSize; }
     double* iterate(double dt, double* state, double* measurements, double* controlVars) override;
 
+    // Split predict/update for different update rates
+    void predict(double dt, Matrix control);
+    void predict(double dt, double* controlVars);
+    void update(Matrix measurement);
+    void update(double* measurements);
+
+    // Get current state estimate
+    Matrix getState() const { return X; }
+    void getState(double* state) const;
+    void setState(double* state);
+
 
 
 

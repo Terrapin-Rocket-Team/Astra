@@ -28,12 +28,11 @@ void delay(int ms);
 
 void digitalWrite(int pin, int value);
 
-// Constrain function (Arduino-compatible)
 template<typename T>
-T constrain(T value, T min_val, T max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
+T constrain(T x, T a, T b) {
+    if (x < a) return a;
+    if (x > b) return b;
+    return x;
 }
 
 class Stream : public Print

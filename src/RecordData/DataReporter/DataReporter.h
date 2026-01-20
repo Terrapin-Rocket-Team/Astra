@@ -51,6 +51,22 @@ namespace astra
         DataPoint *getDataPoints();
         DataPoint *getLastPoint() { return last; }
 
+        // Initializes the reporter and sets up any necessary parameters (calls init() internally)
+        virtual bool begin()
+        {
+            return initialized = init();
+        }
+
+        // Updates the reporter's fields by querying for new data (calls read() internally)
+        virtual bool update()
+        {
+            return read();
+        }
+
+        virtual bool isInitialized() const { return initialized; } // Returns whether the reporter has been initialized or not
+
+        virtual explicit operator bool() const { return initialized; } // Returns whether the reporter has been initialized or not
+
     protected:
         uint8_t numColumns = 0;
         DataPoint *first = nullptr, *last = nullptr;
@@ -62,6 +78,14 @@ namespace astra
         void addColumn(const char *fmt, T *variable, const char *label);
 
         void removeColumn(const char *label);
+
+        // Sets up the reporter and stores any critical parameters. Needs to reset if already initialized. Called by begin()
+        virtual bool init() { return true; }
+
+        // Reads/updates the data for this reporter. Called by update()
+        virtual bool read() { return true; }
+
+        bool initialized = false;
 
     private:
         char *name = nullptr;
