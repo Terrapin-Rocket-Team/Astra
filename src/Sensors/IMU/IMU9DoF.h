@@ -11,8 +11,8 @@ namespace astra
      * IMU9DoF - 9 Degrees of Freedom IMU (Accelerometer + Gyroscope + Magnetometer)
      *
      * This class combines accelerometer, gyroscope, and magnetometer functionality in a single sensor.
-     * SensorManager can find this sensor by searching for "Accelerometer", "Gyroscope", or "Magnetometer" types,
-     * making it seamless to work with combo sensors.
+     * Astra and State can find this sensor by searching for "IMU9DoF" type, or fall back to it when
+     * searching for "Accelerometer", "Gyroscope", or "Magnetometer" types.
      *
      * Note: This uses virtual inheritance to resolve the diamond problem (all three inherit from Sensor).
      */

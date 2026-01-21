@@ -23,10 +23,11 @@ BlinkBuzz bb;
 
 Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 {
-    // Setup sensor manager with sensors from config
+    // Store sensors from config
     if (config->sensors && config->numSensors > 0)
     {
-        sensorManager.setSensors(config->sensors, config->numSensors);
+        sensors = config->sensors;
+        numSensors = config->numSensors;
     }
 }
 
@@ -51,6 +52,103 @@ void Astra::handleCommandMessage(const char* message, const char* prefix, Stream
     }
 }
 
+bool Astra::initAllSensors()
+{
+    int good = 0;
+    for (int i = 0; i < numSensors; i++)
+    {
+        if (sensors[i])
+        {
+            if (sensors[i]->begin())
+            {
+                good++;
+                LOGI("%s [%s] initialized.", sensors[i]->getTypeString(), sensors[i]->getName());
+            }
+            else
+            {
+                LOGE("%s [%s] failed to initialize.", sensors[i]->getTypeString(), sensors[i]->getName());
+            }
+        }
+        else
+        {
+            LOGE("Sensor index %d in the array was null!", i);
+        }
+    }
+    LOGI("Initialized %d of %d sensors.", good, numSensors);
+    return good == numSensors;
+}
+
+void Astra::updateAllSensors()
+{
+    for (int i = 0; i < numSensors; i++)
+    {
+        if (sensors[i] && sensors[i]->isInitialized())
+        {
+            sensors[i]->update();
+        }
+    }
+}
+
+Sensor *Astra::findSensor(uint32_t type, int sensorNum) const
+{
+    for (int i = 0; i < numSensors; i++)
+    {
+        if (sensors[i] && type == sensors[i]->getType() && --sensorNum == 0)
+            return sensors[i];
+    }
+    return nullptr;
+}
+
+Accel *Astra::findAccel(int sensorNum) const
+{
+    // Try standalone accelerometer first
+    Sensor *sensor = findSensor("Accelerometer"_i, sensorNum);
+    if (sensor)
+        return static_cast<Accel *>(sensor);
+
+    // Fall back to IMU6DoF
+    sensor = findSensor("IMU6DoF"_i, sensorNum);
+    if (sensor)
+        return reinterpret_cast<Accel *>(sensor);
+
+    // Fall back to IMU9DoF
+    sensor = findSensor("IMU9DoF"_i, sensorNum);
+    if (sensor)
+        return reinterpret_cast<Accel *>(sensor);
+
+    return nullptr;
+}
+
+Gyro *Astra::findGyro(int sensorNum) const
+{
+    // Try standalone gyroscope first
+    Sensor *sensor = findSensor("Gyroscope"_i, sensorNum);
+    if (sensor)
+        return static_cast<Gyro *>(sensor);
+
+    // Fall back to IMU6DoF
+    sensor = findSensor("IMU6DoF"_i, sensorNum);
+    if (sensor)
+        return reinterpret_cast<Gyro *>(sensor);
+
+    // Fall back to IMU9DoF
+    sensor = findSensor("IMU9DoF"_i, sensorNum);
+    if (sensor)
+        return reinterpret_cast<Gyro *>(sensor);
+
+    return nullptr;
+}
+
+GPS *Astra::findGPS(int sensorNum) const
+{
+    return static_cast<GPS *>(findSensor("GPS"_i, sensorNum));
+}
+
+Barometer *Astra::findBaro(int sensorNum) const
+{
+    return static_cast<Barometer *>(findSensor("Barometer"_i, sensorNum));
+}
+
 void Astra::init()
 {
     LOGI("Initializing Astra version %s", ASTRA_VERSION);
@@ -69,12 +167,10 @@ void Astra::init()
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
-    // Initialize sensors via SensorManager
-    sensorManager.initAll();
+    // Initialize sensors directly
+    initAllSensors();
 
     // then Logger - combine sensors and other reporters
-    Sensor **sensors = sensorManager.getSensors();
-    int numSensors = sensorManager.getCount();
     DataReporter **reporters = new DataReporter *[config->numReporters + numSensors + 1];
 
     reporters[0] = config->state;
@@ -95,7 +191,8 @@ void Astra::init()
     // then State
     if (config->state)
     {
-        config->state->begin(&sensorManager);
+        config->state->withSensors(sensors, numSensors);
+        config->state->begin();
     }
     ready = true;
     LOGI("Astra initialized.");
@@ -132,15 +229,15 @@ bool Astra::update(double ms)
     if (ms - lastSensorUpdate > config->sensorUpdateInterval)
     {
         lastSensorUpdate = ms;
-        sensorManager.updateAll();
+        updateAllSensors();
         didUpdate = true;
     }
 
     // Orientation update - runs after sensors
     if (didUpdate && config->state)
     {
-        Accel *accel = sensorManager.getAccel();
-        Gyro *gyro = sensorManager.getGyro();
+        Accel *accel = findAccel();
+        Gyro *gyro = findGyro();
 
         if (accel && accel->isInitialized() && gyro && gyro->isInitialized())
         {
@@ -163,8 +260,8 @@ bool Astra::update(double ms)
         lastMeasurementUpdate = ms;
 
         // Get sensors
-        GPS *gps = sensorManager.getGPS();
-        Barometer *baro = sensorManager.getBaro();
+        GPS *gps = findGPS();
+        Barometer *baro = findBaro();
 
         bool hasGPS = gps && gps->isInitialized();
         bool hasBaro = baro && baro->isInitialized();

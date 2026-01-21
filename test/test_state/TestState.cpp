@@ -1,7 +1,7 @@
 #include <unity.h>
 #include "../../lib/NativeTestMocks/NativeTestHelper.h"
 #include "../../src/State/State.h"
-#include "../../src/Sensors/SensorManager.h"
+#include "../../src/Sensors/Sensor.h"
 #include "../../src/Sensors/Accel/MockAccel.h"
 #include "../../src/Sensors/Gyro/MockGyro.h"
 #include "../../src/Sensors/GPS/MockGPS.h"
@@ -24,7 +24,7 @@ MockAccel *mockAccel;
 MockGyro *mockGyro;
 MockGPS *mockGPS;
 MockBarometer *mockBaro;
-SensorManager *sensorManager;
+Sensor *sensors[4];
 MahonyAHRS *orientationFilter;
 State *state;
 
@@ -38,10 +38,16 @@ void setUp(void)
     mockGPS = new MockGPS(dataPtr, "lat", "lon", "alt", "head", "fixQ");
     mockBaro = new MockBarometer(dataPtr, "pres", "temp");
 
-    sensorManager = new SensorManager();
-    Sensor *sensors[4] = {mockAccel, mockGyro, mockGPS, mockBaro};
-    sensorManager->setSensors(sensors, 4);
-    sensorManager->initAll();
+    sensors[0] = mockAccel;
+    sensors[1] = mockGyro;
+    sensors[2] = mockGPS;
+    sensors[3] = mockBaro;
+
+    // Initialize sensors
+    for (int i = 0; i < 4; i++)
+    {
+        sensors[i]->begin();
+    }
 
     orientationFilter = new MahonyAHRS();
     state = new State(nullptr, orientationFilter);
@@ -51,7 +57,6 @@ void tearDown(void)
 {
     delete state;
     delete orientationFilter;
-    delete sensorManager;
     delete mockAccel;
     delete mockGyro;
     delete mockGPS;
@@ -59,19 +64,20 @@ void tearDown(void)
     delete[] dataPtr;
 }
 
-// Test State initialization without SensorManager
-void test_state_init_no_sensor_manager()
+// Test State initialization without sensors
+void test_state_init_no_sensors()
 {
     State simpleState(nullptr, nullptr);
-    bool result = simpleState.begin(nullptr);
+    bool result = simpleState.begin();
 
     TEST_ASSERT_TRUE(result);
 }
 
-// Test State initialization with SensorManager
-void test_state_init_with_sensor_manager()
+// Test State initialization with sensors
+void test_state_init_with_sensors()
 {
-    bool result = state->begin(sensorManager);
+    state->withSensors(sensors, 4);
+    bool result = state->begin();
 
     TEST_ASSERT_TRUE(result);
 }
@@ -79,18 +85,15 @@ void test_state_init_with_sensor_manager()
 // Test orientation update with Vector data
 void test_update_orientation()
 {
-    state->begin(sensorManager);
+    state->withSensors(sensors, 4);
+    state->begin();
 
     // Set mock sensor data
     mockAccel->setAccel(0.0, 0.0, 9.81); // Gravity pointing down
     mockGyro->setAngVel(0.0, 0.0, 0.0);  // No rotation
 
-    // Extract data via SensorManager typed getters
-    Accel *accel = sensorManager->getAccel();
-    Gyro *gyro = sensorManager->getGyro();
-
     // Update orientation
-    state->updateOrientation(gyro->getAngVel(), accel->getAccel(), 0.01);
+    state->updateOrientation(mockGyro->getAngVel(), mockAccel->getAccel(), 0.01);
 
     // Verify orientation was updated
     Quaternion orientation = state->getOrientation();
@@ -101,16 +104,14 @@ void test_update_orientation()
 // Test orientation update with motion
 void test_update_orientation_with_motion()
 {
-    state->begin(sensorManager);
+    state->withSensors(sensors, 4);
+    state->begin();
 
     // Simulate accelerating forward
     mockAccel->setAccel(1.0, 0.0, 9.81);
     mockGyro->setAngVel(0.1, 0.0, 0.0); // Rotating around X axis
 
-    Accel *accel = sensorManager->getAccel();
-    Gyro *gyro = sensorManager->getGyro();
-
-    state->updateOrientation(gyro->getAngVel(), accel->getAccel(), 0.01);
+    state->updateOrientation(mockGyro->getAngVel(), mockAccel->getAccel(), 0.01);
 
     Vector<3> acceleration = state->getAcceleration();
     // Should have some earth-frame acceleration
@@ -120,20 +121,17 @@ void test_update_orientation_with_motion()
 // Test measurement update with GPS and Barometer
 void test_update_measurements()
 {
-    state->begin(sensorManager);
+    state->withSensors(sensors, 4);
+    state->begin();
 
-    // Get sensors via typed getters
-    GPS *gps = sensorManager->getGPS();
-    Barometer *baro = sensorManager->getBaro();
-
-    bool hasGPS = gps && gps->isInitialized();
-    bool hasBaro = baro && baro->isInitialized();
+    bool hasGPS = mockGPS && mockGPS->isInitialized();
+    bool hasBaro = mockBaro && mockBaro->isInitialized();
 
     // Update measurements (Note: State needs a filter for this to work properly)
     // For this test, we're just verifying the interface works
     if (hasGPS && hasBaro)
     {
-        state->updateMeasurements(gps->getPos(), baro->getASLAltM(), hasGPS, hasBaro, 1.0);
+        state->updateMeasurements(mockGPS->getPos(), mockBaro->getASLAltM(), hasGPS, hasBaro, 1.0);
         // No crash = success for now
         TEST_ASSERT_TRUE(true);
     }
@@ -142,14 +140,14 @@ void test_update_measurements()
 // Test position/velocity update
 void test_update_position_velocity()
 {
-    state->begin(sensorManager);
+    state->withSensors(sensors, 4);
+    state->begin();
 
-    GPS *gps = sensorManager->getGPS();
-    TEST_ASSERT_NOT_NULL(gps);
+    TEST_ASSERT_NOT_NULL(mockGPS);
 
-    Vector<3> gpsPos = gps->getPos();
-    double heading = gps->getHeading();
-    bool hasFix = gps->getHasFix();
+    Vector<3> gpsPos = mockGPS->getPos();
+    double heading = mockGPS->getHeading();
+    bool hasFix = mockGPS->getHasFix();
 
     state->updatePositionVelocity(gpsPos.x(), gpsPos.y(), heading, hasFix);
 
@@ -167,7 +165,8 @@ void test_update_position_velocity()
 // Test position/velocity update with no fix
 void test_update_position_velocity_no_fix()
 {
-    state->begin(sensorManager);
+    state->withSensors(sensors, 4);
+    state->begin();
 
     state->updatePositionVelocity(0.0, 0.0, 0.0, false);
 
@@ -184,7 +183,7 @@ void test_state_no_sensor_references()
 {
     // State should be constructible without any sensors
     State independentState(nullptr, nullptr);
-    bool result = independentState.begin(nullptr);
+    bool result = independentState.begin();
 
     TEST_ASSERT_TRUE(result);
 
@@ -195,7 +194,7 @@ void test_state_no_sensor_references()
     // This should work even without sensors
     MahonyAHRS filter;
     State stateWithFilter(nullptr, &filter);
-    stateWithFilter.begin(nullptr);
+    stateWithFilter.begin();
     stateWithFilter.updateOrientation(gyro, accel, 0.01);
 
     TEST_ASSERT_TRUE(true); // No crash = success
@@ -204,7 +203,8 @@ void test_state_no_sensor_references()
 // Test State getters
 void test_state_getters()
 {
-    state->begin(sensorManager);
+    state->withSensors(sensors, 4);
+    state->begin();
 
     Vector<3> position = state->getPosition();
     Vector<3> velocity = state->getVelocity();
@@ -221,8 +221,8 @@ int main(int argc, char **argv)
 {
     UNITY_BEGIN();
 
-    RUN_TEST(test_state_init_no_sensor_manager);
-    RUN_TEST(test_state_init_with_sensor_manager);
+    RUN_TEST(test_state_init_no_sensors);
+    RUN_TEST(test_state_init_with_sensors);
     RUN_TEST(test_update_orientation);
     RUN_TEST(test_update_orientation_with_motion);
     RUN_TEST(test_update_measurements);

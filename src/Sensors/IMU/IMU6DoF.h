@@ -10,8 +10,8 @@ namespace astra
      * IMU6DoF - 6 Degrees of Freedom IMU (Accelerometer + Gyroscope)
      *
      * This class combines accelerometer and gyroscope functionality in a single sensor.
-     * SensorManager can find this sensor by searching for either "Accelerometer" or "Gyroscope" types,
-     * making it seamless to work with combo sensors.
+     * Astra and State can find this sensor by searching for "IMU6DoF" type, or fall back
+     * to it when searching for "Accelerometer" or "Gyroscope" types.
      *
      * Note: This uses virtual inheritance to resolve the diamond problem (both Accel and Gyro inherit from Sensor).
      */
@@ -21,7 +21,6 @@ namespace astra
         virtual ~IMU6DoF() {}
 
         // Override getType to return a composite type
-        // SensorManager will need to check both Accel and Gyro types
         virtual const SensorType getType() const override
         {
             // Return Accelerometer type by default

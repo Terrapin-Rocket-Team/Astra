@@ -17,7 +17,9 @@
 
 namespace astra
 {
-    class SensorManager;
+    class Sensor;
+    class Accel;
+    class Gyro;
 
     class State : public DataReporter
     {
@@ -25,8 +27,11 @@ namespace astra
         State(Filter *filter, MahonyAHRS *orientationFilter = nullptr);
         virtual ~State();
 
-        // Returns false if any sensor failed to init. Check data log for failed sensor. Disables sensor if failed.
-        virtual bool begin(SensorManager *sensorManager = nullptr);
+        // Configure sensor access for state estimation
+        void withSensors(Sensor **sensors, int numSensors);
+
+        // Initialize state estimation (call after withSensors if calibration is needed)
+        virtual bool begin();
 
         // Updates the state with the most recent sensor data. CurrentTime is the time in seconds since the uC was turned on. If not provided, the state will use the current time.
         virtual void update(double currentTime = -1);
@@ -72,6 +77,15 @@ namespace astra
 
         // Orientation filter (Mahony AHRS)
         MahonyAHRS *orientationFilter;
+
+        // Sensor access (set via withSensors)
+        Sensor **sensors = nullptr;
+        int numSensors = 0;
+
+        // Helper to find sensors by type
+        Sensor *findSensor(uint32_t type, int sensorNum = 1) const;
+        Accel *findAccel(int sensorNum = 1) const;
+        Gyro *findGyro(int sensorNum = 1) const;
 
         bool initialized = false;
     };

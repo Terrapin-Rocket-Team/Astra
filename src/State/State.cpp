@@ -1,7 +1,7 @@
 #include "State.h"
 #include <Arduino.h>
 #include "../Filters/LinearKalmanFilter.h"
-#include "../Sensors/SensorManager.h"
+#include "../Sensors/Sensor.h"
 #include "../Sensors/Accel/Accel.h"
 #include "../Sensors/Gyro/Gyro.h"
 #pragma region Constructor and Destructor
@@ -34,7 +34,63 @@ namespace astra
 
 #pragma endregion
 
-    bool State::begin(SensorManager *sensorManager)
+    void State::withSensors(Sensor **sensors, int numSensors)
+    {
+        this->sensors = sensors;
+        this->numSensors = numSensors;
+    }
+
+    Sensor *State::findSensor(uint32_t type, int sensorNum) const
+    {
+        for (int i = 0; i < numSensors; i++)
+        {
+            if (sensors[i] && type == sensors[i]->getType() && --sensorNum == 0)
+                return sensors[i];
+        }
+        return nullptr;
+    }
+
+    Accel *State::findAccel(int sensorNum) const
+    {
+        // Try standalone accelerometer first
+        Sensor *sensor = findSensor("Accelerometer"_i, sensorNum);
+        if (sensor)
+            return static_cast<Accel *>(sensor);
+
+        // Fall back to IMU6DoF
+        sensor = findSensor("IMU6DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Accel *>(sensor);
+
+        // Fall back to IMU9DoF
+        sensor = findSensor("IMU9DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Accel *>(sensor);
+
+        return nullptr;
+    }
+
+    Gyro *State::findGyro(int sensorNum) const
+    {
+        // Try standalone gyroscope first
+        Sensor *sensor = findSensor("Gyroscope"_i, sensorNum);
+        if (sensor)
+            return static_cast<Gyro *>(sensor);
+
+        // Fall back to IMU6DoF
+        sensor = findSensor("IMU6DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Gyro *>(sensor);
+
+        // Fall back to IMU9DoF
+        sensor = findSensor("IMU9DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Gyro *>(sensor);
+
+        return nullptr;
+    }
+
+    bool State::begin()
     {
         // Sensors are initialized by Astra
         if (filter)
@@ -43,11 +99,11 @@ namespace astra
             stateVars = new double[filter->getStateSize()];
         }
 
-        if (orientationFilter && sensorManager)
+        if (orientationFilter && sensors && numSensors > 0)
         {
             // Auto-calibrate orientation filter during initialization
-            Accel *accelSensor = sensorManager->getAccel();
-            Gyro *gyroSensor = sensorManager->getGyro();
+            Accel *accelSensor = findAccel();
+            Gyro *gyroSensor = findGyro();
             bool hasAccelGyro = accelSensor && accelSensor->isInitialized() &&
                                 gyroSensor && gyroSensor->isInitialized();
 
@@ -60,7 +116,12 @@ namespace astra
                 const int calibSamples = 200;
                 for (int i = 0; i < calibSamples; i++)
                 {
-                    sensorManager->updateAll();
+                    // Update sensors directly
+                    for (int s = 0; s < numSensors; s++)
+                    {
+                        if (sensors[s] && sensors[s]->isInitialized())
+                            sensors[s]->update();
+                    }
                     orientationFilter->update(accelSensor->getAccel(), gyroSensor->getAngVel(), 0.01); // Assume ~100Hz
                     delay(10);
                 }
