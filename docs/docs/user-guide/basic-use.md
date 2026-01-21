@@ -21,9 +21,9 @@ First, instantiate the sensors you'll be using. Astra provides implementations f
 #include <Arduino.h>
 #include "Utils/Astra.h"
 #include "State/State.h"
-#include "Sensors/GPS/MAX_M10S.h"
+#include "Sensors/HW/GPS/MAX_M10S.h"
 #include "Sensors/IMU/BMI088andLIS3MDL.h"
-#include "Sensors/Baro/DPS368.h"
+#include "Sensors/HW/Baro/DPS368.h"
 
 using namespace astra;
 

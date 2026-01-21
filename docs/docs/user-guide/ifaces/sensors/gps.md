@@ -237,7 +237,7 @@ Astra includes drivers for common GPS modules:
 u-blox MAX-M10 GNSS module (GPS, GLONASS, Galileo, BeiDou).
 
 ```cpp
-#include "Sensors/GPS/MAX_M10S.h"
+#include "Sensors/HW/GPS/MAX_M10S.h"
 
 MAX_M10S gps;
 ```
@@ -283,7 +283,7 @@ Generates simulated GPS data for testing state estimation and navigation logic.
 ### Basic Usage
 
 ```cpp
-#include "Sensors/GPS/MAX_M10S.h"
+#include "Sensors/HW/GPS/MAX_M10S.h"
 
 MAX_M10S gps;
 

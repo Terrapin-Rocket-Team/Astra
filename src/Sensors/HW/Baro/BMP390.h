@@ -2,7 +2,7 @@
 #define BMP390_H
 
 #include <Adafruit_BMP3XX.h>
-#include "Barometer.h"
+#include <Sensors/Baro/Barometer.h>
 
 namespace astra
 {

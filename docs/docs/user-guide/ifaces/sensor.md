@@ -349,6 +349,7 @@ Astra includes implementations for common sensors:
 - MockBarometer (for testing)
 
 **IMUs:**
+- BMI088 (6DOF - Accel + Gyro)
 - BMI088andLIS3MDL (9DOF)
 - BNO055 (9DOF with hardware fusion)
 - MockIMU (for testing)
@@ -361,10 +362,6 @@ Astra includes implementations for common sensors:
 **Accelerometers (standalone):**
 - ADXL375 (high-g)
 - H3LIS331DL (high-g)
-- BMI088Accel
-
-**Gyroscopes (standalone):**
-- BMI088Gyro
 
 **Magnetometers (standalone):**
 - LIS3MDL

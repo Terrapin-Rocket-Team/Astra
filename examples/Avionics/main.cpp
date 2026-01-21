@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "AvionicsKF.h"
-#include "Sensors/GPS/MAX_M10S.h"
-#include "Sensors/Baro/DPS368.h"
+#include "Sensors/HW/GPS/MAX_M10S.h"
+#include "Sensors/HW/Baro/DPS368.h"
 #include "State/State.h"
 #include "Utils/Astra.h"
 #include "RecordData/Logging/EventLogger.h"

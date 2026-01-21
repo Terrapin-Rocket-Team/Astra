@@ -193,7 +193,7 @@ Astra includes drivers for several common barometers:
 Infineon high-precision barometer. DPS310 is NRND (not recommended for new designs), use DPS368.
 
 ```cpp
-#include "Sensors/Baro/DPS368.h"
+#include "Sensors/HW/Baro/DPS368.h"
 
 DPS368 baro;                           // Default: address 0x77, Wire
 DPS368 baro2("Baro2", 0x76, &Wire1);  // Custom address and I2C bus
@@ -209,7 +209,7 @@ DPS368 baro2("Baro2", 0x76, &Wire1);  // Custom address and I2C bus
 Bosch high-accuracy barometer, recommended for new designs.
 
 ```cpp
-#include "Sensors/Baro/BMP390.h"
+#include "Sensors/HW/Baro/BMP390.h"
 
 BMP390 baro;
 ```
@@ -239,7 +239,7 @@ BMP280 baro;
 TE Connectivity high-resolution barometer.
 
 ```cpp
-#include "Sensors/Baro/MS5611F.h"
+#include "Sensors/HW/Baro/MS5611.h"
 
 MS5611F baro;
 ```
@@ -268,7 +268,7 @@ Generates simulated flight data for testing your state estimation and event dete
 ### Basic Usage
 
 ```cpp
-#include "Sensors/Baro/DPS368.h"
+#include "Sensors/HW/Baro/DPS368.h"
 
 DPS368 baro;
 

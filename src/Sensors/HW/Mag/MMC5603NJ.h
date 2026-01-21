@@ -3,7 +3,7 @@
 
 #include <Adafruit_MMC56x3.h>
 #include <Wire.h>
-#include "Mag.h"
+#include <Sensors/Mag/Mag.h>
 
 namespace astra
 {

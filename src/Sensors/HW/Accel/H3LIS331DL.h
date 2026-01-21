@@ -3,7 +3,7 @@
 
 #include <Adafruit_H3LIS331.h>
 #include <Wire.h>
-#include "Accel.h"
+#include <Sensors/Accel/Accel.h>
 
 namespace astra
 {
