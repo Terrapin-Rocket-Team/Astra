@@ -2,6 +2,11 @@
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
 #include "Sensors/Sensor.h"
+#include "Sensors/Accel/Accel.h"
+#include "Sensors/Gyro/Gyro.h"
+#include "Sensors/GPS/GPS.h"
+#include "Sensors/Baro/Barometer.h"
+#include "Math/Vector.h"
 #include "Wire.h"
 #ifndef NATIVE
 #include "RetrieveData/RetrieveSDCardData.h"
@@ -134,14 +139,13 @@ bool Astra::update(double ms)
     // Orientation update - runs after sensors
     if (didUpdate && config->state)
     {
-        double gyro[3], accel[3];
-        bool hasAccel = sensorManager.getAccelData(accel);
-        bool hasGyro = sensorManager.getGyroData(gyro);
+        Accel *accel = sensorManager.getAccel();
+        Gyro *gyro = sensorManager.getGyro();
 
-        if (hasAccel && hasGyro)
+        if (accel && accel->isInitialized() && gyro && gyro->isInitialized())
         {
             double dt = currentTime - (lastOrientationUpdate / 1000.0);
-            config->state->updateOrientation(gyro, accel, dt);
+            config->state->updateOrientation(gyro->getAngVel(), accel->getAccel(), dt);
             lastOrientationUpdate = ms;
         }
     }
@@ -158,19 +162,22 @@ bool Astra::update(double ms)
     {
         lastMeasurementUpdate = ms;
 
-        // Extract GPS and barometer data
-        double gpsLat, gpsLon, gpsAlt, baroAlt;
-        bool hasGPS = sensorManager.getGPSData(&gpsLat, &gpsLon, &gpsAlt);
-        bool hasBaro = sensorManager.getBaroAltitude(&baroAlt);
+        // Get sensors
+        GPS *gps = sensorManager.getGPS();
+        Barometer *baro = sensorManager.getBaro();
 
-        config->state->updateMeasurements(gpsLat, gpsLon, gpsAlt, baroAlt, hasGPS, hasBaro, currentTime);
+        bool hasGPS = gps && gps->isInitialized();
+        bool hasBaro = baro && baro->isInitialized();
+
+        Vector<3> gpsPos = hasGPS ? gps->getPos() : Vector<3>();
+        double baroAlt = hasBaro ? baro->getASLAltM() : 0.0;
+
+        config->state->updateMeasurements(gpsPos, baroAlt, hasGPS, hasBaro, currentTime);
 
         // Update position/velocity tracking
-        double heading;
-        bool hasFix;
-        if (sensorManager.getGPSHeading(&heading) && sensorManager.getGPSHasFix(&hasFix))
+        if (hasGPS)
         {
-            config->state->updatePositionVelocity(gpsLat, gpsLon, heading, hasFix);
+            config->state->updatePositionVelocity(gpsPos.x(), gpsPos.y(), gps->getHeading(), gps->getHasFix());
         }
     }
 

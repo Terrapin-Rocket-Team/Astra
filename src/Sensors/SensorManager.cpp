@@ -1,10 +1,10 @@
 #include "SensorManager.h"
-#include "IMU/IMU.h"
 #include "Accel/Accel.h"
 #include "Gyro/Gyro.h"
 #include "Mag/Mag.h"
 #include "GPS/GPS.h"
 #include "Baro/Barometer.h"
+#include "VoltageSensor/VoltageSensor.h"
 #include "RecordData/Logging/EventLogger.h"
 
 namespace astra
@@ -91,179 +91,77 @@ namespace astra
         return nullptr;
     }
 
-    // Data extraction methods
-    bool SensorManager::getIMUData(double *gyro, double *accel, double *mag)
+    // Typed sensor getters
+    // Note: For IMU types, use getAccel()/getGyro()/getMag() which handle the fallback automatically
+
+    Accel *SensorManager::getAccel(int sensorNum) const
     {
-        // IMU support not implemented yet
-        // IMU *imu = reinterpret_cast<IMU *>(getSensor("IMU"_i));
-        // if (imu && imu->isInitialized())
-        // {
-        //     Vector<3> gyroVec = imu->getAngularVelocity();
-        //     Vector<3> accelVec = imu->getAcceleration();
-        //     gyro[0] = gyroVec.x();
-        //     gyro[1] = gyroVec.y();
-        //     gyro[2] = gyroVec.z();
-        //     accel[0] = accelVec.x();
-        //     accel[1] = accelVec.y();
-        //     accel[2] = accelVec.z();
-        //     if (mag)
-        //     {
-        //         Vector<3> magVec = imu->getMagneticField();
-        //         mag[0] = magVec.x();
-        //         mag[1] = magVec.y();
-        //         mag[2] = magVec.z();
-        //     }
-        //     return true;
-        // }
-        return false;
+        // Try standalone accelerometer first
+        Sensor *sensor = getSensor("Accelerometer"_i, sensorNum);
+        if (sensor)
+            return static_cast<Accel *>(sensor);
+
+        // Fall back to IMU6DoF (which inherits from Accel)
+        sensor = getSensor("IMU6DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Accel *>(sensor);
+
+        // Fall back to IMU9DoF (which inherits from Accel)
+        sensor = getSensor("IMU9DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Accel *>(sensor);
+
+        return nullptr;
     }
 
-    bool SensorManager::getAccelData(double *accel)
+    Gyro *SensorManager::getGyro(int sensorNum) const
     {
-        // Try to find standalone Accel sensor first
-        Accel *accel_sensor = reinterpret_cast<Accel *>(getSensor("Accelerometer"_i));
+        // Try standalone gyroscope first
+        Sensor *sensor = getSensor("Gyroscope"_i, sensorNum);
+        if (sensor)
+            return static_cast<Gyro *>(sensor);
 
-        // If not found, check for IMU6DoF or IMU9DoF
-        if (!accel_sensor)
-        {
-            accel_sensor = reinterpret_cast<Accel *>(getSensor("IMU6DoF"_i));
-        }
-        if (!accel_sensor)
-        {
-            accel_sensor = reinterpret_cast<Accel *>(getSensor("IMU9DoF"_i));
-        }
+        // Fall back to IMU6DoF (which inherits from Gyro)
+        sensor = getSensor("IMU6DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Gyro *>(sensor);
 
-        if (accel_sensor && accel_sensor->isInitialized())
-        {
-            Vector<3> accelVec = accel_sensor->getAccel();
-            accel[0] = accelVec.x();
-            accel[1] = accelVec.y();
-            accel[2] = accelVec.z();
-            return true;
-        }
-        return false;
+        // Fall back to IMU9DoF (which inherits from Gyro)
+        sensor = getSensor("IMU9DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Gyro *>(sensor);
+
+        return nullptr;
     }
 
-    bool SensorManager::getGyroData(double *gyro)
+    Mag *SensorManager::getMag(int sensorNum) const
     {
-        // Try to find standalone Gyro sensor first
-        Gyro *gyro_sensor = reinterpret_cast<Gyro *>(getSensor("Gyroscope"_i));
+        // Try standalone magnetometer first
+        Sensor *sensor = getSensor("Magnetometer"_i, sensorNum);
+        if (sensor)
+            return static_cast<Mag *>(sensor);
 
-        // If not found, check for IMU6DoF or IMU9DoF
-        if (!gyro_sensor)
-        {
-            gyro_sensor = reinterpret_cast<Gyro *>(getSensor("IMU6DoF"_i));
-        }
-        if (!gyro_sensor)
-        {
-            gyro_sensor = reinterpret_cast<Gyro *>(getSensor("IMU9DoF"_i));
-        }
+        // Fall back to IMU9DoF (which has magnetometer)
+        sensor = getSensor("IMU9DoF"_i, sensorNum);
+        if (sensor)
+            return reinterpret_cast<Mag *>(sensor);
 
-        if (gyro_sensor && gyro_sensor->isInitialized())
-        {
-            Vector<3> gyroVec = gyro_sensor->getAngVel();
-            gyro[0] = gyroVec.x();
-            gyro[1] = gyroVec.y();
-            gyro[2] = gyroVec.z();
-            return true;
-        }
-        return false;
+        return nullptr;
     }
 
-    bool SensorManager::getMagData(double *mag)
+    GPS *SensorManager::getGPS(int sensorNum) const
     {
-        // Try to find standalone Mag sensor first
-        Mag *mag_sensor = reinterpret_cast<Mag *>(getSensor("Magnetometer"_i));
-
-        // If not found, check for IMU9DoF
-        if (!mag_sensor)
-        {
-            mag_sensor = reinterpret_cast<Mag *>(getSensor("IMU9DoF"_i));
-        }
-
-        if (mag_sensor && mag_sensor->isInitialized())
-        {
-            Vector<3> magVec = mag_sensor->getMag();
-            mag[0] = magVec.x();
-            mag[1] = magVec.y();
-            mag[2] = magVec.z();
-            return true;
-        }
-        return false;
+        return static_cast<GPS *>(getSensor("GPS"_i, sensorNum));
     }
 
-    bool SensorManager::getGPSData(double *lat, double *lon, double *alt)
+    Barometer *SensorManager::getBaro(int sensorNum) const
     {
-        GPS *gps = reinterpret_cast<GPS *>(getSensor("GPS"_i));
-        if (gps && gps->isInitialized())
-        {
-            Vector<3> pos = gps->getPos();
-            *lat = pos.x();
-            *lon = pos.y();
-            *alt = pos.z();
-            return true;
-        }
-        return false;
+        return static_cast<Barometer *>(getSensor("Barometer"_i, sensorNum));
     }
 
-    bool SensorManager::getGPSVelocity(double *vn, double *ve, double *vd)
+    VoltageSensor *SensorManager::getVoltageSensor(int sensorNum) const
     {
-        GPS *gps = reinterpret_cast<GPS *>(getSensor("GPS"_i));
-        if (gps && gps->isInitialized())
-        {
-            Vector<3> vel = gps->getVel();
-            *vn = vel.x();
-            *ve = vel.y();
-            *vd = vel.z();
-            return true;
-        }
-        return false;
-    }
-
-    bool SensorManager::getGPSHeading(double *heading)
-    {
-        GPS *gps = reinterpret_cast<GPS *>(getSensor("GPS"_i));
-        if (gps && gps->isInitialized())
-        {
-            *heading = gps->getHeading();
-            return true;
-        }
-        return false;
-    }
-
-    bool SensorManager::getGPSHasFix(bool *hasFix)
-    {
-        GPS *gps = reinterpret_cast<GPS *>(getSensor("GPS"_i));
-        if (gps && gps->isInitialized())
-        {
-            *hasFix = gps->getHasFix();
-            return true;
-        }
-        return false;
-    }
-
-    bool SensorManager::getBaroData(double *pressure, double *temp)
-    {
-        Barometer *baro = reinterpret_cast<Barometer *>(getSensor("Barometer"_i));
-        if (baro && baro->isInitialized())
-        {
-            *pressure = baro->getPressure();
-            if (temp)
-                *temp = baro->getTemp();
-            return true;
-        }
-        return false;
-    }
-
-    bool SensorManager::getBaroAltitude(double *altM)
-    {
-        Barometer *baro = reinterpret_cast<Barometer *>(getSensor("Barometer"_i));
-        if (baro && baro->isInitialized())
-        {
-            *altM = baro->getASLAltM();
-            return true;
-        }
-        return false;
+        return static_cast<VoltageSensor *>(getSensor("Voltage Sensor"_i, sensorNum));
     }
 
 } // namespace astra

@@ -6,6 +6,11 @@
 #include "../../src/Sensors/Gyro/MockGyro.h"
 #include "../../src/Sensors/GPS/MockGPS.h"
 #include "../../src/Sensors/Baro/MockBarometer.h"
+#include "../../src/Sensors/Accel/Accel.h"
+#include "../../src/Sensors/Gyro/Gyro.h"
+#include "../../src/Sensors/GPS/GPS.h"
+#include "../../src/Sensors/Baro/Barometer.h"
+#include "../../src/Math/Vector.h"
 
 using namespace astra;
 
@@ -71,7 +76,7 @@ void test_state_init_with_sensor_manager()
     TEST_ASSERT_TRUE(result);
 }
 
-// Test orientation update with primitive data
+// Test orientation update with Vector data
 void test_update_orientation()
 {
     state->begin(sensorManager);
@@ -80,13 +85,12 @@ void test_update_orientation()
     mockAccel->setAccel(0.0, 0.0, 9.81); // Gravity pointing down
     mockGyro->setAngVel(0.0, 0.0, 0.0);  // No rotation
 
-    // Extract data via SensorManager
-    double accel[3], gyro[3];
-    sensorManager->getAccelData(accel);
-    sensorManager->getGyroData(gyro);
+    // Extract data via SensorManager typed getters
+    Accel *accel = sensorManager->getAccel();
+    Gyro *gyro = sensorManager->getGyro();
 
     // Update orientation
-    state->updateOrientation(gyro, accel, 0.01);
+    state->updateOrientation(gyro->getAngVel(), accel->getAccel(), 0.01);
 
     // Verify orientation was updated
     Quaternion orientation = state->getOrientation();
@@ -103,11 +107,10 @@ void test_update_orientation_with_motion()
     mockAccel->setAccel(1.0, 0.0, 9.81);
     mockGyro->setAngVel(0.1, 0.0, 0.0); // Rotating around X axis
 
-    double accel[3], gyro[3];
-    sensorManager->getAccelData(accel);
-    sensorManager->getGyroData(gyro);
+    Accel *accel = sensorManager->getAccel();
+    Gyro *gyro = sensorManager->getGyro();
 
-    state->updateOrientation(gyro, accel, 0.01);
+    state->updateOrientation(gyro->getAngVel(), accel->getAccel(), 0.01);
 
     Vector<3> acceleration = state->getAcceleration();
     // Should have some earth-frame acceleration
@@ -119,16 +122,18 @@ void test_update_measurements()
 {
     state->begin(sensorManager);
 
-    // Extract GPS and baro data
-    double gpsLat, gpsLon, gpsAlt, baroAlt;
-    bool hasGPS = sensorManager->getGPSData(&gpsLat, &gpsLon, &gpsAlt);
-    bool hasBaro = sensorManager->getBaroAltitude(&baroAlt);
+    // Get sensors via typed getters
+    GPS *gps = sensorManager->getGPS();
+    Barometer *baro = sensorManager->getBaro();
+
+    bool hasGPS = gps && gps->isInitialized();
+    bool hasBaro = baro && baro->isInitialized();
 
     // Update measurements (Note: State needs a filter for this to work properly)
     // For this test, we're just verifying the interface works
     if (hasGPS && hasBaro)
     {
-        state->updateMeasurements(gpsLat, gpsLon, gpsAlt, baroAlt, hasGPS, hasBaro, 1.0);
+        state->updateMeasurements(gps->getPos(), baro->getASLAltM(), hasGPS, hasBaro, 1.0);
         // No crash = success for now
         TEST_ASSERT_TRUE(true);
     }
@@ -139,21 +144,22 @@ void test_update_position_velocity()
 {
     state->begin(sensorManager);
 
-    double lat, lon, alt, heading;
-    bool hasFix;
-    sensorManager->getGPSData(&lat, &lon, &alt);
-    sensorManager->getGPSHeading(&heading);
-    sensorManager->getGPSHasFix(&hasFix);
+    GPS *gps = sensorManager->getGPS();
+    TEST_ASSERT_NOT_NULL(gps);
 
-    state->updatePositionVelocity(lat, lon, heading, hasFix);
+    Vector<3> gpsPos = gps->getPos();
+    double heading = gps->getHeading();
+    bool hasFix = gps->getHasFix();
+
+    state->updatePositionVelocity(gpsPos.x(), gpsPos.y(), heading, hasFix);
 
     Vector<2> coordinates = state->getCoordinates();
     double stateHeading = state->getHeading();
 
     if (hasFix)
     {
-        TEST_ASSERT_EQUAL_FLOAT(lat, coordinates.x());
-        TEST_ASSERT_EQUAL_FLOAT(lon, coordinates.y());
+        TEST_ASSERT_EQUAL_FLOAT(gpsPos.x(), coordinates.x());
+        TEST_ASSERT_EQUAL_FLOAT(gpsPos.y(), coordinates.y());
         TEST_ASSERT_EQUAL_FLOAT(heading, stateHeading);
     }
 }
@@ -182,9 +188,9 @@ void test_state_no_sensor_references()
 
     TEST_ASSERT_TRUE(result);
 
-    // State should accept primitive data without needing sensors
-    double gyro[3] = {0, 0, 0};
-    double accel[3] = {0, 0, 9.81};
+    // State should accept Vector data without needing sensors
+    Vector<3> gyro(0, 0, 0);
+    Vector<3> accel(0, 0, 9.81);
 
     // This should work even without sensors
     MahonyAHRS filter;

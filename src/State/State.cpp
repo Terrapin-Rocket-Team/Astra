@@ -2,6 +2,8 @@
 #include <Arduino.h>
 #include "../Filters/LinearKalmanFilter.h"
 #include "../Sensors/SensorManager.h"
+#include "../Sensors/Accel/Accel.h"
+#include "../Sensors/Gyro/Gyro.h"
 #pragma region Constructor and Destructor
 
 namespace astra
@@ -44,8 +46,10 @@ namespace astra
         if (orientationFilter && sensorManager)
         {
             // Auto-calibrate orientation filter during initialization
-            double accel[3], gyro[3];
-            bool hasAccelGyro = sensorManager->getAccelData(accel) && sensorManager->getGyroData(gyro);
+            Accel *accelSensor = sensorManager->getAccel();
+            Gyro *gyroSensor = sensorManager->getGyro();
+            bool hasAccelGyro = accelSensor && accelSensor->isInitialized() &&
+                                gyroSensor && gyroSensor->isInitialized();
 
             if (hasAccelGyro)
             {
@@ -57,13 +61,7 @@ namespace astra
                 for (int i = 0; i < calibSamples; i++)
                 {
                     sensorManager->updateAll();
-                    sensorManager->getAccelData(accel);
-                    sensorManager->getGyroData(gyro);
-
-                    Vector<3> accelVec(accel[0], accel[1], accel[2]);
-                    Vector<3> gyroVec(gyro[0], gyro[1], gyro[2]);
-
-                    orientationFilter->update(accelVec, gyroVec, 0.01); // Assume ~100Hz
+                    orientationFilter->update(accelSensor->getAccel(), gyroSensor->getAngVel(), 0.01); // Assume ~100Hz
                     delay(10);
                 }
 
@@ -91,20 +89,17 @@ namespace astra
         LOGW("State::update() is deprecated. Use split update methods via Astra.");
     }
 
-    void State::updateOrientation(double *gyro, double *accel, double dt)
+    void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)
     {
         if (!orientationFilter)
             return;
-
-        Vector<3> accelVec(accel[0], accel[1], accel[2]);
-        Vector<3> gyroVec(gyro[0], gyro[1], gyro[2]);
 
         // Automatic mode switching based on accelerometer magnitude
         // If |accel| is close to 9.81 m/s^2, enable accel correction
         // Otherwise (high-g or freefall), use gyro-only mode
         if (orientationFilter->isInitialized())
         {
-            double accelMag = accelVec.magnitude();
+            double accelMag = accel.magnitude();
             double accelError = abs(accelMag - 9.81);
 
             // Threshold: if accel error < 1 m/s^2, trust the accelerometer
@@ -124,14 +119,14 @@ namespace astra
             }
         }
 
-        orientationFilter->update(accelVec, gyroVec, dt);
+        orientationFilter->update(accel, gyro, dt);
 
         // Update orientation and earth-frame acceleration from filter
         if (orientationFilter->isInitialized())
         {
             orientation = orientationFilter->getQuaternion();
             // Get earth-frame acceleration (with gravity subtracted)
-            acceleration = orientationFilter->getEarthAcceleration(accelVec);
+            acceleration = orientationFilter->getEarthAcceleration(accel);
         }
     }
 
@@ -189,7 +184,7 @@ namespace astra
         delete[] inputs;
     }
 
-    void State::updateMeasurements(double gpsLat, double gpsLon, double gpsAlt, double baroAlt, bool hasGPS, bool hasBaro, double newTime)
+    void State::updateMeasurements(const Vector<3> &gpsPos, double baroAlt, bool hasGPS, bool hasBaro, double newTime)
     {
         if (!filter)
             return;
@@ -203,8 +198,8 @@ namespace astra
         double *measurements = new double[filter->getMeasurementSize()];
 
         // gps x y barometer z
-        measurements[0] = hasGPS ? (gpsLat - origin.x()) : 0;
-        measurements[1] = hasGPS ? (gpsLon - origin.y()) : 0;
+        measurements[0] = hasGPS ? (gpsPos.x() - origin.x()) : 0;
+        measurements[1] = hasGPS ? (gpsPos.y() - origin.y()) : 0;
         measurements[2] = hasBaro ? baroAlt : 0;
 
         LinearKalmanFilter *kf = static_cast<LinearKalmanFilter *>(filter);

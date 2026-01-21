@@ -4,6 +4,11 @@
 #include "../../src/Sensors/SensorManager.h"
 #include "../../src/Sensors/Accel/MockAccel.h"
 #include "../../src/Sensors/Gyro/MockGyro.h"
+#include "../../src/Sensors/Accel/Accel.h"
+#include "../../src/Sensors/Gyro/Gyro.h"
+#include "../../src/Sensors/GPS/GPS.h"
+#include "../../src/Sensors/Baro/Barometer.h"
+#include "../../src/Math/Vector.h"
 
 using namespace astra;
 
@@ -68,6 +73,20 @@ void test_init_all()
     TEST_ASSERT_TRUE(fakeBaro->isInitialized());
 }
 
+// Test typed sensor getters
+void test_typed_sensor_getters()
+{
+    Sensor *sensors[4] = {mockAccel, mockGyro, fakeGPS, fakeBaro};
+    sensorManager->setSensors(sensors, 4);
+    sensorManager->initAll();
+
+    TEST_ASSERT_NOT_NULL(sensorManager->getAccel());
+    TEST_ASSERT_NOT_NULL(sensorManager->getGyro());
+    TEST_ASSERT_NOT_NULL(sensorManager->getGPS());
+    TEST_ASSERT_NOT_NULL(sensorManager->getBaro());
+    TEST_ASSERT_NULL(sensorManager->getMag()); // No mag sensor added
+}
+
 // Test sensor updates
 void test_update_all()
 {
@@ -81,18 +100,23 @@ void test_update_all()
 
     sensorManager->updateAll();
 
-    // Verify data extraction works
-    double accel[3], gyro[3];
-    TEST_ASSERT_TRUE(sensorManager->getAccelData(accel));
-    TEST_ASSERT_TRUE(sensorManager->getGyroData(gyro));
+    // Verify data extraction via typed getters
+    Accel *accel = sensorManager->getAccel();
+    Gyro *gyro = sensorManager->getGyro();
 
-    TEST_ASSERT_EQUAL_FLOAT(1.0, accel[0]);
-    TEST_ASSERT_EQUAL_FLOAT(2.0, accel[1]);
-    TEST_ASSERT_EQUAL_FLOAT(3.0, accel[2]);
+    TEST_ASSERT_NOT_NULL(accel);
+    TEST_ASSERT_NOT_NULL(gyro);
 
-    TEST_ASSERT_EQUAL_FLOAT(0.1, gyro[0]);
-    TEST_ASSERT_EQUAL_FLOAT(0.2, gyro[1]);
-    TEST_ASSERT_EQUAL_FLOAT(0.3, gyro[2]);
+    Vector<3> accelData = accel->getAccel();
+    Vector<3> gyroData = gyro->getAngVel();
+
+    TEST_ASSERT_EQUAL_FLOAT(1.0, accelData.x());
+    TEST_ASSERT_EQUAL_FLOAT(2.0, accelData.y());
+    TEST_ASSERT_EQUAL_FLOAT(3.0, accelData.z());
+
+    TEST_ASSERT_EQUAL_FLOAT(0.1, gyroData.x());
+    TEST_ASSERT_EQUAL_FLOAT(0.2, gyroData.y());
+    TEST_ASSERT_EQUAL_FLOAT(0.3, gyroData.z());
 }
 
 // Test accel data extraction
@@ -104,13 +128,13 @@ void test_get_accel_data()
 
     mockAccel->setAccel(9.81, 0.0, 0.0);
 
-    double accel[3];
-    bool result = sensorManager->getAccelData(accel);
+    Accel *accel = sensorManager->getAccel();
+    TEST_ASSERT_NOT_NULL(accel);
 
-    TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_FLOAT(9.81, accel[0]);
-    TEST_ASSERT_EQUAL_FLOAT(0.0, accel[1]);
-    TEST_ASSERT_EQUAL_FLOAT(0.0, accel[2]);
+    Vector<3> accelData = accel->getAccel();
+    TEST_ASSERT_EQUAL_FLOAT(9.81, accelData.x());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, accelData.y());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, accelData.z());
 }
 
 // Test gyro data extraction
@@ -122,13 +146,13 @@ void test_get_gyro_data()
 
     mockGyro->setAngVel(0.5, 1.0, 1.5);
 
-    double gyro[3];
-    bool result = sensorManager->getGyroData(gyro);
+    Gyro *gyro = sensorManager->getGyro();
+    TEST_ASSERT_NOT_NULL(gyro);
 
-    TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_FLOAT(0.5, gyro[0]);
-    TEST_ASSERT_EQUAL_FLOAT(1.0, gyro[1]);
-    TEST_ASSERT_EQUAL_FLOAT(1.5, gyro[2]);
+    Vector<3> gyroData = gyro->getAngVel();
+    TEST_ASSERT_EQUAL_FLOAT(0.5, gyroData.x());
+    TEST_ASSERT_EQUAL_FLOAT(1.0, gyroData.y());
+    TEST_ASSERT_EQUAL_FLOAT(1.5, gyroData.z());
 }
 
 // Test GPS data extraction
@@ -141,13 +165,13 @@ void test_get_gps_data()
     // Set GPS data AFTER initAll() since begin() resets it
     fakeGPS->set(34.0522, -118.2437, 100.0);
 
-    double lat, lon, alt;
-    bool result = sensorManager->getGPSData(&lat, &lon, &alt);
+    GPS *gps = sensorManager->getGPS();
+    TEST_ASSERT_NOT_NULL(gps);
 
-    TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_FLOAT(34.0522, lat);
-    TEST_ASSERT_EQUAL_FLOAT(-118.2437, lon);
-    TEST_ASSERT_EQUAL_FLOAT(100.0, alt);
+    Vector<3> gpsPos = gps->getPos();
+    TEST_ASSERT_EQUAL_FLOAT(34.0522, gpsPos.x());
+    TEST_ASSERT_EQUAL_FLOAT(-118.2437, gpsPos.y());
+    TEST_ASSERT_EQUAL_FLOAT(100.0, gpsPos.z());
 }
 
 // Test GPS heading extraction
@@ -160,11 +184,9 @@ void test_get_gps_heading()
     // Set GPS data AFTER initAll() since begin() resets it
     fakeGPS->setHeading(90.0);
 
-    double heading;
-    bool result = sensorManager->getGPSHeading(&heading);
-
-    TEST_ASSERT_TRUE(result);
-    TEST_ASSERT_EQUAL_FLOAT(90.0, heading);
+    GPS *gps = sensorManager->getGPS();
+    TEST_ASSERT_NOT_NULL(gps);
+    TEST_ASSERT_EQUAL_FLOAT(90.0, gps->getHeading());
 }
 
 // Test barometer altitude extraction
@@ -174,13 +196,13 @@ void test_get_baro_altitude()
     sensorManager->setSensors(sensors, 1);
     sensorManager->initAll();
 
-    double altM;
-    bool result = sensorManager->getBaroAltitude(&altM);
-
-    TEST_ASSERT_TRUE(result);
+    Barometer *baro = sensorManager->getBaro();
+    TEST_ASSERT_NOT_NULL(baro);
+    // Just verify we can call getASLAltM without crashing
+    baro->getASLAltM();
 }
 
-// Test sensor retrieval by type
+// Test sensor retrieval by type hash
 void test_get_sensor_by_type()
 {
     Sensor *sensors[4] = {mockAccel, mockGyro, fakeGPS, fakeBaro};
@@ -202,14 +224,16 @@ void test_get_sensor_by_type()
     TEST_ASSERT_EQUAL_PTR(fakeBaro, baro);
 }
 
-// Test missing sensor returns false
-void test_missing_sensor_returns_false()
+// Test missing sensor returns nullptr
+void test_missing_sensor_returns_nullptr()
 {
     // Empty sensor manager
-    double accel[3];
-    bool result = sensorManager->getAccelData(accel);
+    sensorManager->initAll();
 
-    TEST_ASSERT_FALSE(result);
+    TEST_ASSERT_NULL(sensorManager->getAccel());
+    TEST_ASSERT_NULL(sensorManager->getGyro());
+    TEST_ASSERT_NULL(sensorManager->getGPS());
+    TEST_ASSERT_NULL(sensorManager->getBaro());
 }
 
 int main(int argc, char **argv)
@@ -219,6 +243,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_add_sensors);
     RUN_TEST(test_set_sensors);
     RUN_TEST(test_init_all);
+    RUN_TEST(test_typed_sensor_getters);
     RUN_TEST(test_update_all);
     RUN_TEST(test_get_accel_data);
     RUN_TEST(test_get_gyro_data);
@@ -226,7 +251,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_get_gps_heading);
     RUN_TEST(test_get_baro_altitude);
     RUN_TEST(test_get_sensor_by_type);
-    RUN_TEST(test_missing_sensor_returns_false);
+    RUN_TEST(test_missing_sensor_returns_nullptr);
 
     UNITY_END();
 

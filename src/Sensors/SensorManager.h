@@ -6,6 +6,14 @@
 
 namespace astra
 {
+    // Forward declarations for sensor types
+    class Accel;
+    class Gyro;
+    class Mag;
+    class GPS;
+    class Barometer;
+    class VoltageSensor;
+
     // Maximum number of sensors that can be managed
     #define MAX_SENSORS 20
 
@@ -20,24 +28,20 @@ namespace astra
         bool initAll();
         void updateAll();
 
-        // Sensor access
+        // Generic sensor access
         Sensor *getSensor(uint32_t type, int sensorNum = 1) const;
         Sensor **getSensors() { return sensors; }
         int getCount() const { return numSensors; }
 
-        // Typed data extraction for State
-        // Returns true if data was successfully retrieved
-        // These methods automatically check for combo IMU sensors (IMU6DoF, IMU9DoF)
-        bool getIMUData(double *gyro, double *accel, double *mag = nullptr);
-        bool getAccelData(double *accel);
-        bool getGyroData(double *gyro);
-        bool getMagData(double *mag);
-        bool getGPSData(double *lat, double *lon, double *alt);
-        bool getGPSVelocity(double *vn, double *ve, double *vd);
-        bool getGPSHeading(double *heading);
-        bool getGPSHasFix(bool *hasFix);
-        bool getBaroData(double *pressure, double *temp = nullptr);
-        bool getBaroAltitude(double *altM);
+        // Typed sensor getters - return nullptr if not found
+        // Use sensorNum to get the Nth sensor of that type (1-indexed)
+        // Note: getAccel/getGyro/getMag will fall back to IMU types if standalone not found
+        Accel *getAccel(int sensorNum = 1) const;
+        Gyro *getGyro(int sensorNum = 1) const;
+        Mag *getMag(int sensorNum = 1) const;
+        GPS *getGPS(int sensorNum = 1) const;
+        Barometer *getBaro(int sensorNum = 1) const;
+        VoltageSensor *getVoltageSensor(int sensorNum = 1) const;
 
     private:
         Sensor *sensors[MAX_SENSORS];

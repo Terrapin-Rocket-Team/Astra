@@ -36,10 +36,9 @@
 - [ ] Add apogee time and altitude prediction
 - [ ] Add drogue deploy detection
 - [ ] Add main deploy detection
-- [ ] make state auto-detect and build an IMU (and make 6DoF/9DoF IMU that can return values in inertial frame)
 
 ## Data Handling & Logging
-- [ ] Fix `withOtherDataReporters`
+- [X] Fix `withOtherDataReporters`
 - [ ] Add debug log
 
 ## Build & Deployment

@@ -31,10 +31,10 @@ namespace astra
         // Updates the state with the most recent sensor data. CurrentTime is the time in seconds since the uC was turned on. If not provided, the state will use the current time.
         virtual void update(double currentTime = -1);
 
-        // Split update methods for different update rates - now receive primitive data
-        virtual void updateOrientation(double *gyro, double *accel, double dt);
+        // Split update methods for different update rates
+        virtual void updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt);
         virtual void predictState(double currentTime = -1);
-        virtual void updateMeasurements(double gpsLat, double gpsLon, double gpsAlt, double baroAlt, bool hasGPS, bool hasBaro, double currentTime = -1);
+        virtual void updateMeasurements(const Vector<3> &gpsPos, double baroAlt, bool hasGPS, bool hasBaro, double currentTime = -1);
         virtual void updatePositionVelocity(double lat, double lon, double heading, bool hasFix);
 
         // State Getters
