@@ -2,10 +2,7 @@
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
 #include "Sensors/Sensor.h"
-#include "Sensors/Accel/Accel.h"
-#include "Sensors/Gyro/Gyro.h"
-#include "Sensors/IMU/IMU6DoF.h"
-#include "Sensors/IMU/IMU9DoF.h"
+#include "Sensors/SensorManager/SensorManager.h"
 #include "Sensors/GPS/GPS.h"
 #include "Sensors/Baro/Barometer.h"
 #include "Math/Vector.h"
@@ -30,6 +27,22 @@ Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
     {
         sensors = config->sensors;
         numSensors = config->numSensors;
+    }
+
+    // Use user-provided SensorManager or mark for later creation
+    if (config->sensorManager)
+    {
+        sensorManager = config->sensorManager;
+        ownsSensorManager = false;
+    }
+}
+
+Astra::~Astra()
+{
+    if (ownsSensorManager && sensorManager)
+    {
+        delete sensorManager;
+        sensorManager = nullptr;
     }
 }
 
@@ -101,46 +114,6 @@ Sensor *Astra::findSensor(uint32_t type, int sensorNum) const
     return nullptr;
 }
 
-Accel *Astra::findAccel(int sensorNum) const
-{
-    // Try standalone accelerometer first
-    Sensor *sensor = findSensor("Accelerometer"_i, sensorNum);
-    if (sensor)
-        return static_cast<Accel *>(sensor);
-
-    // Fall back to IMU6DoF - get contained accel component
-    sensor = findSensor("IMU6DoF"_i, sensorNum);
-    if (sensor)
-        return static_cast<IMU6DoF *>(sensor)->getAccelSensor();
-
-    // Fall back to IMU9DoF - get contained accel component
-    sensor = findSensor("IMU9DoF"_i, sensorNum);
-    if (sensor)
-        return static_cast<IMU9DoF *>(sensor)->getAccelSensor();
-
-    return nullptr;
-}
-
-Gyro *Astra::findGyro(int sensorNum) const
-{
-    // Try standalone gyroscope first
-    Sensor *sensor = findSensor("Gyroscope"_i, sensorNum);
-    if (sensor)
-        return static_cast<Gyro *>(sensor);
-
-    // Fall back to IMU6DoF - get contained gyro component
-    sensor = findSensor("IMU6DoF"_i, sensorNum);
-    if (sensor)
-        return static_cast<IMU6DoF *>(sensor)->getGyroSensor();
-
-    // Fall back to IMU9DoF - get contained gyro component
-    sensor = findSensor("IMU9DoF"_i, sensorNum);
-    if (sensor)
-        return static_cast<IMU9DoF *>(sensor)->getGyroSensor();
-
-    return nullptr;
-}
-
 GPS *Astra::findGPS(int sensorNum) const
 {
     return static_cast<GPS *>(findSensor("GPS"_i, sensorNum));
@@ -172,6 +145,22 @@ void Astra::init()
     // Initialize sensors directly
     initAllSensors();
 
+    // Create default SensorManager if not provided
+    if (!sensorManager && sensors && numSensors > 0)
+    {
+        SensorManager *defaultMgr = new SensorManager();
+        defaultMgr->withSensors(sensors, numSensors);
+        sensorManager = defaultMgr;
+        ownsSensorManager = true;
+        LOGI("Created default SensorManager");
+    }
+
+    // Initialize SensorManager
+    if (sensorManager)
+    {
+        sensorManager->begin();
+    }
+
     // then Logger - combine sensors and other reporters
     DataReporter **reporters = new DataReporter *[config->numReporters + numSensors + 1];
 
@@ -193,7 +182,7 @@ void Astra::init()
     // then State
     if (config->state)
     {
-        config->state->withSensors(sensors, numSensors);
+        config->state->withSensorManager(sensorManager);
         config->state->begin();
     }
     ready = true;
@@ -232,19 +221,24 @@ bool Astra::update(double ms)
     {
         lastSensorUpdate = ms;
         updateAllSensors();
+
+        // Update SensorManager (transforms to body frame)
+        if (sensorManager)
+        {
+            sensorManager->update();
+        }
         didUpdate = true;
     }
 
-    // Orientation update - runs after sensors
-    if (didUpdate && config->state)
+    // Orientation update - runs after sensors using body-frame data
+    if (didUpdate && config->state && sensorManager)
     {
-        Accel *accel = findAccel();
-        Gyro *gyro = findGyro();
+        const BodyFrameData &bodyData = sensorManager->getBodyFrameData();
 
-        if (accel && accel->isInitialized() && gyro && gyro->isInitialized())
+        if (bodyData.hasAccel && bodyData.hasGyro)
         {
             double dt = currentTime - (lastOrientationUpdate / 1000.0);
-            config->state->updateOrientation(gyro->getAngVel(), accel->getAccel(), dt);
+            config->state->updateOrientation(bodyData, dt);
             lastOrientationUpdate = ms;
         }
     }
@@ -261,15 +255,14 @@ bool Astra::update(double ms)
     {
         lastMeasurementUpdate = ms;
 
-        // Get sensors
+        // Get GPS sensor directly (not managed by SensorManager)
         GPS *gps = findGPS();
-        Barometer *baro = findBaro();
-
         bool hasGPS = gps && gps->isInitialized();
-        bool hasBaro = baro && baro->isInitialized();
-
         Vector<3> gpsPos = hasGPS ? gps->getPos() : Vector<3>();
-        double baroAlt = hasBaro ? baro->getASLAltM() : 0.0;
+
+        // Get baro data from SensorManager if available
+        bool hasBaro = sensorManager && sensorManager->getBodyFrameData().hasBaro;
+        double baroAlt = hasBaro ? sensorManager->getBaroAltitude() : 0.0;
 
         config->state->updateMeasurements(gpsPos, baroAlt, hasGPS, hasBaro, currentTime);
 

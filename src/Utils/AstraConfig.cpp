@@ -26,6 +26,15 @@ namespace astra
         LOGI("Added %d sensors to Astra", numSensors);
         return *this;
     }
+
+    AstraConfig &AstraConfig::withSensorManager(ISensorManager *sensorManager)
+    {
+        this->sensorManager = sensorManager;
+        this->ownsSensorManager = false;  // User provided, we don't own it
+        LOGI("Custom SensorManager configured");
+        return *this;
+    }
+
     AstraConfig &AstraConfig::withUpdateRate(double updateRate)
     {
         if (this->updateRate == updateRate)

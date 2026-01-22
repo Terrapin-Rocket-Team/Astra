@@ -3,53 +3,103 @@
 
 #include "../Filters/Filter.h"
 #include "../Filters/Mahony.h"
-
-// TODO: Figoure out filter situation
-
-// Include all the sensor classes
-#include "../Sensors/Baro/Barometer.h"
-#include "../Sensors/GPS/GPS.h"
-#include "../Sensors/Accel/Accel.h"
-#include "../Sensors/Gyro/Gyro.h"
+#include "../Sensors/SensorManager/BodyFrameData.h"
+#include "../RecordData/DataReporter/DataReporter.h"
 #include "../Math/Vector.h"
 #include "../Math/Quaternion.h"
 
 namespace astra
 {
-    class Sensor;
-    class Accel;
-    class Gyro;
+    class ISensorManager;
 
+    /**
+     * State - Inertial state estimation
+     *
+     * Responsible for:
+     * 1. Body Frame → Inertial Frame transformation (dynamic, via Mahony AHRS)
+     * 2. Position/velocity estimation (via Kalman Filter)
+     * 3. GPS/coordinate tracking
+     *
+     * State receives body-frame data from SensorManager (which handles sensor
+     * selection, fallback, and sensor-to-body frame transforms). State then
+     * transforms to inertial frame and runs the estimation filters.
+     *
+     * Frame convention:
+     *   - Body frame: X forward, Y right, Z down (NED-like, attached to vehicle)
+     *   - Inertial frame: NED (North, East, Down) relative to launch point
+     */
     class State : public DataReporter
     {
     public:
         State(Filter *filter, MahonyAHRS *orientationFilter = nullptr);
         virtual ~State();
 
-        // Configure sensor access for state estimation
-        void withSensors(Sensor **sensors, int numSensors);
+        /**
+         * Configure sensor manager for state estimation
+         * Call this before begin() to enable auto-calibration
+         */
+        void withSensorManager(ISensorManager *sensorManager);
 
-        // Initialize state estimation (call after withSensors if calibration is needed)
+        /**
+         * Initialize state estimation
+         * If a sensor manager is configured, will auto-calibrate orientation filter
+         */
         virtual bool begin();
 
-        // Updates the state with the most recent sensor data. CurrentTime is the time in seconds since the uC was turned on. If not provided, the state will use the current time.
+        /**
+         * Legacy update method - deprecated
+         * Use split update methods via Astra instead
+         */
         virtual void update(double currentTime = -1);
 
-        // Split update methods for different update rates
+        // ========================= Split Update Methods =========================
+        // These are called at different rates by Astra
+
+        /**
+         * Update orientation estimate from body-frame IMU data
+         * Runs Mahony AHRS filter, transforms acceleration to inertial frame
+         * @param bodyData Body-frame sensor data from SensorManager
+         * @param dt Time step in seconds
+         */
+        virtual void updateOrientation(const BodyFrameData &bodyData, double dt);
+
+        /**
+         * Legacy orientation update - for direct accel/gyro input
+         * Prefer using updateOrientation(BodyFrameData) instead
+         */
         virtual void updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt);
+
+        /**
+         * Run Kalman filter prediction step
+         * Uses inertial-frame acceleration from orientation filter
+         */
         virtual void predictState(double currentTime = -1);
+
+        /**
+         * Run Kalman filter measurement update
+         * @param gpsPos GPS position (lat, lon, alt)
+         * @param baroAlt Barometric altitude ASL (m)
+         * @param hasGPS Whether GPS data is valid
+         * @param hasBaro Whether baro data is valid
+         */
         virtual void updateMeasurements(const Vector<3> &gpsPos, double baroAlt, bool hasGPS, bool hasBaro, double currentTime = -1);
+
+        /**
+         * Update position/velocity from GPS
+         */
         virtual void updatePositionVelocity(double lat, double lon, double heading, bool hasFix);
 
-        // State Getters
+        // ========================= State Getters =========================
+
         virtual Vector<3> getPosition() const { return position; }         // in m away from point of launch (inertial frame)
         virtual Vector<3> getVelocity() const { return velocity; }         // m/s (inertial frame)
         virtual Vector<3> getAcceleration() const { return acceleration; } // m/s/s (inertial frame)
         virtual Quaternion getOrientation() const { return orientation; }
-        virtual Vector<2> getCoordinates() const { return coordinates; } // lat lon in decimal degrees
-        virtual double getHeading() const { return heading; }            // degrees
+        virtual Vector<2> getCoordinates() const { return coordinates; }   // lat lon in decimal degrees
+        virtual double getHeading() const { return heading; }              // degrees
 
-        // Orientation filter control
+        // ========================= Filter Control =========================
+
         MahonyAHRS *getOrientationFilter() const { return orientationFilter; }
         void setOrientationFilterMode(MahonyMode mode)
         {
@@ -61,30 +111,24 @@ namespace astra
         double currentTime; // in s since uC turned on
         double lastTime;
 
-        // State variables
+        // State variables (all in inertial frame)
         Vector<3> position;     // in m from launch position
         Vector<3> velocity;     // in m/s
         Vector<3> acceleration; // in m/s^2
-        Quaternion orientation; // in quaternion
+        Quaternion orientation; // body-to-earth rotation
         Vector<2> coordinates;  // in lat, lon
         double heading;         // in degrees
         Vector<3> origin;       // in lat, lon, alt
 
-        // Kalman Filter settings
+        // Kalman Filter for position/velocity estimation
         Filter *filter;
         double *stateVars = nullptr;
 
-        // Orientation filter (Mahony AHRS)
+        // Orientation filter (Mahony AHRS) - body to inertial transformation
         MahonyAHRS *orientationFilter;
 
-        // Sensor access (set via withSensors)
-        Sensor **sensors = nullptr;
-        int numSensors = 0;
-
-        // Helper to find sensors by type
-        Sensor *findSensor(uint32_t type, int sensorNum = 1) const;
-        Accel *findAccel(int sensorNum = 1) const;
-        Gyro *findGyro(int sensorNum = 1) const;
+        // Sensor manager reference (optional, for calibration)
+        ISensorManager *sensorManager = nullptr;
 
         bool initialized = false;
     };

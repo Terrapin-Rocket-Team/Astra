@@ -9,6 +9,9 @@ namespace astra
     class State;
     class DataReporter;
     class Sensor;
+    class ISensorManager;
+    class SensorManager;
+
     class AstraConfig
     {
         friend class Astra;
@@ -21,6 +24,11 @@ namespace astra
         // Add sensors to Astra's knowledge. Astra will manage updating them.
         // No default.
         AstraConfig &withSensors(Sensor **sensors, int numSensors);
+
+        // Set a custom sensor manager. If not provided, Astra will create a default SensorManager.
+        // The sensor manager handles sensor selection, fallback, and body-frame transformation.
+        // No default (Astra creates one internally).
+        AstraConfig &withSensorManager(ISensorManager *sensorManager);
 
         // Set a sensor/state update rate (in hz).
         // Mutually exclusive with `withUpdateInterval()`. Last one called will take effect.
@@ -112,6 +120,8 @@ namespace astra
         State *state = nullptr;
         Sensor **sensors = nullptr;
         int numSensors = 0;
+        ISensorManager *sensorManager = nullptr;
+        bool ownsSensorManager = false;  // true if Astra created it, false if user provided
         int pins[50];
         ILogSink *logs[50];
         uint8_t numLogs = 0;

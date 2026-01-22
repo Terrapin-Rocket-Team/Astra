@@ -1,11 +1,8 @@
 #include "State.h"
 #include <Arduino.h>
 #include "../Filters/LinearKalmanFilter.h"
-#include "../Sensors/Sensor.h"
-#include "../Sensors/Accel/Accel.h"
-#include "../Sensors/Gyro/Gyro.h"
-#include "../Sensors/IMU/IMU6DoF.h"
-#include "../Sensors/IMU/IMU9DoF.h"
+#include "../Sensors/SensorManager/ISensorManager.h"
+
 #pragma region Constructor and Destructor
 
 namespace astra
@@ -36,107 +33,48 @@ namespace astra
 
 #pragma endregion
 
-    void State::withSensors(Sensor **sensors, int numSensors)
+    void State::withSensorManager(ISensorManager *sensorManager)
     {
-        this->sensors = sensors;
-        this->numSensors = numSensors;
-    }
-
-    Sensor *State::findSensor(uint32_t type, int sensorNum) const
-    {
-        for (int i = 0; i < numSensors; i++)
-        {
-            if (sensors[i] && type == sensors[i]->getType() && --sensorNum == 0)
-                return sensors[i];
-        }
-        return nullptr;
-    }
-
-    Accel *State::findAccel(int sensorNum) const
-    {
-        // Try standalone accelerometer first
-        Sensor *sensor = findSensor("Accelerometer"_i, sensorNum);
-        if (sensor)
-            return static_cast<Accel *>(sensor);
-
-        // Fall back to IMU6DoF - get contained accel component
-        sensor = findSensor("IMU6DoF"_i, sensorNum);
-        if (sensor)
-            return static_cast<IMU6DoF *>(sensor)->getAccelSensor();
-
-        // Fall back to IMU9DoF - get contained accel component
-        sensor = findSensor("IMU9DoF"_i, sensorNum);
-        if (sensor)
-            return static_cast<IMU9DoF *>(sensor)->getAccelSensor();
-
-        return nullptr;
-    }
-
-    Gyro *State::findGyro(int sensorNum) const
-    {
-        // Try standalone gyroscope first
-        Sensor *sensor = findSensor("Gyroscope"_i, sensorNum);
-        if (sensor)
-            return static_cast<Gyro *>(sensor);
-
-        // Fall back to IMU6DoF - get contained gyro component
-        sensor = findSensor("IMU6DoF"_i, sensorNum);
-        if (sensor)
-            return static_cast<IMU6DoF *>(sensor)->getGyroSensor();
-
-        // Fall back to IMU9DoF - get contained gyro component
-        sensor = findSensor("IMU9DoF"_i, sensorNum);
-        if (sensor)
-            return static_cast<IMU9DoF *>(sensor)->getGyroSensor();
-
-        return nullptr;
+        this->sensorManager = sensorManager;
     }
 
     bool State::begin()
     {
-        // Sensors are initialized by Astra
+        // Initialize Kalman filter
         if (filter)
         {
             filter->initialize();
             stateVars = new double[filter->getStateSize()];
         }
 
-        if (orientationFilter && sensors && numSensors > 0)
+        // Auto-calibrate orientation filter if sensor manager is available
+        if (orientationFilter && sensorManager && sensorManager->isReady())
         {
-            // Auto-calibrate orientation filter during initialization
-            Accel *accelSensor = findAccel();
-            Gyro *gyroSensor = findGyro();
-            bool hasAccelGyro = accelSensor && accelSensor->isInitialized() &&
-                                gyroSensor && gyroSensor->isInitialized();
+            LOGI("Auto-calibrating orientation filter...");
+            orientationFilter->setMode(MahonyMode::CALIBRATING);
 
-            if (hasAccelGyro)
+            // Collect calibration samples using body frame data
+            const int calibSamples = 200;
+            for (int i = 0; i < calibSamples; i++)
             {
-                LOGI("Auto-calibrating orientation filter...");
-                orientationFilter->setMode(MahonyMode::CALIBRATING);
+                sensorManager->update();
+                const BodyFrameData &data = sensorManager->getBodyFrameData();
 
-                // Collect calibration samples
-                const int calibSamples = 200;
-                for (int i = 0; i < calibSamples; i++)
+                if (data.hasAccel && data.hasGyro)
                 {
-                    // Update sensors directly
-                    for (int s = 0; s < numSensors; s++)
-                    {
-                        if (sensors[s] && sensors[s]->isInitialized())
-                            sensors[s]->update();
-                    }
-                    orientationFilter->update(accelSensor->getAccel(), gyroSensor->getAngVel(), 0.01); // Assume ~100Hz
-                    delay(10);
+                    orientationFilter->update(data.accel, data.gyro, 0.01); // Assume ~100Hz
                 }
+                delay(10);
+            }
 
-                // Initialize and switch to normal mode
-                orientationFilter->initialize();
-                orientationFilter->setMode(MahonyMode::GYRO_ONLY);
-                LOGI("Orientation filter calibrated and ready.");
-            }
-            else
-            {
-                LOGW("No Accel/Gyro sensors available for orientation filter calibration.");
-            }
+            // Initialize and switch to normal mode
+            orientationFilter->initialize();
+            orientationFilter->setMode(MahonyMode::GYRO_ONLY);
+            LOGI("Orientation filter calibrated and ready.");
+        }
+        else if (orientationFilter)
+        {
+            LOGW("No SensorManager available for orientation filter calibration.");
         }
 
         initialized = true;
@@ -150,6 +88,18 @@ namespace astra
     {
         // This method is deprecated - Astra now calls split update methods
         LOGW("State::update() is deprecated. Use split update methods via Astra.");
+    }
+
+    void State::updateOrientation(const BodyFrameData &bodyData, double dt)
+    {
+        if (!orientationFilter)
+            return;
+
+        if (!bodyData.hasAccel || !bodyData.hasGyro)
+            return;
+
+        // Delegate to the vector-based implementation
+        updateOrientation(bodyData.gyro, bodyData.accel, dt);
     }
 
     void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)
