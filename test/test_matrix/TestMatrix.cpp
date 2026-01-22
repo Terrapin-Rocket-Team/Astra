@@ -1,6 +1,6 @@
 #include <unity.h>
 #include "../src/Math/Matrix.h"
-#include "../../lib/NativeTestMocks/NativeTestHelper.h"
+#include "NativeTestHelper.h"
 
 using astra::Matrix;
 

@@ -1,6 +1,6 @@
 #include <unity.h>
-#include "../../lib/NativeTestMocks/NativeTestHelper.h"
-#include "../../lib/NativeTestMocks/UnitTestSensors.h"
+#include "NativeTestHelper.h"
+#include "UnitTestSensors.h"
 #include "../../src/State/State.h"
 #include "../../src/Sensors/Sensor.h"
 #include "../../src/Sensors/SensorManager/SensorManager.h"
@@ -88,8 +88,8 @@ void test_update_orientation()
     state->begin();
 
     // Set mock sensor data
-    fakeAccel->setAccel(0.0, 0.0, 9.81); // Gravity pointing down
-    fakeGyro->setAngVel(0.0, 0.0, 0.0);  // No rotation
+    fakeAccel->set(Vector<3>(0.0, 0.0, 9.81)); // Gravity pointing down
+    fakeGyro->set(Vector<3>(0.0, 0.0, 0.0));  // No rotation
 
     // Update orientation using vector API
     state->updateOrientation(fakeGyro->getAngVel(), fakeAccel->getAccel(), 0.01);
@@ -108,8 +108,8 @@ void test_update_orientation_with_motion()
     state->begin();
 
     // Simulate accelerating forward
-    fakeAccel->setAccel(1.0, 0.0, 9.81);
-    fakeGyro->setAngVel(0.1, 0.0, 0.0); // Rotating around X axis
+    fakeAccel->set(Vector<3>(1.0, 0.0, 9.81));
+    fakeGyro->set(Vector<3>(0.1, 0.0, 0.0)); // Rotating around X axis
 
     // Run multiple updates to let filter converge
     for (int i = 0; i < 100; i++)
@@ -132,8 +132,8 @@ void test_update_orientation_with_body_frame_data()
     state->begin();
 
     // Set mock sensor data
-    fakeAccel->setAccel(0.0, 0.0, 9.81);
-    fakeGyro->setAngVel(0.0, 0.0, 0.0);
+    fakeAccel->set(Vector<3>(0.0, 0.0, 9.81));
+    fakeGyro->set(Vector<3>(0.0, 0.0, 0.0));
 
     // Update sensor manager to get body frame data
     sensorManager->update();
@@ -255,8 +255,8 @@ void test_sensor_manager_basic()
     sensorManager->begin();
 
     // Set some sensor data
-    fakeAccel->setAccel(0.0, 0.0, 9.81);
-    fakeGyro->setAngVel(0.0, 0.0, 0.0);
+    fakeAccel->set(Vector<3>(0.0, 0.0, 9.81));
+    fakeGyro->set(Vector<3>(0.0, 0.0, 0.0));
 
     // Need to call update() before isReady() returns true (populates bodyData flags)
     sensorManager->update();
@@ -271,8 +271,8 @@ void test_sensor_manager_body_frame_data()
 {
     sensorManager->begin();
 
-    fakeAccel->setAccel(1.0, 2.0, 9.81);
-    fakeGyro->setAngVel(0.1, 0.2, 0.3);
+    fakeAccel->set(Vector<3>(1.0, 2.0, 9.81));
+    fakeGyro->set(Vector<3>(0.1, 0.2, 0.3));
 
     sensorManager->update();
     const BodyFrameData &data = sensorManager->getBodyFrameData();

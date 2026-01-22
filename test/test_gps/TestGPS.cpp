@@ -1,9 +1,9 @@
 #include <unity.h>
-#include "../../lib/NativeTestMocks/NativeTestHelper.h"
+#include "NativeTestHelper.h"
 
 // include other headers you need to test here
 
-#include "../../lib/NativeTestMocks/UnitTestSensors.h"
+#include "UnitTestSensors.h"
 
 // ---
 
