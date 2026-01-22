@@ -1,7 +1,7 @@
 #include <unity.h>
 #include <cstring>
-#include "../../src/Testing/HITLParser.h"
-#include "../../src/Sensors/HITL/HITLSensorBuffer.h"
+#include "Testing/HITLParser.h"
+#include "Sensors/HITL/HITLSensorBuffer.h"
 
 using namespace astra;
 

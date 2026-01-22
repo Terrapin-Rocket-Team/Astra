@@ -1,6 +1,6 @@
 #include <unity.h>
 #include <cstring>
-#include "../../src/Communication/SerialMessageRouter.h"
+#include "Communication/SerialMessageRouter.h"
 
 using namespace astra;
 

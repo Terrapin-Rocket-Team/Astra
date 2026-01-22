@@ -556,6 +556,6 @@ double getMedian() {
 - Templated for any data type
 - Fixed memory allocation—size set at construction
 
-For examples of `CircBuffer` in real sensors, see the barometer implementation in [src/Sensors/Baro/Barometer.cpp](../../../src/Sensors/Baro/Barometer.cpp).
+For examples of `CircBuffer` in real sensors, see the barometer implementation in [src/Sensors/Baro/Barometer.cpp](../Sensors/Baro/Barometer.cpp).
 
 ---

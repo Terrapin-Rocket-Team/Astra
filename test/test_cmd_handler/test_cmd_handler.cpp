@@ -5,10 +5,10 @@
 #include <cstdio>
 
 // Include the necessary headers
-#include "../../src/Communication/SerialMessageRouter.h"
-#include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
-#include "../../src/RecordData/DataReporter/DataReporter.h"
-#include "../../src/RecordData/Logging/DataLogger.h"
+#include "Communication/SerialMessageRouter.h"
+#include "RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "RecordData/DataReporter/DataReporter.h"
+#include "RecordData/Logging/DataLogger.h"
 
 using namespace astra;
 

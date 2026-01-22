@@ -8,10 +8,10 @@
 #include <iostream>
 
 // ---- Include your headers (adjust paths as needed) ----
-#include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
-#include "../../src/RecordData/DataReporter/DataReporter.h"
-#include "../../src/RecordData/Logging/DataLogger.h"
-#include "../../src/RecordData/Logging/EventLogger.h"
+#include "RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "RecordData/DataReporter/DataReporter.h"
+#include "RecordData/Logging/DataLogger.h"
+#include "RecordData/Logging/EventLogger.h"
 
 using namespace astra;
 

@@ -1,10 +1,10 @@
 #include <unity.h>
 #include "NativeTestHelper.h"
 #include "UnitTestSensors.h"
-#include "../../src/State/State.h"
-#include "../../src/Sensors/Sensor.h"
-#include "../../src/Sensors/SensorManager/SensorManager.h"
-#include "../../src/Math/Vector.h"
+#include "State/State.h"
+#include "Sensors/Sensor.h"
+#include "Sensors/SensorManager/SensorManager.h"
+#include "Math/Vector.h"
 
 using namespace astra;
 

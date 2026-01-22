@@ -4,12 +4,12 @@
 #include <iostream>
 #include <string>
 
-#include "../../src/Utils/AstraConfig.h"
-#include "../../src/RecordData/DataReporter/DataReporter.h"
-#include "../../src/RecordData/Logging/DataLogger.h"
-#include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
-#include "../../src/State/State.h"
-#include "../../src/Utils/Astra.h"
+#include "Utils/AstraConfig.h"
+#include "RecordData/DataReporter/DataReporter.h"
+#include "RecordData/Logging/DataLogger.h"
+#include "RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "State/State.h"
+#include "Utils/Astra.h"
 
 using namespace astra;
 
