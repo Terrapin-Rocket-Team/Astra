@@ -1,12 +1,7 @@
 #include "BlinkBuzz.h"
 #include "RecordData/Logging/EventLogger.h"
-#ifndef ARDUINO
-#include "NativeTestHelper.h"
-#else
 
 #include <Arduino.h>
-
-#endif // !ARDUINO
 namespace astra
 {
     BlinkBuzz::BlinkBuzz() {}
