@@ -91,7 +91,7 @@
             ]
         }
     ],
-    "frameworks": "arduino",
+    "frameworks": "*",
     "platforms": "*",
     "build": {
         "libLDFMode": "deep+",
