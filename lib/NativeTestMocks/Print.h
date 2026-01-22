@@ -28,11 +28,103 @@ public:
             return 0;
         return write(reinterpret_cast<const uint8_t *>(s), std::strlen(s));
     }
+
+    size_t print(double d, int precision = 2)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%.*f", precision, d);
+        return print(buf);
+    }
+
+    size_t print(int i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", i);
+        return print(buf);
+    }
+
+    size_t print(unsigned int i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%u", i);
+        return print(buf);
+    }
+
+    size_t print(long i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%ld", i);
+        return print(buf);
+    }
+
+    size_t print(unsigned long i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%lu", i);
+        return print(buf);
+    }
+
+    size_t println(double d, int precision = 2)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%.*f", precision, d);
+        return println(buf);
+    }
+
+    size_t println(int i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", i);
+        return println(buf);
+    }
+
+    size_t println(unsigned int i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%u", i);
+        return println(buf);
+    }
+
+    size_t println(long i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%ld", i);
+        return println(buf);
+    }
+
+    size_t println(unsigned long i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%lu", i);
+        return println(buf);
+    }
+
+    size_t println(size_t i)
+    {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%zu", i);
+        return println(buf);
+    }
+
+    // FlashStringHelper support - on native, flash strings are just regular const char*
+    size_t print(const void *flashStr) {
+        return print((const char*)flashStr);
+    }
+
+    size_t println(const void *flashStr) {
+        return println((const char*)flashStr);
+    }
+
     size_t println(const char *s)
     {
         size_t n = print(s);
         n += write(reinterpret_cast<const uint8_t *>("\n"), 1);
         return n;
+    }
+
+    size_t println()
+    {
+        return write(reinterpret_cast<const uint8_t *>("\n"), 1);
     }
     // Add these methods inside your Print-compatible class:
     size_t vprintf(const char *fmt, va_list ap)

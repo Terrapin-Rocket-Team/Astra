@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include "../../src/RecordData/Logging/LoggingBackend/ILogSink.h"
+#include <RecordData/Logging/LoggingBackend/ILogSink.h>
 
 class NativeFileLog : public astra::ILogSink
 {
@@ -12,7 +12,7 @@ class NativeFileLog : public astra::ILogSink
 
 public:
     explicit NativeFileLog(std::string path) : path_(std::move(path)) {}
-    ~NativeFileLog() override { end(); }
+    ~NativeFileLog() { end(); }
 
     NativeFileLog(const NativeFileLog &) = delete;
     NativeFileLog &operator=(const NativeFileLog &) = delete;
@@ -53,6 +53,8 @@ public:
     }
 
     bool ok() const override { return started_ && ofs_.good(); }
+
+    bool wantsPrefix() const override { return false; }
 
     void flush() override
     {

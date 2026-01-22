@@ -1,23 +1,59 @@
 #include "Arduino.h"
 
 const uint64_t start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-WireClass Wire;
+const uint64_t startMicros = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+uint64_t fakeMillis = 0;
+bool useFakeMillis = false;
+
 uint64_t millis()
 {
+    if (useFakeMillis)
+    {
+        return fakeMillis;
+    }
     return (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - start);
 }
 
+uint64_t micros()
+{
+    if (useFakeMillis)
+    {
+        return fakeMillis * 1000;
+    }
+    return (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - startMicros);
+}
+
+void setMillis(uint64_t ms)
+{
+    fakeMillis = ms;
+    useFakeMillis = true;
+}
+
+void resetMillis()
+{
+    fakeMillis = 0;
+    useFakeMillis = false;
+}
+
 #ifndef WIN32
-void Sleep(long ms) {}
+void Sleep(long ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 #endif
 
 void delay(unsigned long ms) { Sleep(ms); }
 
 void delay(int ms) { Sleep(ms); }
 
-double analogRead(int pin) { return 0; }
+void delayMicroseconds(unsigned int us) {
+    std::this_thread::sleep_for(std::chrono::microseconds(us));
+}
 
-void pinMode(int pin, int mode) { }
+void yield() {
+    std::this_thread::yield();
+}
+
+void pinMode(int pin, int mode) {
+    // Mock - does nothing
+}
 
 void digitalWrite(int pin, int value)
 {
@@ -41,6 +77,11 @@ void digitalWrite(int pin, int value)
     printf("\x1B[%dm%.3f - %d to \x1B[%dm%s\x1B[0m\n", color, millis() / 1000.0, pin, value == LOW ? 91 : 92, value == LOW ? "LOW" : "HIGH");
 }
 
+int digitalRead(int pin) {
+    // Mock - always return LOW
+    return LOW;
+}
+
 void Stream::begin(int baud) {}
 void Stream::end() {}
 
@@ -48,41 +89,20 @@ void Stream::clearBuffer()
 {
     cursor = 0;
     fakeBuffer[0] = '\0';
-    inputCursor = 0;
-    inputLength = 0;
-    inputBuffer[0] = '\0';
 }
 
-int Stream::readBytesUntil(char c, char *i, size_t len) {return 0;}
+int Stream::readBytesUntil(char c, char *i, size_t len) { return 0; }
 
-bool Stream::available()
+bool Stream::available() { return true; }
+
+size_t Stream::write(uint8_t b)
 {
-    return inputCursor < inputLength;
+    fakeBuffer[cursor++] = b;
+    return 1;
 }
-
-int Stream::read()
-{
-    if (inputCursor >= inputLength) {
-        return -1;
-    }
-    return inputBuffer[inputCursor++];
-}
-
-void Stream::simulateInput(const char* data)
-{
-    if (!data) return;
-
-    inputLength = strlen(data);
-    if (inputLength >= sizeof(inputBuffer)) {
-        inputLength = sizeof(inputBuffer) - 1;
-    }
-
-    memcpy(inputBuffer, data, inputLength);
-    inputBuffer[inputLength] = '\0';
-    inputCursor = 0;
-}
-
-size_t Stream::write(uint8_t b) { fakeBuffer[cursor++] = b; return 1;}
 
 SerialClass Serial;
+SerialClass Serial1;
+SerialClass Serial2;
+SerialClass Serial3;
 CrashReportClass CrashReport;
