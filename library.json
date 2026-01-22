@@ -94,7 +94,7 @@
     "frameworks": "*",
     "platforms": "*",
     "build": {
-        "libLDFMode": "deep+",
+        "libLDFMode": "chain+",
         "libCompatMode": "strict",
         "srcFilter": [
             "+<*>"
