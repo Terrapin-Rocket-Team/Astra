@@ -264,18 +264,6 @@ SAM_M8Q gps;
 - Update rate: Up to 10Hz
 - Interface: UART, I2C
 
-### MockGPS
-
-For testing without hardware:
-
-```cpp
-#include "Sensors/GPS/MockGPS.h"
-
-MockGPS gps;
-```
-
-Generates simulated GPS data for testing state estimation and navigation logic.
-
 ---
 
 ## Usage Examples

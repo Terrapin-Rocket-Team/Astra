@@ -2,7 +2,7 @@
 
 namespace astra
 {
-    MMC5603NJ::MMC5603NJ(const char *name, TwoWire &bus, uint8_t addr) : Mag(name), magmtr(addr), i2c_bus(&bus), i2c_addr(addr)
+    MMC5603NJ::MMC5603NJ(const char *name, TwoWire &bus, uint8_t addr) :  Mag(name), magmtr(addr), i2c_bus(&bus), i2c_addr(addr)
     {
     }
 

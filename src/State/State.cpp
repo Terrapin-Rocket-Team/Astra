@@ -4,6 +4,8 @@
 #include "../Sensors/Sensor.h"
 #include "../Sensors/Accel/Accel.h"
 #include "../Sensors/Gyro/Gyro.h"
+#include "../Sensors/IMU/IMU6DoF.h"
+#include "../Sensors/IMU/IMU9DoF.h"
 #pragma region Constructor and Destructor
 
 namespace astra
@@ -57,15 +59,15 @@ namespace astra
         if (sensor)
             return static_cast<Accel *>(sensor);
 
-        // Fall back to IMU6DoF
+        // Fall back to IMU6DoF - get contained accel component
         sensor = findSensor("IMU6DoF"_i, sensorNum);
         if (sensor)
-            return reinterpret_cast<Accel *>(sensor);
+            return static_cast<IMU6DoF *>(sensor)->getAccelSensor();
 
-        // Fall back to IMU9DoF
+        // Fall back to IMU9DoF - get contained accel component
         sensor = findSensor("IMU9DoF"_i, sensorNum);
         if (sensor)
-            return reinterpret_cast<Accel *>(sensor);
+            return static_cast<IMU9DoF *>(sensor)->getAccelSensor();
 
         return nullptr;
     }
@@ -77,15 +79,15 @@ namespace astra
         if (sensor)
             return static_cast<Gyro *>(sensor);
 
-        // Fall back to IMU6DoF
+        // Fall back to IMU6DoF - get contained gyro component
         sensor = findSensor("IMU6DoF"_i, sensorNum);
         if (sensor)
-            return reinterpret_cast<Gyro *>(sensor);
+            return static_cast<IMU6DoF *>(sensor)->getGyroSensor();
 
-        // Fall back to IMU9DoF
+        // Fall back to IMU9DoF - get contained gyro component
         sensor = findSensor("IMU9DoF"_i, sensorNum);
         if (sensor)
-            return reinterpret_cast<Gyro *>(sensor);
+            return static_cast<IMU9DoF *>(sensor)->getGyroSensor();
 
         return nullptr;
     }

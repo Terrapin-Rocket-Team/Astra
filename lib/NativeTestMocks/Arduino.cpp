@@ -15,6 +15,10 @@ void delay(unsigned long ms) { Sleep(ms); }
 
 void delay(int ms) { Sleep(ms); }
 
+double analogRead(int pin) { return 0; }
+
+void pinMode(int pin, int mode) { }
+
 void digitalWrite(int pin, int value)
 {
 

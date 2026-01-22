@@ -345,19 +345,16 @@ Astra includes implementations for common sensors:
 - BMP280
 - BMP390
 - DPS368
-- MS5611F
-- MockBarometer (for testing)
+- MS5611
 
 **IMUs:**
 - BMI088 (6DOF - Accel + Gyro)
 - BMI088andLIS3MDL (9DOF)
 - BNO055 (9DOF with hardware fusion)
-- MockIMU (for testing)
 
 **GPS:**
 - MAX_M10S
-- SAM_M8Q
-- MockGPS (for testing)
+- SAM_M10Q
 
 **Accelerometers (standalone):**
 - ADXL375 (high-g)
@@ -487,7 +484,7 @@ If your sensor suffers from drift, you can add bias correction:
 ```cpp
 class DriftingSensor : public Sensor {
 public:
-    DriftingSensor() : Sensor("DriftingSensor", "Drift") {
+    DriftingSensor() :  {
         addColumn("%.2f", &value, "value");
         addColumn("%.2f", &bias, "bias");
     }

@@ -313,7 +313,7 @@ All sensors automatically implement `DataReporter`. Here's a simplified example 
 ```cpp
 class GPS : public Sensor {
 public:
-    GPS() : Sensor("GPS", "MyGPS") {
+    GPS() :  {
         // Register GPS-specific columns
         addColumn("%.7f", &latitude, "latitude");
         addColumn("%.7f", &longitude, "longitude");

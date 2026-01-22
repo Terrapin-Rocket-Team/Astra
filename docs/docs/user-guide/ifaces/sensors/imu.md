@@ -232,18 +232,6 @@ BNO055 imu;
 - Automatic calibration
 - Lower cost but single-source integration
 
-### MockIMU
-
-For testing without hardware:
-
-```cpp
-#include "Sensors/IMU/MockIMU.h"
-
-MockIMU imu;
-```
-
-Generates simulated IMU data for testing orientation algorithms.
-
 ---
 
 ## Usage Examples

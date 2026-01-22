@@ -1,10 +1,6 @@
 #include "SerialMessageRouter.h"
 #include <cstring>
 
-#if !defined(UNIT_TEST) && !defined(ENV_STM) && !defined(ENV_ESP) && !defined(ENV_TEENSY)
-// If no platform is defined and not in unit test, skip compilation
-#else
-
 namespace astra
 {
 
@@ -191,5 +187,3 @@ int SerialMessageRouter::findInterface(Stream* stream) const
 }
 
 } // namespace astra
-
-#endif // Platform check

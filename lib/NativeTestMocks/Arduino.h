@@ -26,6 +26,10 @@ void delay(unsigned long ms);
 
 void delay(int ms);
 
+double analogRead(int pin);
+
+void pinMode(int pin, int mode);
+
 void digitalWrite(int pin, int value);
 
 template<typename T>

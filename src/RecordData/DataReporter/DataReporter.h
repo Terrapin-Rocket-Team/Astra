@@ -79,6 +79,18 @@ namespace astra
 
         void removeColumn(const char *label);
 
+        void clearColumns()
+        {
+            while (first)
+            {
+                DataPoint *next = first->next;
+                delete first;
+                first = next;
+            }
+            last = nullptr;
+            numColumns = 0;
+        }
+
         // Sets up the reporter and stores any critical parameters. Needs to reset if already initialized. Called by begin()
         virtual bool init() { return true; }
 

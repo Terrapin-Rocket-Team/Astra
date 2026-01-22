@@ -1,5 +1,5 @@
 #include "MAX_M10S.h"
-#include "../../BlinkBuzz/BlinkBuzz.h"
+#include <BlinkBuzz/BlinkBuzz.h>
 
 namespace astra
 {

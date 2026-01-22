@@ -249,18 +249,6 @@ MS5611F baro;
 - Accuracy: ±1.5 hPa (±15m)
 - Interface: I2C or SPI
 
-### MockBarometer
-
-For testing without hardware:
-
-```cpp
-#include "Sensors/Baro/MockBarometer.h"
-
-MockBarometer baro;
-```
-
-Generates simulated flight data for testing your state estimation and event detection logic.
-
 ---
 
 ## Usage Example

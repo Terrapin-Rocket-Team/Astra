@@ -2,7 +2,7 @@
 
 namespace astra
 {
-    H3LIS331DL::H3LIS331DL(const char *name, TwoWire &bus, uint8_t address) : Accel(name), bus(&bus), address(address)
+    H3LIS331DL::H3LIS331DL(const char *name, TwoWire &bus, uint8_t address) :  Accel(name), bus(&bus), address(address)
     {
     }
     H3LIS331DL::H3LIS331DL(uint8_t address) : Accel("H3LIS331DL"), address(address)
