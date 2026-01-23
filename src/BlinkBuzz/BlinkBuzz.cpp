@@ -201,8 +201,6 @@ namespace astra
             return;
         if (!enableAsync)
         {
-
-            LOGE("BlinkBuzz: Attempted to use an asynchronous function without enabling asynchronous mode.");
             return;
         }
 
