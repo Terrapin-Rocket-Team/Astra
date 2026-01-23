@@ -54,11 +54,12 @@ namespace astra
         {
             this->allowedPins[i] = allowedPins[i];
             pinState[i] = false;
-#ifdef ARDUINO
+#ifndef NATIVE
             pinMode(allowedPins[i], OUTPUT); // INPUT is otherwise defined on windows, so can't make a stub for it
 #endif
-            ready = true;
+
         }
+        ready = true;
     }
     bool BlinkBuzz::isRdy()
     {
