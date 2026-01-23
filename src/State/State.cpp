@@ -193,8 +193,6 @@ namespace astra
         velocity.x() = stateVars[3];
         velocity.y() = stateVars[4];
         velocity.z() = stateVars[5];
-
-        delete[] inputs;
     }
 
     void State::updateMeasurements(const Vector<3> &gpsPos, double baroAlt, bool hasGPS, bool hasBaro, double newTime)
@@ -226,8 +224,6 @@ namespace astra
         velocity.x() = stateVars[3];
         velocity.y() = stateVars[4];
         velocity.z() = stateVars[5];
-
-        delete[] measurements;
     }
 
     void State::updatePositionVelocity(double lat, double lon, double heading, bool hasFix)
