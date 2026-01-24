@@ -2,6 +2,7 @@
 #define IMU6DOF_H
 
 #include "../Sensor.h"
+#include "../SensorManager/RotatableSensor.h"
 #include "../Accel/Accel.h"
 #include "../Gyro/Gyro.h"
 
@@ -79,7 +80,7 @@ namespace astra
      *   Gyro* gyro = imu->getGyroSensor();     // Get the contained Gyro object
      *   Vector<3> accelData = imu->getAccel(); // Direct data access
      */
-    class IMU6DoF : public Sensor
+    class IMU6DoF : public RotatableSensor
     {
     public:
         virtual ~IMU6DoF() {}
@@ -91,8 +92,15 @@ namespace astra
         Gyro *getGyroSensor() { return &gyroComponent; }
 
         // Direct data access
-        virtual Vector<3> getAccel() const { return acc; }
-        virtual Vector<3> getAngVel() const { return angVel; }
+        virtual Vector<3> getAccel() const { return orient.transform(acc); }
+        virtual Vector<3> getAngVel() const { return orient.transform(angVel); }
+
+        virtual void setMountingOrientation(MountingOrientation orientation) override
+        {
+            RotatableSensor::setMountingOrientation(orientation);
+            accelComponent.setMountingOrientation(orientation);
+            gyroComponent.setMountingOrientation(orientation);
+        }
 
         // Override begin to also mark components as initialized
         bool begin() override
@@ -108,8 +116,8 @@ namespace astra
 
     protected:
         IMU6DoF(const char *name = "IMU6DoF")
-            : Sensor("IMU6DoF", name),
-            accelComponent(&acc, name),
+            : RotatableSensor("IMU6DoF", name),
+              accelComponent(&acc, name),
               gyroComponent(&angVel, name)
         {
             // Add IMU's own data columns

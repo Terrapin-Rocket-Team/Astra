@@ -2,7 +2,7 @@
 
 namespace astra
 {
-    Mag::Mag(const char *name) : Sensor("Magnetometer", name)
+    Mag::Mag(const char *name) : RotatableSensor("Magnetometer", name)
     {
         addColumn("%0.3f", &mag.x(), "Mag X (uT)");
         addColumn("%0.3f", &mag.y(), "Mag Y (uT)");
@@ -15,6 +15,6 @@ namespace astra
 
     Vector<3> Mag::getMag() const
     {
-        return mag;
+        return orient.transform(mag);
     }
 } // namespace astra

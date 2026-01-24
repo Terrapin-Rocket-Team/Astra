@@ -2,6 +2,7 @@
 #define IMU9DOF_H
 
 #include "../Sensor.h"
+#include "../SensorManager/RotatableSensor.h"
 #include "../Accel/Accel.h"
 #include "../Gyro/Gyro.h"
 #include "../Mag/Mag.h"
@@ -99,7 +100,7 @@ namespace astra
      *   Mag* mag = imu->getMagSensor();        // Get the contained Mag object
      *   Vector<3> accelData = imu->getAccel(); // Direct data access
      */
-    class IMU9DoF : public Sensor
+    class IMU9DoF : public RotatableSensor
     {
     public:
         virtual ~IMU9DoF() {}
@@ -114,9 +115,18 @@ namespace astra
         Mag *getMagSensor() { return &magComponent; }
 
         // Direct data access
-        virtual Vector<3> getAccel() const { return acc; }
-        virtual Vector<3> getAngVel() const { return angVel; }
-        virtual Vector<3> getMag() const { return mag; }
+        virtual Vector<3> getAccel() const { return orient.transform(acc); }
+        virtual Vector<3> getAngVel() const { return orient.transform(angVel); }
+        virtual Vector<3> getMag() const { return orient.transform(mag); }
+
+
+        virtual void setMountingOrientation(MountingOrientation orientation) override
+        {
+            RotatableSensor::setMountingOrientation(orientation);
+            accelComponent.setMountingOrientation(orientation);
+            gyroComponent.setMountingOrientation(orientation);
+            magComponent.setMountingOrientation(orientation);
+        }
 
         // Override begin to also mark components as initialized
         bool begin() override
@@ -133,7 +143,7 @@ namespace astra
 
     protected:
         IMU9DoF(const char *name = "IMU9DoF")
-            : Sensor("IMU9DoF", name),
+            : RotatableSensor("IMU9DoF", name),
             accelComponent(&acc, name),
               gyroComponent(&angVel, name),
               magComponent(&mag, name)

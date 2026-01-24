@@ -2,7 +2,7 @@
 
 namespace astra
 {
-    Accel::Accel(const char *name) : Sensor("Accelerometer", name)
+    Accel::Accel(const char *name) : RotatableSensor("Accelerometer", name)
     {
         addColumn("%0.3f", &acc.x(), "Acc X (m/s^2)");
         addColumn("%0.3f", &acc.y(), "Acc Y (m/s^2)");
@@ -15,6 +15,7 @@ namespace astra
 
     Vector<3> Accel::getAccel() const
     {
-        return acc;
+        return orient.transform(acc);
     }
+
 } // namespace astra

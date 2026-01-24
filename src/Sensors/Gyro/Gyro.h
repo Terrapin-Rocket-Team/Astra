@@ -2,11 +2,12 @@
 #define GYRO_H
 
 #include "../Sensor.h"
+#include "../SensorManager/RotatableSensor.h"
 #include "../../Math/Vector.h"
 
 namespace astra
 {
-    class Gyro : public Sensor
+    class Gyro : public RotatableSensor
     {
     public:
         virtual ~Gyro();

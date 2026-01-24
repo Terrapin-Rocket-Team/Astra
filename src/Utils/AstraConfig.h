@@ -114,6 +114,12 @@ namespace astra
         // No default
         AstraConfig &withDataLogs(ILogSink **logs, uint8_t numLogs);
 
+        // Enable HITL (Hardware-In-The-Loop) mode
+        // When enabled, Astra configures all update intervals to 0 for maximum simulation speed
+        // The user must pass simulation time to update(simTimeMs)
+        // Default `false`
+        AstraConfig &withHITLMode(bool hitlEnabled);
+
         AstraConfig();
 
     private:
@@ -140,6 +146,8 @@ namespace astra
         double sensorUpdateRate = 30;                // in hz
         double predictRate = 30;                     // in hz
         double measurementUpdateRate = 20;           // in hz
+
+        bool hitlMode = false;                       // HITL mode enabled
 
         uint8_t numReporters = 0;
     };

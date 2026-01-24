@@ -2,11 +2,12 @@
 #define MAG_H
 
 #include "../Sensor.h"
+#include "../SensorManager/RotatableSensor.h"
 #include "../../Math/Vector.h"
 
 namespace astra
 {
-    class Mag : public Sensor
+    class Mag : public RotatableSensor
     {
     public:
         virtual ~Mag();

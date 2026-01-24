@@ -67,6 +67,12 @@ namespace astra
 
         virtual explicit operator bool() const { return initialized; } // Returns whether the reporter has been initialized or not
 
+
+        //Data reporters are automatically updated by the managing system. If another reporter owns this one, 
+        //you can set this to false to prevent multiple updates per cycle.
+        virtual void setAutoUpdate(bool update) { autoUpdate = update; }
+        virtual bool getAutoUpdate() const { return autoUpdate; }
+
     protected:
         uint8_t numColumns = 0;
         DataPoint *first = nullptr, *last = nullptr;
@@ -98,6 +104,7 @@ namespace astra
         virtual bool read() { return true; }
 
         bool initialized = false;
+        bool autoUpdate = true;
 
     private:
         char *name = nullptr;

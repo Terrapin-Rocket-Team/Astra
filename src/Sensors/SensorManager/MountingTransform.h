@@ -190,7 +190,7 @@ namespace astra
         }
 
         /**
-         * Transform a vector from sensor frame to body frame
+         * Transform a vector from sensor frame to board frame
          */
         Vector<3> transform(const Vector<3>& sensorVec) const
         {

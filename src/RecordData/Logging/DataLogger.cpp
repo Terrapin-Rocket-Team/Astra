@@ -2,10 +2,15 @@
 
 namespace astra
 {
-    DataLogger DataLogger::_global{nullptr, 0, nullptr, 0};
+    DataLogger DataLogger::_global{};
 
-    DataLogger::DataLogger(ILogSink **sinks, uint8_t numSinks, DataReporter **reporters, uint8_t numReporters)
-        : _sinks(sinks), _countSinks(numSinks), _countReporters(numReporters), _rps(reporters)
+    DataLogger::DataLogger()
+        : _sinks(nullptr), _countSinks(0), _countReporters(0), _reporterRegistry{}, _ok(false)
+    {
+    }
+
+    DataLogger::DataLogger(ILogSink **sinks, uint8_t numSinks)
+        : _sinks(sinks), _countSinks(numSinks), _countReporters(0), _reporterRegistry{}, _ok(false)
     {
     }
 
@@ -14,16 +19,16 @@ namespace astra
         if (!sink || !sink->ok())
             return;
 
-        if (sink->wantsPrefix() && _countReporters > 0 && _rps[0]->getNumColumns() > 0)
+        if (sink->wantsPrefix() && _countReporters > 0 && _reporterRegistry[0]->getNumColumns() > 0)
             sink->print("TELEM/");
 
         for (int j = 0; j < _countReporters; j++)
         {
-            DataPoint *d = _rps[j]->getDataPoints();
+            DataPoint *d = _reporterRegistry[j]->getDataPoints();
             while (d != nullptr)
             {
-                sink->printf("%s - %s", _rps[j]->getName(), d->label);
-                if (d != _rps[j]->getLastPoint())
+                sink->printf("%s - %s", _reporterRegistry[j]->getName(), d->label);
+                if (d != _reporterRegistry[j]->getLastPoint())
                     sink->write(',');
                 d = d->next;
             }
@@ -55,14 +60,14 @@ namespace astra
         {
             if (!_sinks[i]->ok())
                 continue;
-            if (_sinks[i]->wantsPrefix() && _countReporters > 0 && _rps[0]->getNumColumns() > 0)
+            if (_sinks[i]->wantsPrefix() && _countReporters > 0 && _reporterRegistry[0]->getNumColumns() > 0)
                 _sinks[i]->print("TELEM/");
             for (int j = 0; j < _countReporters; ++j)
             {
-                for (DataPoint *d = _rps[j]->getDataPoints(); d != nullptr; d = d->next)
+                for (DataPoint *d = _reporterRegistry[j]->getDataPoints(); d != nullptr; d = d->next)
                 {
                     d->emit(_sinks[i], d);
-                    if (d != _rps[j]->getLastPoint())
+                    if (d != _reporterRegistry[j]->getLastPoint())
                         _sinks[i]->write(',');
                 }
                 if (j != _countReporters - 1)
@@ -75,10 +80,50 @@ namespace astra
         return true;
     }
 
-    void DataLogger::configure(ILogSink **sinks, uint8_t numSinks, DataReporter **reporters, uint8_t numReporters)
+    void DataLogger::configure(ILogSink **sinks, uint8_t numSinks)
     {
-        _global = DataLogger(sinks, numSinks, reporters, numReporters);
+        _global._sinks = sinks;
+        _global._countSinks = numSinks;
         _global.init();
+    }
+
+    bool DataLogger::registerReporter(DataReporter *reporter)
+    {
+        if (!reporter)
+            return false;
+
+        if (_global._countReporters >= MAX_REPORTERS)
+            return false;
+
+        for (uint8_t i = 0; i < _global._countReporters; i++)
+        {
+            if (_global._reporterRegistry[i] == reporter)
+                return false;
+        }
+
+        _global._reporterRegistry[_global._countReporters++] = reporter;
+        return true;
+    }
+
+    bool DataLogger::unregisterReporter(DataReporter *reporter)
+    {
+        if (!reporter)
+            return false;
+
+        for (uint8_t i = 0; i < _global._countReporters; i++)
+        {
+            if (_global._reporterRegistry[i] == reporter)
+            {
+                for (uint8_t j = i; j < _global._countReporters - 1; j++)
+                {
+                    _global._reporterRegistry[j] = _global._reporterRegistry[j + 1];
+                }
+                _global._countReporters--;
+                _global._reporterRegistry[_global._countReporters] = nullptr;
+                return true;
+            }
+        }
+        return false;
     }
 
     DataLogger &DataLogger::instance()
