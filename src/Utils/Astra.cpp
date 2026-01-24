@@ -23,15 +23,13 @@ BlinkBuzz bb;
 
 Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 {
-
 }
 
 Astra::~Astra()
 {
-
 }
 
-void Astra::handleCommandMessage(const char* message, const char* prefix, Stream* source)
+void Astra::handleCommandMessage(const char *message, const char *prefix, Stream *source)
 {
     if (!message || !source)
         return;
@@ -40,7 +38,7 @@ void Astra::handleCommandMessage(const char* message, const char* prefix, Stream
     if (strcmp(message, "HEADER") == 0)
     {
         // Create a temporary PrintLog wrapper to send header to the requesting stream
-        PrintLog tempLog(*source, true);  // true = wants prefix
+        PrintLog tempLog(*source, true); // true = wants prefix
         if (tempLog.begin())
         {
             if (DataLogger::available())
@@ -72,7 +70,7 @@ void Astra::init()
 
     // Loggign next
     DataLogger::configure(config->logs, config->numLogs);
-
+    LOGI("config -> hitl %d", config->hitlMode);
     // setup for HITL
     if (config->hitlMode)
     {
@@ -95,7 +93,7 @@ void Astra::init()
     // Setup SerialMessageRouter for command handling
     messageRouter = new SerialMessageRouter(4, 8, 256);
     messageRouter->withInterface(&Serial)
-                  .withListener("CMD/", handleCommandMessage);
+        .withListener("CMD/", handleCommandMessage);
 
     delay(10);
     // then State
@@ -137,7 +135,7 @@ bool Astra::update(double ms)
         LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
         return false;
     }
-    if(!config->sensorManager)
+    if (!config->sensorManager)
     {
         LOGW("Astra Attempted to update SensorManager without a reference to it! (use AstraConfig.withSensorManager(&sensorManager))");
         return false;
@@ -150,8 +148,12 @@ bool Astra::update(double ms)
         if (config->sensorManager)
         {
             config->sensorManager->update();
+            LOGI("Accel: %.2f, %.2f, %.2f", config->sensorManager->getAccel().x(), config->sensorManager->getAccel().y(), config->sensorManager->getAccel().z());
         }
         _didUpdateSensors = true;
+    }
+    else{
+        LOGI("Not time to update yet: %f - %f < %d", ms, lastSensorUpdate, config->sensorUpdateInterval);
     }
 
     // Prediction step - run at predict rate
@@ -168,7 +170,6 @@ bool Astra::update(double ms)
         lastMeasurementUpdate = ms;
         config->state->update(ms);
         _didUpdateState = true;
-    
     }
 
     // Logging update
@@ -177,14 +178,14 @@ bool Astra::update(double ms)
         lastLoggingUpdate = ms;
         if (DataLogger::available())
         {
-            for(uint8_t i = 0; i < DataLogger::instance().getNumReporters(); i++)
+            for (uint8_t i = 0; i < DataLogger::instance().getNumReporters(); i++)
+            {
+                auto d = DataLogger::instance().getReporters()[i];
+                if (d && d->getAutoUpdate())
                 {
-                    auto d = DataLogger::instance().getReporters()[i];
-                    if (d && d->getAutoUpdate())
-                    {
-                        d->update();
-                    }
+                    d->update();
                 }
+            }
             DataLogger::instance().appendLine();
         }
         _didLog = true;

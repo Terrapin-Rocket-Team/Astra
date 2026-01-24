@@ -151,7 +151,7 @@ namespace astra
         return *this;
     }
 
-    AstraConfig &AstraConfig::withHITLMode(bool hitlEnabled)
+    AstraConfig &AstraConfig::withHITL(bool hitlEnabled)
     {
         this->hitlMode = hitlEnabled;
 

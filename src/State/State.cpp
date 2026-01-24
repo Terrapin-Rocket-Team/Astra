@@ -78,7 +78,7 @@ namespace astra
         {
             LOGI("Auto-calibrating orientation filter...");
             orientationFilter->setMode(MahonyMode::CALIBRATING);
-
+#ifndef NATIVE
             // Collect calibration samples using body frame data
             const int calibSamples = 200;
             for (int i = 0; i < calibSamples; i++)
@@ -87,11 +87,9 @@ namespace astra
                 orientationFilter->update(sensorManager->getAccel(), sensorManager->getGyro(), 0.01); // Assume ~100Hz
                 delay(10);
             }
-
-            // Initialize the orientation filter
-            orientationFilter->initialize();
+#endif
             // Keep in CALIBRATING mode - don't auto-switch out
-            orientationFilter->setMode(MahonyMode::CALIBRATING);
+            orientationFilter->setMode(MahonyMode::CORRECTING);
             LOGI("Orientation filter calibrated and staying in CALIBRATING mode.");
         }
         else
@@ -139,7 +137,7 @@ namespace astra
             LOGE("Sensor Manager reports an error. Cannot update State.");
             return;
         }
-        if (!orientationFilter || !orientationFilter->isInitialized())
+        if (!orientationFilter)
         {
             LOGE("Orientation Filter not available or not initialized. Cannot update State.");
             return;
@@ -231,7 +229,7 @@ namespace astra
 
         // Automatic mode switching based on accelerometer magnitude
         // EXCEPT when in CALIBRATING mode - stay in calibration until explicitly changed
-        if (orientationFilter->isInitialized() && orientationFilter->getMode() != MahonyMode::CALIBRATING)
+        if (orientationFilter->isInitialized())
         {
             double accelMag = accel.magnitude();
             double accelError = abs(accelMag - 9.81);
@@ -273,7 +271,7 @@ namespace astra
             return;
         }
 
-        if (!orientationFilter || !orientationFilter->isInitialized())
+        if (!orientationFilter)
         {
             LOGE("Orientation filter not available or not initialized for prediction.");
             return;

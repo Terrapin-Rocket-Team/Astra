@@ -16,6 +16,8 @@ namespace astra
         virtual double getASLAltFt() const;    // ft
         virtual double getASLAltM() const;     // meters
 
+        static double calcAltitude(double pressure);
+        
         // Sensor virtual functions
         virtual bool update() override;
         virtual bool begin() override;
@@ -28,7 +30,6 @@ namespace astra
         // Altitude-related data
         double altitudeASL = 0; // m
 
-        double calcAltitude(double pressure);
     };
 }
 #endif // BAROMETER_H

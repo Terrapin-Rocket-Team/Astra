@@ -97,11 +97,11 @@ namespace astra
         // When enabled, Astra configures all update intervals to 0 for maximum simulation speed
         // The user must pass simulation time to update(simTimeMs)
         // Default `false`
-        AstraConfig &withHITLMode(bool hitlEnabled);
+        AstraConfig &withHITL(bool hitlEnabled);
 
         AstraConfig();
 
-    private:
+    protected:
         State *state = nullptr;
         SensorManager *sensorManager = nullptr;
         int pins[50];
