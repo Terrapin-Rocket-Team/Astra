@@ -26,41 +26,36 @@ public:
     virtual Matrix getR() = 0;
     virtual Matrix getQ(double dt) = 0;
 
-    Matrix iterate(double dt, Matrix measurement, Matrix control);
+    virtual Matrix iterate(double dt, Matrix measurement, Matrix control);
 
     // Override core interface methods
-    int getMeasurementSize() const override { return measurementSize; }
-    int getInputSize() const override { return controlSize; }
-    int getStateSize() const override { return stateSize; }
-    double* iterate(double dt, double* state, double* measurements, double* controlVars) override;
+    virtual int getMeasurementSize() const override { return measurementSize; }
+    virtual int getInputSize() const override { return controlSize; }
+    virtual int getStateSize() const override { return stateSize; }
+    virtual double *iterate(double dt, double *state, double *measurements, double *controlVars) override;
 
     // Split predict/update for different update rates
-    void predict(double dt, Matrix control);
-    void predict(double dt, double* controlVars);
-    void update(Matrix measurement);
-    void update(double* measurements);
+    virtual void predict(double dt, Matrix control);
+    virtual void predict(double dt, double *controlVars);
+    virtual void update(Matrix measurement);
+    virtual void update(double *measurements);
 
     // Get current state estimate
-    Matrix getState() const { return X; }
-    void getState(double* state) const;
-    void setState(double* state);
-
-
-
-
+    virtual Matrix getState() const { return X; }
+    virtual void getState(double *state) const;
+    virtual void setState(double *state);
 
 protected:
     // Instance variables to store matrices
     Matrix X; // State vector
     Matrix P; // Error covariance matrix
     Matrix K; // Kalman gain
-    
-    void predictState(double dt, Matrix control);
-    void estimateState(Matrix measurement);
-    void calculateKalmanGain();
-    void covarianceUpdate();
-    void covarianceExtrapolate(double dt);
 
+    virtual void predictState(double dt, Matrix control);
+    virtual void estimateState(Matrix measurement);
+    virtual void calculateKalmanGain();
+    virtual void covarianceUpdate();
+    virtual void covarianceExtrapolate(double dt);
 };
 
 } // namespace astra

@@ -17,6 +17,13 @@ void setUp(void)
 {
     // Reset sensor manager (create new instance)
     sensorManager = SensorManager();
+
+    // Reset all sensors to uninitialized state
+    accel.reset();
+    gyro.reset();
+    mag.reset();
+    baro.reset();
+    gps.reset();
 }
 
 void tearDown(void)

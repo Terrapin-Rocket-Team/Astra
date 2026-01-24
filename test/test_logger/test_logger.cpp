@@ -133,10 +133,9 @@ void test_header_single_reporter(void)
     MockSink sink(true);
     FakeReporter rp("imu");
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger dl(sinks, 1, reps, 1);
-    TEST_ASSERT_TRUE(dl.init());
+    DataLogger::configure(sinks, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
 
     // Expect header like: "imu - ax,imu - ay,imu - count"
     // (Your implementation prints reporter name + " - " + label)
@@ -160,13 +159,12 @@ void test_append_line_single_reporter_values_and_commas(void)
     rp.set(0.126f, -1.5f, 7);
 
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger dl(sinks, 1, reps, 1);
-    TEST_ASSERT_TRUE(dl.init());
+    DataLogger::configure(sinks, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
     reset(sink);
 
-    TEST_ASSERT_TRUE(dl.appendLine());
+    TEST_ASSERT_TRUE(DataLogger::instance().appendLine());
 
     auto lines = splitLines(sink.buf);
     TEST_ASSERT_EQUAL_UINT_MESSAGE(1, lines.size(), "One data line expected");
@@ -196,10 +194,9 @@ void test_multi_reporter_header_and_row(void)
     pos.set(39.000123, -76.500789);
 
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&imu, &pos};
 
-    DataLogger dl(sinks, 1, reps, 2);
-    TEST_ASSERT_TRUE(dl.init());
+    DataLogger::configure(sinks, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
 
     auto hdrLines = splitLines(sink.buf);
     TEST_ASSERT_FALSE(hdrLines.empty());
@@ -211,7 +208,7 @@ void test_multi_reporter_header_and_row(void)
     TEST_ASSERT_NOT_EQUAL(std::string::npos, hdr.find("gps - lon"));
 
     reset(sink);
-    TEST_ASSERT_TRUE(dl.appendLine());
+    TEST_ASSERT_TRUE(DataLogger::instance().appendLine());
     auto rows = splitLines(sink.buf);
     TEST_ASSERT_EQUAL_UINT(1, rows.size());
     auto row = rows[0];
@@ -240,15 +237,14 @@ void test_unhealthy_sink_is_skipped(void)
     rp.set(0.5f, 0.25f, 1);
 
     ILogSink *sinks[] = {&bad, &good};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger dl(sinks, 2, reps, 1);
-    TEST_ASSERT_TRUE(dl.init()); // 'any' will be true because good begins
+    DataLogger::configure(sinks, 2);
+    TEST_ASSERT_TRUE(DataLogger::available()); // 'any' will be true because good begins
 
     // Header was written during init; now append a row
     reset(bad);
     reset(good);
-    TEST_ASSERT_TRUE(dl.appendLine());
+    TEST_ASSERT_TRUE(DataLogger::instance().appendLine());
 
     // bad should remain empty; good should have data
     TEST_ASSERT_TRUE(bad.buf.empty());
@@ -266,10 +262,9 @@ void test_empty_reporter_is_handled(void)
 
     MockSink sink(true);
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&empty};
 
-    DataLogger dl(sinks, 1, reps, 1);
-    TEST_ASSERT_TRUE(dl.init());
+    DataLogger::configure(sinks, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
 
     auto lines = splitLines(sink.buf);
     TEST_ASSERT_FALSE(lines.empty());
@@ -280,7 +275,7 @@ void test_empty_reporter_is_handled(void)
     TEST_ASSERT_TRUE(lines.size() == 1 && lines[0].empty());
 
     reset(sink);
-    TEST_ASSERT_TRUE(dl.appendLine());
+    TEST_ASSERT_TRUE(DataLogger::instance().appendLine());
     auto rows = splitLines(sink.buf);
     // Row should exist but be empty (or minimal) rather than malformed
     TEST_ASSERT_TRUE(rows.size() == 1);
@@ -291,9 +286,8 @@ void test_global_configure_and_instance(void)
     MockSink sink(true);
     FakeReporter rp("imu");
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger::configure(sinks, 1, reps, 1);
+    DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
 
     reset(sink);
@@ -306,11 +300,10 @@ void testWantsPrefix()
     MockSink sink(true, true);
     FakeReporter rp("imu");
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger dl(sinks, 1, reps, 1);
+    DataLogger::configure(sinks, 1);
     EventLogger el(sinks, 1);
-    TEST_ASSERT_TRUE(dl.init());
+    TEST_ASSERT_TRUE(DataLogger::available());
     TEST_ASSERT_TRUE(el.init());
 
     //expect header like "TELEM/imu - ax,imu - ay,imu - count"
@@ -336,17 +329,16 @@ void test_printHeaderTo_single_sink(void)
     FakeReporter rp("accel");
 
     ILogSink *sinks[] = {&sink1};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger dl(sinks, 1, reps, 1);
-    TEST_ASSERT_TRUE(dl.init());
+    DataLogger::configure(sinks, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
 
     // Clear sink1 and initialize sink2
     reset(sink1);
     sink2.begin();  // Must call begin() so ok() returns true
 
     // Print header to a different sink
-    dl.printHeaderTo(&sink2);
+    DataLogger::instance().printHeaderTo(&sink2);
 
     // Verify sink1 is still empty (header not printed there)
     TEST_ASSERT_TRUE_MESSAGE(sink1.buf.empty(), "Sink1 should be empty after printHeaderTo sink2");
@@ -369,13 +361,12 @@ void test_printHeaderTo_with_prefix(void)
     FakeReporter rp("gyro");
 
     ILogSink *sinks[] = {&sinkWithPrefix};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger dl(sinks, 1, reps, 1);
-    TEST_ASSERT_TRUE(dl.init());
+    DataLogger::configure(sinks, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
     reset(sinkWithPrefix);
 
-    dl.printHeaderTo(&sinkWithPrefix);
+    DataLogger::instance().printHeaderTo(&sinkWithPrefix);
 
     auto lines = splitLines(sinkWithPrefix.buf);
     TEST_ASSERT_FALSE(lines.empty());
@@ -391,13 +382,12 @@ void test_printHeaderTo_without_prefix(void)
     FakeReporter rp("mag");
 
     ILogSink *sinks[] = {&sinkNoPrefix};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger dl(sinks, 1, reps, 1);
-    TEST_ASSERT_TRUE(dl.init());
+    DataLogger::configure(sinks, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
     reset(sinkNoPrefix);
 
-    dl.printHeaderTo(&sinkNoPrefix);
+    DataLogger::instance().printHeaderTo(&sinkNoPrefix);
 
     auto lines = splitLines(sinkNoPrefix.buf);
     TEST_ASSERT_FALSE(lines.empty());
@@ -414,14 +404,13 @@ void test_printHeaderTo_unhealthy_sink(void)
     FakeReporter rp("baro");
 
     ILogSink *sinks[] = {&unhealthySink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger dl(sinks, 1, reps, 1);
-    // init() will fail because sink is unhealthy
-    TEST_ASSERT_FALSE(dl.init());
+    DataLogger::configure(sinks, 1);
+    // configure will fail because sink is unhealthy
+    TEST_ASSERT_FALSE(DataLogger::available());
 
     // printHeaderTo should handle unhealthy sink gracefully (no crash)
-    dl.printHeaderTo(&unhealthySink);
+    DataLogger::instance().printHeaderTo(&unhealthySink);
 
     // Buffer should be empty because sink is not ok()
     TEST_ASSERT_TRUE_MESSAGE(unhealthySink.buf.empty(), "Unhealthy sink should not receive header");
@@ -434,13 +423,12 @@ void test_printHeaderTo_multi_reporter(void)
     PositionReporter rp2("gps");
 
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp1, &rp2};
 
-    DataLogger dl(sinks, 1, reps, 2);
-    TEST_ASSERT_TRUE(dl.init());
+    DataLogger::configure(sinks, 1);
+    TEST_ASSERT_TRUE(DataLogger::available());
     reset(sink);
 
-    dl.printHeaderTo(&sink);
+    DataLogger::instance().printHeaderTo(&sink);
 
     auto lines = splitLines(sink.buf);
     TEST_ASSERT_FALSE(lines.empty());

@@ -108,10 +108,10 @@ void Astra::init()
 }
 bool Astra::update(double ms)
 {
-    didLog = false;
-    didUpdateSensors = false;
-    didUpdateState = false;
-    didPredictState = false;
+    _didLog = false;
+    _didUpdateSensors = false;
+    _didUpdateState = false;
+    _didPredictState = false;
 
     if (!ready)
     {
@@ -147,11 +147,11 @@ bool Astra::update(double ms)
     if (ms - lastSensorUpdate > config->sensorUpdateInterval)
     {
         lastSensorUpdate = ms;
-        if (sensorManager)
+        if (config->sensorManager)
         {
-            sensorManager->update();
+            config->sensorManager->update();
         }
-        didUpdateSensors = true;
+        _didUpdateSensors = true;
     }
 
     // Prediction step - run at predict rate
@@ -159,7 +159,7 @@ bool Astra::update(double ms)
     {
         lastPredictUpdate = ms;
         config->state->predictState(currentTime);
-        didPredictState = true;
+        _didPredictState = true;
     }
 
     // Measurement update - run at measurement update rate
@@ -167,7 +167,7 @@ bool Astra::update(double ms)
     {
         lastMeasurementUpdate = ms;
         config->state->update(ms);
-        didUpdateState = true;
+        _didUpdateState = true;
     
     }
 
@@ -187,7 +187,7 @@ bool Astra::update(double ms)
                 }
             DataLogger::instance().appendLine();
         }
-        didLog = true;
+        _didLog = true;
     }
     return true; // bool here is deprecated
 }

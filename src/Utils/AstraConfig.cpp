@@ -10,7 +10,6 @@ namespace astra
         for (int i = 0; i < 50; i++)
         {
             pins[i] = -1;
-            reporters[i] = nullptr;
         }
     }
     AstraConfig &AstraConfig::withState(State *state)
@@ -23,25 +22,6 @@ namespace astra
     {
         this->sensorManager = sensorManager;
         LOGI("Custom SensorManager configured.");
-        return *this;
-    }
-
-    AstraConfig &AstraConfig::withUpdateRate(double updateRate)
-    {
-        if (this->updateRate == updateRate)
-            return *this;
-        LOGI("Update rate modified from %d to %d hz.", updateRate, updateRate);
-        this->updateRate = updateRate;
-        this->updateInterval = 1000.0 / updateRate;
-        return *this;
-    }
-    AstraConfig &AstraConfig::withUpdateInterval(unsigned int updateInterval)
-    {
-        if (this->updateInterval == updateInterval)
-            return *this;
-        LOGI("Update interval modified from %d to %d ms.", updateInterval, updateInterval);
-        this->updateInterval = updateInterval;
-        this->updateRate = 1000.0 / updateInterval;
         return *this;
     }
     AstraConfig &AstraConfig::withLoggingRate(double loggingRate)
@@ -107,21 +87,6 @@ namespace astra
             return *this;
         LOGI("BlinkBuzz async modified from %s to %s.", this->bbAsync ? "true" : "false", bbAsync ? "true" : "false");
         this->bbAsync = bbAsync;
-        return *this;
-    }
-    AstraConfig &AstraConfig::withOtherDataReporters(DataReporter **others, uint8_t numOthers)
-    {
-        if (numOthers > 50 - numReporters)
-        {
-            LOGW("Attempted to add %d DataReporters, but only %d slots available. Capping to available slots.", numOthers, 50 - numReporters);
-            numOthers = 50 - numReporters;
-        }
-        for (uint8_t i = 0; i < numOthers; i++)
-        {
-            reporters[numReporters] = others[i];
-            LOGI("Added DataReporter %s to logger", others[i]->getName());
-            numReporters++;
-        }
         return *this;
     }
 

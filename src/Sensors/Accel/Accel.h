@@ -15,7 +15,6 @@ namespace astra
     protected:
         Accel(const char *name = "Accelerometer");
         Vector<3> acc = Vector<3>(0, 0, 0);
-        MountingTransform orient;
     };
 }
 #endif // ACCEL_H

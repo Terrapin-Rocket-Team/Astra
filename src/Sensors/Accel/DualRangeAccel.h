@@ -16,7 +16,7 @@ namespace astra
             highGAccel->setAutoUpdate(false);
         }
         virtual ~DualRangeAccel() {}
-        
+
         //Because this class deals with two separate sensors, setting one orientation for both of them does not make sense.
         void setMountingOrientation(MountingOrientation orientation) override
         {
@@ -24,12 +24,18 @@ namespace astra
             LOGW("DualRangeAccel does not support mounting orientation! Set each sensor's mounting orientation separately.");
         }
 
-        bool begin() override
+        Vector<3> getAccel() const override
+        {
+            return acc;
+        }
+
+    protected:
+        bool init() override
         {
             return lowGAccel->begin() && highGAccel->begin();
         }
 
-        bool update() override
+        bool read() override
         {
             if (lowGAccel->update() && highGAccel->update())
             {
@@ -61,11 +67,6 @@ namespace astra
                 return true;
             }
             return false;
-        }
-
-        Vector<3> getAccel() const override
-        {
-            return acc;
         }
 
     private:

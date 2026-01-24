@@ -45,27 +45,12 @@ namespace astra
          */
         virtual bool begin();
 
-        /**
-         * Legacy update method - deprecated
-         * Use split update methods via Astra instead
-         */
+
         virtual void update(double currentTime = -1);
 
         // ========================= Split Update Methods =========================
         // These are called at different rates by Astra
 
-        /**
-         * Update orientation estimate from body-frame IMU data
-         * Runs Mahony AHRS filter, transforms acceleration to inertial frame
-         * @param bodyData Body-frame sensor data from SensorManager
-         * @param dt Time step in seconds
-         */
-        virtual void updateOrientation(const BodyFrameData &bodyData, double dt);
-
-        /**
-         * Legacy orientation update - for direct accel/gyro input
-         * Prefer using updateOrientation(BodyFrameData) instead
-         */
         virtual void updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt);
 
         /**
@@ -73,21 +58,6 @@ namespace astra
          * Uses inertial-frame acceleration from orientation filter
          */
         virtual void predictState(double currentTime = -1);
-
-        /**
-         * Run Kalman filter measurement update
-         * @param gpsPos GPS position (lat, lon, alt)
-         * @param baroAlt Barometric altitude ASL (m)
-         * @param hasGPS Whether GPS data is valid
-         * @param hasBaro Whether baro data is valid
-         */
-        virtual void updateMeasurements(const Vector<3> &gpsPos, double baroAlt, bool hasGPS, bool hasBaro, double currentTime = -1);
-
-        /**
-         * Update position/velocity from GPS
-         */
-        virtual void updatePositionVelocity(double lat, double lon, double heading, bool hasFix);
-
         // ========================= State Getters =========================
 
         virtual Vector<3> getPosition() const { return position; }         // in m away from point of launch (inertial frame)

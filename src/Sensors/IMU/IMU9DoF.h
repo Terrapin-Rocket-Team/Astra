@@ -24,7 +24,7 @@ namespace astra
         }
         virtual ~IMU9DoFAccel() {}
 
-        Vector<3> getAccel() const override { return *accRef; }
+        Vector<3> getAccel() const override { return orient.transform(*accRef); }
 
     protected:
         bool init() override { return true; }
@@ -49,7 +49,7 @@ namespace astra
         }
         virtual ~IMU9DoFGyro() {}
 
-        Vector<3> getAngVel() const override { return *angVelRef; }
+        Vector<3> getAngVel() const override { return orient.transform(*angVelRef); }
 
     protected:
         bool init() override { return true; }
@@ -74,7 +74,7 @@ namespace astra
         }
         virtual ~IMU9DoFMag() {}
 
-        Vector<3> getMag() const override { return *magRef; }
+        Vector<3> getMag() const override { return orient.transform(*magRef); }
 
     protected:
         bool init() override { return true; }

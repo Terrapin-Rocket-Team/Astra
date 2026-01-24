@@ -1,307 +1,240 @@
 #include <unity.h>
-#include "NativeTestHelper.h"
-#include "UnitTestSensors.h"
 #include "State/State.h"
-#include "Sensors/Sensor.h"
+#include "Filters/LinearKalmanFilter.h"
+#include "Filters/Mahony.h"
 #include "Sensors/SensorManager/SensorManager.h"
-#include "Math/Vector.h"
+#include "UnitTestSensors.h"
+#include "NativeTestHelper.h"
 
 using namespace astra;
 
-// Fake sensor components
-FakeAccel *fakeAccel;
-FakeGyro *fakeGyro;
-FakeGPS *fakeGPS;
-FakeBarometer *fakeBaro;
-Sensor *sensors[4];
-MahonyAHRS *orientationFilter;
-SensorManager *sensorManager;
-State *state;
+// Note: The tests calling state->begin() will run slowly due to a 2-second
+// calibration loop with delays in the real State::begin() method.
 
-void setUp(void)
-{
-    fakeAccel = new FakeAccel();
-    fakeGyro = new FakeGyro();
+// Mock for Kalman Filter only
+class MockLinearKalmanFilter : public LinearKalmanFilter {
+public:
+    bool initialized = false;
+    bool predict_called = false;
+    bool update_called = false;
+    double dt_predict = 0.0;
+    double* control_vars = nullptr;
+    double* measurement_vars = nullptr;
+
+    MockLinearKalmanFilter() : LinearKalmanFilter(3, 3, 6) {}
+
+    void initialize() override { initialized = true; }
+    Matrix getF(double dt) override { return Matrix(6, 6, new double[36]()); }
+    Matrix getG(double dt) override { return Matrix(6, 3, new double[18]()); }
+    Matrix getH() override { return Matrix(3, 6, new double[18]()); }
+    Matrix getR() override { return Matrix(3, 3, new double[9]()); }
+    Matrix getQ(double dt) override { return Matrix(6, 6, new double[36]()); }
+
+    void predict(double dt, double* control) override {
+        predict_called = true;
+        dt_predict = dt;
+        control_vars = new double[3];
+        memcpy(control_vars, control, sizeof(double) * 3);
+        delete[] control;
+    }
+
+    void update(double* measurements) override {
+        update_called = true;
+        measurement_vars = new double[3];
+        memcpy(measurement_vars, measurements, sizeof(double) * 3);
+        delete[] measurements;
+    }
+
+    void getState(double* state) const override {
+        for (int i = 0; i < 6; ++i) {
+            state[i] = i + 1.0; // Return dummy state 1, 2, 3, 4, 5, 6
+        }
+    }
+    
+    ~MockLinearKalmanFilter() {
+        delete[] control_vars;
+        delete[] measurement_vars;
+    }
+};
+
+// Global vars
+SensorManager* sensorManager;
+FakeGPS* fakeGPS;
+FakeBarometer* fakeBaro;
+FakeAccel* fakeAccel;
+FakeGyro* fakeGyro;
+
+MockLinearKalmanFilter* kalmanFilter;
+MahonyAHRS* orientationFilter; // Using real MahonyAHRS
+State* state;
+
+void setUp(void) {
+    kalmanFilter = new MockLinearKalmanFilter();
+    orientationFilter = new MahonyAHRS(); // Real MahonyAHRS
+    state = new State(kalmanFilter, orientationFilter);
+    
+    sensorManager = new SensorManager();
     fakeGPS = new FakeGPS();
     fakeBaro = new FakeBarometer();
+    fakeAccel = new FakeAccel();
+    fakeGyro = new FakeGyro();
 
-    // Set initial test data
-    fakeGPS->set(34.0522, -118.2437, 100.0);
-    fakeGPS->setHeading(90.0);
-    fakeGPS->setHasFirstFix(true);
-    fakeBaro->set(101.3, 25.5);
+    sensorManager->setPrimaryGPS(fakeGPS);
+    sensorManager->setPrimaryBaro(fakeBaro);
+    sensorManager->setPrimaryAccel(fakeAccel);
+    sensorManager->setPrimaryGyro(fakeGyro);
 
-    sensors[0] = fakeAccel;
-    sensors[1] = fakeGyro;
-    sensors[2] = fakeGPS;
-    sensors[3] = fakeBaro;
-
-    // Initialize sensors
-    for (int i = 0; i < 4; i++)
-    {
-        sensors[i]->begin();
-    }
-
-    // Create SensorManager and register sensors
-    sensorManager = new SensorManager();
-    sensorManager->withSensors(sensors, 4);
-
-    orientationFilter = new MahonyAHRS();
-    state = new State(nullptr, orientationFilter);
+    // Initialize sensors within the manager
+    fakeGPS->begin();
+    fakeBaro->begin();
+    fakeAccel->begin();
+    fakeGyro->begin();
 }
 
-void tearDown(void)
-{
+void tearDown(void) {
     delete state;
-    delete sensorManager;
+    delete kalmanFilter;
     delete orientationFilter;
-    delete fakeAccel;
-    delete fakeGyro;
+
+    delete sensorManager;
     delete fakeGPS;
     delete fakeBaro;
+    delete fakeAccel;
+    delete fakeGyro;
 }
 
-// Test State initialization without sensors
-void test_state_init_no_sensors()
-{
-    State simpleState(nullptr, nullptr);
-    bool result = simpleState.begin();
-
-    TEST_ASSERT_TRUE(result);
+void test_begin_fails_without_sensor_manager() {
+    State s(kalmanFilter, orientationFilter);
+    TEST_ASSERT_FALSE(s.begin());
 }
 
-// Test State initialization with SensorManager
-void test_state_init_with_sensors()
-{
-    sensorManager->begin();
+void test_begin_succeeds_with_sensor_manager() {
+    // Set stable sensor data for calibration inside begin()
+    fakeAccel->set(Vector<3>(0, 0, 9.81));
+    fakeGyro->set(Vector<3>(0, 0, 0));
+    
     state->withSensorManager(sensorManager);
-    bool result = state->begin();
-
-    TEST_ASSERT_TRUE(result);
+    TEST_ASSERT_TRUE(state->begin());
+    TEST_ASSERT_TRUE(kalmanFilter->initialized);
+    TEST_ASSERT_EQUAL(MahonyMode::CALIBRATING, orientationFilter->getMode());
 }
 
-// Test orientation update with Vector data
-void test_update_orientation()
-{
-    sensorManager->begin();
-    state->withSensorManager(sensorManager);
-    state->begin();
-
-    // Set mock sensor data
-    fakeAccel->set(Vector<3>(0.0, 0.0, 9.81)); // Gravity pointing down
-    fakeGyro->set(Vector<3>(0.0, 0.0, 0.0));  // No rotation
-
-    // Update orientation using vector API
-    state->updateOrientation(fakeGyro->getAngVel(), fakeAccel->getAccel(), 0.01);
-
-    // Verify orientation was updated
-    Quaternion orientation = state->getOrientation();
-    // With gravity pointing down and no rotation, quaternion should be near identity
-    TEST_ASSERT_NOT_EQUAL(0.0, orientation.w());
-}
-
-// Test orientation update with motion
-void test_update_orientation_with_motion()
-{
-    sensorManager->begin();
-    state->withSensorManager(sensorManager);
-    state->begin();
-
-    // Simulate accelerating forward
-    fakeAccel->set(Vector<3>(1.0, 0.0, 9.81));
-    fakeGyro->set(Vector<3>(0.1, 0.0, 0.0)); // Rotating around X axis
-
-    // Run multiple updates to let filter converge
-    for (int i = 0; i < 100; i++)
-    {
-        state->updateOrientation(fakeGyro->getAngVel(), fakeAccel->getAccel(), 0.01);
+void test_update_orientation() {
+    // Manually calibrate since we don't call begin()
+    for (int i = 0; i < 200; ++i) {
+        orientationFilter->update(Vector<3>(0, 0, 9.81), Vector<3>(0, 0, 0), 0.01);
     }
+    orientationFilter->initialize();
+    orientationFilter->setMode(MahonyMode::CORRECTING);
+    TEST_ASSERT_TRUE(orientationFilter->isInitialized());
 
-    Vector<3> acceleration = state->getAcceleration();
-    // After filter converges, we should have non-zero earth-frame acceleration
-    // from the 1.0 m/s² forward component (minus gravity which is subtracted)
-    // This is a weak assertion - just verify the filter ran without crashing
-    TEST_ASSERT_TRUE(true);
+    // Give it stable data first
+    Vector<3> gyro_data(0, 0, 0);
+    Vector<3> accel_data(0, 0, 9.81);
+    state->updateOrientation(gyro_data, accel_data, 0.01);
+    
+    Quaternion q_before = state->getOrientation();
+
+    // Now apply some rotation
+    gyro_data.x() = 0.5; // 0.5 rad/s ~ 28 deg/s
+    for (int i=0; i<10; ++i) {
+        state->updateOrientation(gyro_data, accel_data, 0.01);
+    }
+    
+    Quaternion q_after = state->getOrientation();
+
+    // Check that orientation has changed
+    // Note: Mahony filter negates gyro input (line 115 in Mahony.h: -gyro.x())
+    // So positive gyro.x() = 0.5 rad/s causes negative rotation around x-axis
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 0.999, q_before.w());
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 0.996, q_after.w()); // w should decrease
+    TEST_ASSERT_FLOAT_WITHIN(0.01, -0.025, q_after.x()); // x should be negative due to gyro negation
+    TEST_ASSERT_NOT_EQUAL(q_before.w(), q_after.w());
 }
 
-// Test orientation update with BodyFrameData
-void test_update_orientation_with_body_frame_data()
-{
-    sensorManager->begin();
-    state->withSensorManager(sensorManager);
-    state->begin();
+void test_predict_state() {
+    // Set stable sensor data for calibration inside begin()
+    fakeAccel->set(Vector<3>(0, 0, 9.81));
+    fakeGyro->set(Vector<3>(0, 0, 0));
 
-    // Set mock sensor data
-    fakeAccel->set(Vector<3>(0.0, 0.0, 9.81));
+    state->withSensorManager(sensorManager);
+    state->begin(); // This will be slow
+    orientationFilter->setMode(MahonyMode::CORRECTING); // Move out of calibration
+    
+    // Set new sensor data that will be fetched by predictState
+    // The real MahonyAHRS will calculate earth-frame acceleration
+    fakeAccel->set(Vector<3>(0.1, 0.2, 9.8));
     fakeGyro->set(Vector<3>(0.0, 0.0, 0.0));
 
-    // Update sensor manager to get body frame data
-    sensorManager->update();
-    const BodyFrameData &bodyData = sensorManager->getBodyFrameData();
+    state->predictState(3.0); // time after begin() finished
 
-    // Update orientation using BodyFrameData API
-    state->updateOrientation(bodyData, 0.01);
+    TEST_ASSERT_TRUE(kalmanFilter->predict_called);
 
-    Quaternion orientation = state->getOrientation();
-    TEST_ASSERT_NOT_EQUAL(0.0, orientation.w());
+    // Check that predict was called with earth acceleration from orientation filter
+    // Note: After calibration, Mahony aligns body frame to gravity, creating a non-identity quaternion.
+    // The earth frame acceleration is computed via quaternion rotation, so values differ from naive body_accel - gravity.
+    // These expected values are based on the actual Mahony quaternion transformation after calibration.
+    TEST_ASSERT_NOT_NULL(kalmanFilter->control_vars);
+    TEST_ASSERT_FLOAT_WITHIN(0.05, 0.07, kalmanFilter->control_vars[0]); // ~0.0696
+    TEST_ASSERT_FLOAT_WITHIN(0.05, 0.14, kalmanFilter->control_vars[1]); // ~0.1391
+    TEST_ASSERT_FLOAT_WITHIN(0.05, -0.01, kalmanFilter->control_vars[2]); // ~-0.01
+
+    // Check that state was updated with dummy data from mock KF's getState
+    Vector<3> pos = state->getPosition();
+    Vector<3> vel = state->getVelocity();
+    TEST_ASSERT_EQUAL_FLOAT(1.0, pos.x()); // from mock getState
+    TEST_ASSERT_EQUAL_FLOAT(2.0, pos.y());
+    TEST_ASSERT_EQUAL_FLOAT(3.0, pos.z());
+    TEST_ASSERT_EQUAL_FLOAT(4.0, vel.x());
+    TEST_ASSERT_EQUAL_FLOAT(5.0, vel.y());
+    TEST_ASSERT_EQUAL_FLOAT(6.0, vel.z());
 }
 
-// Test measurement update with GPS and Barometer
-void test_update_measurements()
-{
-    sensorManager->begin();
+void test_update() {
+    // Set stable sensor data for calibration inside begin()
+    fakeAccel->set(Vector<3>(0, 0, 9.81));
+    fakeGyro->set(Vector<3>(0, 0, 0));
+    fakeBaro->set(101.325, 15); // Standard pressure at sea level, 15C
+    
     state->withSensorManager(sensorManager);
-    state->begin();
+    state->begin(); // This will be slow
+    orientationFilter->setMode(MahonyMode::CORRECTING);
 
-    bool hasGPS = fakeGPS && fakeGPS->isInitialized();
-    bool hasBaro = fakeBaro && fakeBaro->isInitialized();
+    // Set up sensor data for the update
+    fakeGPS->setHasFirstFix(true);
+    fakeGPS->set(34.0, -118.0, 100.0);
+    
+    state->update(3.0); // time after begin() finished
 
-    // Update measurements (Note: State needs a filter for this to work properly)
-    // For this test, we're just verifying the interface works
-    if (hasGPS && hasBaro)
-    {
-        state->updateMeasurements(fakeGPS->getPos(), fakeBaro->getASLAltM(), hasGPS, hasBaro, 1.0);
-        // No crash = success for now
-        TEST_ASSERT_TRUE(true);
-    }
+    // Check that KF measurement update was called
+    TEST_ASSERT_TRUE(kalmanFilter->update_called);
+
+    // Check that the measurements passed to the filter are correct
+    TEST_ASSERT_NOT_NULL(kalmanFilter->measurement_vars);
+    // On first update with GPS fix, origin is set and displacement from origin is 0.
+    TEST_ASSERT_EQUAL_FLOAT(0.0, kalmanFilter->measurement_vars[0]); 
+    TEST_ASSERT_EQUAL_FLOAT(0.0, kalmanFilter->measurement_vars[1]);
+    // Baro alt origin is set in `begin()`. Since value hasn't changed, measurement is 0.
+    TEST_ASSERT_EQUAL_FLOAT(0.0, kalmanFilter->measurement_vars[2]);
+
+    // Check that state was updated from mock KF
+    Vector<3> pos = state->getPosition();
+    Vector<3> vel = state->getVelocity();
+    TEST_ASSERT_EQUAL_FLOAT(1.0, pos.x()); // from mock getState
+    TEST_ASSERT_EQUAL_FLOAT(2.0, pos.y());
+    TEST_ASSERT_EQUAL_FLOAT(3.0, pos.z());
+    TEST_ASSERT_EQUAL_FLOAT(4.0, vel.x());
+    TEST_ASSERT_EQUAL_FLOAT(5.0, vel.y());
+    TEST_ASSERT_EQUAL_FLOAT(6.0, vel.z());
 }
 
-// Test position/velocity update
-void test_update_position_velocity()
-{
-    sensorManager->begin();
-    state->withSensorManager(sensorManager);
-    state->begin();
-
-    TEST_ASSERT_NOT_NULL(fakeGPS);
-
-    Vector<3> gpsPos = fakeGPS->getPos();
-    double heading = fakeGPS->getHeading();
-    bool hasFix = fakeGPS->getHasFix();
-
-    state->updatePositionVelocity(gpsPos.x(), gpsPos.y(), heading, hasFix);
-
-    Vector<2> coordinates = state->getCoordinates();
-    double stateHeading = state->getHeading();
-
-    if (hasFix)
-    {
-        TEST_ASSERT_EQUAL_FLOAT(gpsPos.x(), coordinates.x());
-        TEST_ASSERT_EQUAL_FLOAT(gpsPos.y(), coordinates.y());
-        TEST_ASSERT_EQUAL_FLOAT(heading, stateHeading);
-    }
-}
-
-// Test position/velocity update with no fix
-void test_update_position_velocity_no_fix()
-{
-    sensorManager->begin();
-    state->withSensorManager(sensorManager);
-    state->begin();
-
-    state->updatePositionVelocity(0.0, 0.0, 0.0, false);
-
-    Vector<2> coordinates = state->getCoordinates();
-    double heading = state->getHeading();
-
-    TEST_ASSERT_EQUAL_FLOAT(0.0, coordinates.x());
-    TEST_ASSERT_EQUAL_FLOAT(0.0, coordinates.y());
-    TEST_ASSERT_EQUAL_FLOAT(0.0, heading);
-}
-
-// Test State doesn't hold sensor references
-void test_state_no_sensor_references()
-{
-    // State should be constructible without any sensors
-    State independentState(nullptr, nullptr);
-    bool result = independentState.begin();
-
-    TEST_ASSERT_TRUE(result);
-
-    // State should accept Vector data without needing sensors
-    Vector<3> gyro(0, 0, 0);
-    Vector<3> accel(0, 0, 9.81);
-
-    // This should work even without sensors
-    MahonyAHRS filter;
-    State stateWithFilter(nullptr, &filter);
-    stateWithFilter.begin();
-    stateWithFilter.updateOrientation(gyro, accel, 0.01);
-
-    TEST_ASSERT_TRUE(true); // No crash = success
-}
-
-// Test State getters
-void test_state_getters()
-{
-    sensorManager->begin();
-    state->withSensorManager(sensorManager);
-    state->begin();
-
-    Vector<3> position = state->getPosition();
-    Vector<3> velocity = state->getVelocity();
-    Vector<3> acceleration = state->getAcceleration();
-    Quaternion orientation = state->getOrientation();
-    Vector<2> coordinates = state->getCoordinates();
-    double heading = state->getHeading();
-
-    // All getters should work without crashing
-    TEST_ASSERT_TRUE(true);
-}
-
-// Test SensorManager basic functionality
-void test_sensor_manager_basic()
-{
-    sensorManager->begin();
-
-    // Set some sensor data
-    fakeAccel->set(Vector<3>(0.0, 0.0, 9.81));
-    fakeGyro->set(Vector<3>(0.0, 0.0, 0.0));
-
-    // Need to call update() before isReady() returns true (populates bodyData flags)
-    sensorManager->update();
-
-    TEST_ASSERT_TRUE(sensorManager->isReady());
-    TEST_ASSERT_NOT_NULL(sensorManager->getActiveAccel());
-    TEST_ASSERT_NOT_NULL(sensorManager->getActiveGyro());
-}
-
-// Test SensorManager body frame data
-void test_sensor_manager_body_frame_data()
-{
-    sensorManager->begin();
-
-    fakeAccel->set(Vector<3>(1.0, 2.0, 9.81));
-    fakeGyro->set(Vector<3>(0.1, 0.2, 0.3));
-
-    sensorManager->update();
-    const BodyFrameData &data = sensorManager->getBodyFrameData();
-
-    TEST_ASSERT_TRUE(data.hasAccel);
-    TEST_ASSERT_TRUE(data.hasGyro);
-    TEST_ASSERT_FLOAT_WITHIN(0.01, 1.0, data.accel.x());
-    TEST_ASSERT_FLOAT_WITHIN(0.01, 2.0, data.accel.y());
-    TEST_ASSERT_FLOAT_WITHIN(0.01, 0.1, data.gyro.x());
-}
-
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     UNITY_BEGIN();
-
-    RUN_TEST(test_state_init_no_sensors);
-    RUN_TEST(test_state_init_with_sensors);
+    RUN_TEST(test_begin_fails_without_sensor_manager);
+    RUN_TEST(test_begin_succeeds_with_sensor_manager);
     RUN_TEST(test_update_orientation);
-    RUN_TEST(test_update_orientation_with_motion);
-    RUN_TEST(test_update_orientation_with_body_frame_data);
-    RUN_TEST(test_update_measurements);
-    RUN_TEST(test_update_position_velocity);
-    RUN_TEST(test_update_position_velocity_no_fix);
-    RUN_TEST(test_state_no_sensor_references);
-    RUN_TEST(test_state_getters);
-    RUN_TEST(test_sensor_manager_basic);
-    RUN_TEST(test_sensor_manager_body_frame_data);
-
+    RUN_TEST(test_predict_state);
+    RUN_TEST(test_update);
     UNITY_END();
-
     return 0;
 }

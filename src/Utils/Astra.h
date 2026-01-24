@@ -22,17 +22,17 @@ namespace astra
         bool update(double ms = -1); // returns true if state update occurred
         SerialMessageRouter* getMessageRouter() { return messageRouter; }
 
-        bool didLog() { return didLog; }
-        bool didUpdateSensors() { return didUpdateSensors; }
-        bool didUpdateState() { return didUpdateState; }
-        bool didPredictState() { return didPredictState; }
+        bool didLog() { return _didLog; }
+        bool didUpdateSensors() { return _didUpdateSensors; }
+        bool didUpdateState() { return _didUpdateState; }
+        bool didPredictState() { return _didPredictState; }
 
     private:
         bool ready = false;
         AstraConfig *config = nullptr;
         double lastLoggingUpdate = 0;
         double lastSensorUpdate = 0, lastPredictUpdate = 0, lastMeasurementUpdate = 0;
-        bool didLog = false, didUpdateSensors = false, didUpdateState = false, didPredictState = false;
+        bool _didLog = false, _didUpdateSensors = false, _didUpdateState = false, _didPredictState = false;
         SerialMessageRouter *messageRouter = nullptr;
 
         static void handleCommandMessage(const char* message, const char* prefix, Stream* source);

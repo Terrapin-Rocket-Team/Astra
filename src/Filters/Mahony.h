@@ -1,3 +1,5 @@
+#ifndef MAHONY_H
+#define MAHONY_H
 #include <Arduino.h>
 #include "../Math/Quaternion.h"
 #include "Math/Vector.h"
@@ -218,3 +220,5 @@ namespace astra
 // Get orientation:
 // Quaternion q = ahrs.getQuaternion();
 // Vector<3> aEarth = ahrs.getEarthAcceleration(readAccel());
+
+#endif // MAHONY_H

@@ -12,6 +12,7 @@ FakeIMU imu;
 void setUp(void)
 {
     imu.begin(); // reset the imu before each test
+    imu.setMountingOrientation(MountingOrientation::IDENTITY); // reset orientation to identity
 }
 
 void tearDown(void)

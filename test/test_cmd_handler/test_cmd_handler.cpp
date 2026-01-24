@@ -142,9 +142,8 @@ void test_cmd_header_basic()
     MockSink sink(true, true);
     FakeReporter rp("test");
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger::configure(sinks, 1, reps, 1);
+    DataLogger::configure(sinks, 1);
 
     // Setup SerialMessageRouter with CMD/ listener
     SerialMessageRouter router;
@@ -179,9 +178,8 @@ void test_cmd_header_multiple_requests()
     MockSink sink(true, true);
     FakeReporter rp("sensor");
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger::configure(sinks, 1, reps, 1);
+    DataLogger::configure(sinks, 1);
 
     // Setup router
     SerialMessageRouter router;
@@ -213,9 +211,8 @@ void test_cmd_unknown_command()
     MockSink sink(true, true);
     FakeReporter rp("test");
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger::configure(sinks, 1, reps, 1);
+    DataLogger::configure(sinks, 1);
 
     // Setup router
     SerialMessageRouter router;
@@ -240,9 +237,8 @@ void test_cmd_header_with_multiple_reporters()
     FakeReporter rp1("accel");
     FakeReporter rp2("gyro");
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp1, &rp2};
 
-    DataLogger::configure(sinks, 1, reps, 2);
+    DataLogger::configure(sinks, 1);
 
     // Setup router
     SerialMessageRouter router;
@@ -271,9 +267,8 @@ void test_cmd_header_only_to_requesting_stream()
     MockSink sink(true, true);
     FakeReporter rp("test");
     ILogSink *sinks[] = {&sink};
-    DataReporter *reps[] = {&rp};
 
-    DataLogger::configure(sinks, 1, reps, 1);
+    DataLogger::configure(sinks, 1);
 
     // Setup router with both streams
     SerialMessageRouter router;

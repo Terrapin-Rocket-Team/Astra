@@ -32,121 +32,93 @@ public:
 
 // ---------- Tests ----------
 
-void test_withOtherDataReporters_single(void)
+void test_datareporter_auto_registration_single(void)
 {
-    AstraConfig config;
+    // DataReporter should auto-register on construction
     TestReporter reporter("test1");
-    DataReporter *reporters[] = {&reporter};
 
-    config.withOtherDataReporters(reporters, 1);
-
-    // Access private members via friend relationship would be ideal,
-    // but we can't directly test private members without friend class.
-    // Instead, we verify that the call doesn't crash and returns correctly.
-    TEST_ASSERT_TRUE(true); // Basic sanity check
+    // Verify reporter is registered with DataLogger (even if not initialized)
+    TEST_ASSERT_EQUAL(1, DataLogger::instance().getNumReporters());
 }
 
-void test_withOtherDataReporters_multiple(void)
+void test_datareporter_auto_registration_multiple(void)
 {
-    AstraConfig config;
     TestReporter reporter1("test1");
     TestReporter reporter2("test2");
     TestReporter reporter3("test3");
 
-    DataReporter *reporters[] = {&reporter1, &reporter2, &reporter3};
-
-    config.withOtherDataReporters(reporters, 3);
-
-    TEST_ASSERT_TRUE(true); // Basic sanity check
+    // All should be auto-registered
+    TEST_ASSERT_EQUAL(3, DataLogger::instance().getNumReporters());
 }
 
-void test_withOtherDataReporters_chaining(void)
+void test_datareporter_unregistration(void)
 {
-    AstraConfig config;
-    TestReporter reporter1("test1");
-    TestReporter reporter2("test2");
+    {
+        TestReporter reporter1("test1");
+        TestReporter reporter2("test2");
 
-    DataReporter *batch1[] = {&reporter1};
-    DataReporter *batch2[] = {&reporter2};
+        TEST_ASSERT_EQUAL(2, DataLogger::instance().getNumReporters());
+    } // reporters go out of scope and should unregister
 
-    // Test chaining multiple calls
-    config.withOtherDataReporters(batch1, 1)
-          .withOtherDataReporters(batch2, 1);
-
-    TEST_ASSERT_TRUE(true); // Basic sanity check
+    // After destruction, reporters should be unregistered
+    TEST_ASSERT_EQUAL(0, DataLogger::instance().getNumReporters());
 }
 
-void test_withOtherDataReporters_max_capacity(void)
+void test_datareporter_max_capacity(void)
 {
-    AstraConfig config;
-    DataReporter *reporters[50];
+    DataReporter *reporters[32]; // MAX_REPORTERS is 32
 
-    // Create 50 reporters dynamically
-    for (int i = 0; i < 50; i++)
+    // Create 32 reporters (max capacity)
+    for (int i = 0; i < 32; i++)
     {
         char name[20];
         snprintf(name, sizeof(name), "reporter%d", i);
         reporters[i] = new TestReporter(name);
     }
 
-    // Add all 50
-    config.withOtherDataReporters(reporters, 50);
-
-    TEST_ASSERT_TRUE(true); // Should handle max capacity
+    TEST_ASSERT_EQUAL(32, DataLogger::instance().getNumReporters());
 
     // Cleanup
-    for (int i = 0; i < 50; i++)
+    for (int i = 0; i < 32; i++)
     {
         delete reporters[i];
     }
+
+    TEST_ASSERT_EQUAL(0, DataLogger::instance().getNumReporters());
 }
 
-void test_withOtherDataReporters_exceeds_capacity(void)
+void test_datareporter_exceeds_capacity(void)
 {
-    AstraConfig config;
-    DataReporter *reporters[60];
+    DataReporter *reporters[35];
 
-    // Create 60 reporters dynamically
-    for (int i = 0; i < 60; i++)
+    // Create 35 reporters (exceeds max capacity of 32)
+    for (int i = 0; i < 35; i++)
     {
         char name[20];
         snprintf(name, sizeof(name), "reporter%d", i);
         reporters[i] = new TestReporter(name);
     }
 
-    // Try to add 60 (should cap at 50)
-    config.withOtherDataReporters(reporters, 60);
-
-    TEST_ASSERT_TRUE(true); // Should cap and not crash
+    // Should cap at 32
+    TEST_ASSERT_EQUAL(32, DataLogger::instance().getNumReporters());
 
     // Cleanup
-    for (int i = 0; i < 60; i++)
+    for (int i = 0; i < 35; i++)
     {
         delete reporters[i];
     }
 }
 
-void test_withOtherDataReporters_null_array(void)
+void test_astra_config_basic(void)
 {
     AstraConfig config;
 
-    // Pass null array with 0 count - should not crash
-    config.withOtherDataReporters(nullptr, 0);
+    // Test basic configuration methods still work
+    config.withSensorUpdateRate(100.0)
+          .withLoggingRate(50.0)
+          .withPredictRate(60.0);
 
-    TEST_ASSERT_TRUE(true);
-}
-
-void test_withOtherDataReporters_returns_reference(void)
-{
-    AstraConfig config;
-    TestReporter reporter("test");
-    DataReporter *reporters[] = {&reporter};
-
-    // Verify it returns a reference for chaining
-    AstraConfig &ref = config.withOtherDataReporters(reporters, 1);
-
-    // The returned reference should be the same object
-    TEST_ASSERT_EQUAL_PTR(&config, &ref);
+    TEST_ASSERT_TRUE(true); // Verify chaining works
 }
 
 // --------------- MockSink ---------------
@@ -186,31 +158,28 @@ public:
     using Print::write;
 };
 
-void test_withOtherDataReporters_integration_with_datalogger(void)
+void test_datareporter_integration_with_datalogger(void)
 {
     // Create a minimal State with no sensors
     Filter *filter = nullptr;
     State state(filter, nullptr);
 
-    // Create custom reporters
+    // Create custom reporters (they auto-register)
     TestReporter customReporter1("custom1");
     TestReporter customReporter2("custom2");
     customReporter1.setValue(123.45f);
     customReporter2.setValue(678.90f);
 
-    DataReporter *reporters[] = {&customReporter1, &customReporter2};
-
     // Create a mock sink
     MockSink sink(true);
     ILogSink *sinks[] = {&sink};
 
-    // Configure Astra with the custom reporters
+    // Configure Astra
     AstraConfig config;
     config.withState(&state)
-          .withDataLogs(sinks, 1)
-          .withOtherDataReporters(reporters, 2);
+          .withDataLogs(sinks, 1);
 
-    // Initialize Astra (which should configure DataLogger with the reporters)
+    // Initialize Astra
     Astra astra(&config);
     astra.init();
 
@@ -238,25 +207,22 @@ void test_withOtherDataReporters_integration_with_datalogger(void)
 void setUp() {}
 void tearDown()
 {
-    // Clear DataLogger singleton state between tests
-    if (DataLogger::available())
-    {
-        // DataLogger might need cleanup - check implementation
-    }
+    // Cleanup any remaining reporters
+    // Note: In a real scenario, we'd need to manually unregister or delete all reporters
+    // Since we're using scoped objects in tests, they should clean up automatically
 }
 
 int main(int, char **)
 {
     UNITY_BEGIN();
 
-    RUN_TEST(test_withOtherDataReporters_single);
-    RUN_TEST(test_withOtherDataReporters_multiple);
-    RUN_TEST(test_withOtherDataReporters_chaining);
-    RUN_TEST(test_withOtherDataReporters_max_capacity);
-    RUN_TEST(test_withOtherDataReporters_exceeds_capacity);
-    RUN_TEST(test_withOtherDataReporters_null_array);
-    RUN_TEST(test_withOtherDataReporters_returns_reference);
-    RUN_TEST(test_withOtherDataReporters_integration_with_datalogger);
+    RUN_TEST(test_datareporter_auto_registration_single);
+    RUN_TEST(test_datareporter_auto_registration_multiple);
+    RUN_TEST(test_datareporter_unregistration);
+    RUN_TEST(test_datareporter_max_capacity);
+    RUN_TEST(test_datareporter_exceeds_capacity);
+    RUN_TEST(test_astra_config_basic);
+    RUN_TEST(test_datareporter_integration_with_datalogger);
 
     UNITY_END();
     return 0;
