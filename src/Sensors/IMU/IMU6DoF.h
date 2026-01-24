@@ -1,8 +1,6 @@
 #ifndef IMU6DOF_H
 #define IMU6DOF_H
 
-#include "../Sensor.h"
-#include "../SensorManager/RotatableSensor.h"
 #include "../Accel/Accel.h"
 #include "../Gyro/Gyro.h"
 

@@ -25,6 +25,8 @@ namespace astra
         bool init();
         bool appendLine();
         void printHeaderTo(ILogSink *sink);
+        DataReporter *const *getReporters() const { return _reporterRegistry; }
+        uint8_t getNumReporters() const { return _countReporters; }
 
         static void configure(ILogSink **sinks, uint8_t numSinks);
         static bool registerReporter(DataReporter *reporter);

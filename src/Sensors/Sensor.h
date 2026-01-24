@@ -30,6 +30,7 @@ namespace astra
         {
             this->type = fnv1a_32(type, strlen(type));
             typeString = type;
+            autoUpdate = false;
         }
 
         // Sets up the sensor and stores any critical parameters. Needs to reset the sensor if it is already initialized. Called by begin()

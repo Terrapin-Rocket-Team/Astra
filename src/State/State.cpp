@@ -1,7 +1,8 @@
 #include "State.h"
 #include <Arduino.h>
 #include "../Filters/LinearKalmanFilter.h"
-#include "../Sensors/SensorManager/ISensorManager.h"
+#include "Sensors/SensorManager/SensorManager.h"
+#include "Sensors/GPS/GPS.h"
 
 #pragma region Constructor and Destructor
 
@@ -9,6 +10,15 @@ namespace astra
 {
     State::State(Filter *filter, MahonyAHRS *orientationFilter) : DataReporter("State")
     {
+        if (!filter)
+        {
+            LOGE("State requires a Kalman Filter! Cannot create State without filter.");
+        }
+        if (!orientationFilter)
+        {
+            LOGE("State requires an AHRS orientation filter! Cannot create State without orientation filter.");
+        }
+
         lastTime = 0;
         currentTime = 0;
         this->filter = filter;
@@ -24,6 +34,7 @@ namespace astra
         addColumn("%0.3f", &acceleration.x(), "AX (m/s/s)");
         addColumn("%0.3f", &acceleration.y(), "AY (m/s/s)");
         addColumn("%0.3f", &acceleration.z(), "AZ (m/s/s)");
+        autoUpdate = false; // disable DataLogger from updating this class
     }
 
     State::~State()
@@ -33,22 +44,37 @@ namespace astra
 
 #pragma endregion
 
-    void State::withSensorManager(ISensorManager *sensorManager)
+    void State::withSensorManager(SensorManager *sensorManager)
     {
         this->sensorManager = sensorManager;
     }
 
     bool State::begin()
     {
-        // Initialize Kalman filter
-        if (filter)
+        if (!sensorManager)
         {
-            filter->initialize();
-            stateVars = new double[filter->getStateSize()];
+            LOGE("State does not have a reference to a sensor manager!");
+            return false;
         }
 
+        if (!filter)
+        {
+            LOGE("No Kalman filter available for State. Required!");
+            return false;
+        }
+
+        if (!orientationFilter)
+        {
+            LOGE("No orientation filter available for State. Required!");
+            return false;
+        }
+
+        // Initialize Kalman filter
+        filter->initialize();
+        stateVars = new double[filter->getStateSize()];
+
         // Auto-calibrate orientation filter if sensor manager is available
-        if (orientationFilter && sensorManager && sensorManager->isReady())
+        if (sensorManager && sensorManager->isOK())
         {
             LOGI("Auto-calibrating orientation filter...");
             orientationFilter->setMode(MahonyMode::CALIBRATING);
@@ -58,24 +84,36 @@ namespace astra
             for (int i = 0; i < calibSamples; i++)
             {
                 sensorManager->update();
-                const BodyFrameData &data = sensorManager->getBodyFrameData();
-
-                if (data.hasAccel && data.hasGyro)
-                {
-                    orientationFilter->update(data.accel, data.gyro, 0.01); // Assume ~100Hz
-                }
+                orientationFilter->update(sensorManager->getAccel(), sensorManager->getGyro(), 0.01); // Assume ~100Hz
                 delay(10);
             }
 
-            // Initialize and switch to normal mode
+            // Initialize the orientation filter
             orientationFilter->initialize();
-            orientationFilter->setMode(MahonyMode::GYRO_ONLY);
-            LOGI("Orientation filter calibrated and ready.");
+            // Keep in CALIBRATING mode - don't auto-switch out
+            orientationFilter->setMode(MahonyMode::CALIBRATING);
+            LOGI("Orientation filter calibrated and staying in CALIBRATING mode.");
         }
-        else if (orientationFilter)
+        else
         {
             LOGW("No SensorManager available for orientation filter calibration.");
+            return false;
         }
+
+        // Set origin altitude from barometer (sensors have settled during calibration)
+        if (sensorManager->getPrimaryBaro() && sensorManager->getPrimaryBaro()->isInitialized())
+        {
+            origin.z() = sensorManager->getPrimaryBaro()->getASLAltM();
+            LOGI("Origin altitude set to %.2f m ASL from barometer.", origin.z());
+        }
+        else
+        {
+            LOGW("No barometer available to set origin altitude.");
+        }
+
+        // Origin x,y (GPS position) will be set during first update when GPS gets fix
+        origin.x() = 0;
+        origin.y() = 0;
 
         initialized = true;
         LOGI("State Initialized.");
@@ -86,20 +124,104 @@ namespace astra
 
     void State::update(double newTime)
     {
-        // This method is deprecated - Astra now calls split update methods
-        LOGW("State::update() is deprecated. Use split update methods via Astra.");
-    }
+        if (!initialized)
+        {
+            LOGE("State is not initialized! Call begin() first.");
+            return;
+        }
+        if (!sensorManager)
+        {
+            LOGE("No Sensor Manager configured. Add one to Astra or directly to state.");
+            return;
+        }
+        if (!sensorManager->isOK())
+        {
+            LOGE("Sensor Manager reports an error. Cannot update State.");
+            return;
+        }
+        if (!orientationFilter || !orientationFilter->isInitialized())
+        {
+            LOGE("Orientation Filter not available or not initialized. Cannot update State.");
+            return;
+        }
+        if (!filter)
+        {
+            LOGE("Kalman Filter not available. Cannot update State.");
+            return;
+        }
 
-    void State::updateOrientation(const BodyFrameData &bodyData, double dt)
-    {
-        if (!orientationFilter)
+        // Update time
+        double dt = 0.0;
+        if (newTime != -1)
+        {
+            dt = newTime - currentTime;
+            currentTime = newTime;
+        }
+        else
+        {
+            double newT = millis() / 1000.0;
+            dt = newT - currentTime;
+            currentTime = newT;
+        }
+
+        if (dt <= 0)
             return;
 
-        if (!bodyData.hasAccel || !bodyData.hasGyro)
-            return;
+        // Update orientation (happens every update)
+        updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
 
-        // Delegate to the vector-based implementation
-        updateOrientation(bodyData.gyro, bodyData.accel, dt);
+        // Prepare measurements from SensorManager
+        double *measurements = new double[filter->getMeasurementSize()];
+
+        // Check if we have GPS data
+        bool hasGPS = false;
+        if (sensorManager->getPrimaryGPS() && sensorManager->getPrimaryGPS()->getHasFix())
+        {
+            // Set GPS origin on first fix (when origin x,y are still 0)
+            if (origin.x() == 0 && origin.y() == 0)
+            {
+                Vector<3> gpsPos = sensorManager->getPrimaryGPS()->getPos();
+                origin.x() = gpsPos.x(); // latitude
+                origin.y() = gpsPos.y(); // longitude
+                LOGI("GPS origin set to lat=%.6f, lon=%.6f", origin.x(), origin.y());
+            }
+
+            hasGPS = true;
+            // Get displacement from origin in meters
+            Vector<3> displacement = sensorManager->getPrimaryGPS()->getDisplacement(origin);
+            measurements[0] = displacement.x(); // displacement in meters (north)
+            measurements[1] = displacement.y(); // displacement in meters (east)
+        }
+        else
+        {
+            measurements[0] = 0;
+            measurements[1] = 0;
+        }
+
+        // Check if we have barometer data
+        bool hasBaro = false;
+        if (sensorManager->getPrimaryBaro() && sensorManager->getPrimaryBaro()->isInitialized())
+        {
+            hasBaro = true;
+            measurements[2] = sensorManager->getPrimaryBaro()->getASLAltM() - origin.z();
+        }
+        else
+        {
+            measurements[2] = 0;
+        }
+
+        // Run KF measurement update
+        LinearKalmanFilter *kf = static_cast<LinearKalmanFilter *>(filter);
+        kf->update(measurements);
+        kf->getState(stateVars);
+
+        // Update state variables from measurement update
+        position.x() = stateVars[0];
+        position.y() = stateVars[1];
+        position.z() = stateVars[2];
+        velocity.x() = stateVars[3];
+        velocity.y() = stateVars[4];
+        velocity.z() = stateVars[5];
     }
 
     void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)
@@ -108,9 +230,8 @@ namespace astra
             return;
 
         // Automatic mode switching based on accelerometer magnitude
-        // If |accel| is close to 9.81 m/s^2, enable accel correction
-        // Otherwise (high-g or freefall), use gyro-only mode
-        if (orientationFilter->isInitialized())
+        // EXCEPT when in CALIBRATING mode - stay in calibration until explicitly changed
+        if (orientationFilter->isInitialized() && orientationFilter->getMode() != MahonyMode::CALIBRATING)
         {
             double accelMag = accel.magnitude();
             double accelError = abs(accelMag - 9.81);
@@ -132,6 +253,7 @@ namespace astra
             }
         }
 
+        // Update the orientation filter
         orientationFilter->update(accel, gyro, dt);
 
         // Update orientation and earth-frame acceleration from filter
@@ -146,8 +268,24 @@ namespace astra
     void State::predictState(double newTime)
     {
         if (!filter)
+        {
+            LOGE("No Kalman filter available for prediction.");
             return;
+        }
 
+        if (!orientationFilter || !orientationFilter->isInitialized())
+        {
+            LOGE("Orientation filter not available or not initialized for prediction.");
+            return;
+        }
+
+        if (!sensorManager || !sensorManager->isOK())
+        {
+            LOGE("Sensor manager not available or not OK for prediction.");
+            return;
+        }
+
+        // Update time
         lastTime = currentTime;
         if (newTime != -1)
             currentTime = newTime;
@@ -158,20 +296,15 @@ namespace astra
         if (dt <= 0)
             return;
 
-        // Prepare control inputs (earth-frame acceleration)
+        // Update orientation first (happens every predict step)
+        updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
+
+        //ownership of this is passed to KF.
+        // Prepare control inputs (earth-frame acceleration from orientation filter)
         double *inputs = new double[filter->getInputSize()];
-        if (orientationFilter && orientationFilter->isInitialized())
-        {
-            inputs[0] = acceleration.x();
-            inputs[1] = acceleration.y();
-            inputs[2] = acceleration.z();
-        }
-        else
-        {
-            inputs[0] = 0.0;
-            inputs[1] = 0.0;
-            inputs[2] = 0.0;
-        }
+        inputs[0] = acceleration.x();
+        inputs[1] = acceleration.y();
+        inputs[2] = acceleration.z();
 
         // Set current state into filter before predicting
         stateVars[0] = position.x();
@@ -193,24 +326,70 @@ namespace astra
         velocity.x() = stateVars[3];
         velocity.y() = stateVars[4];
         velocity.z() = stateVars[5];
+
     }
 
     void State::updateMeasurements(const Vector<3> &gpsPos, double baroAlt, bool hasGPS, bool hasBaro, double newTime)
     {
         if (!filter)
+        {
+            LOGE("No Kalman filter available for measurement update.");
             return;
+        }
 
+        if (!orientationFilter || !orientationFilter->isInitialized())
+        {
+            LOGE("Orientation filter not available or not initialized for measurement update.");
+            return;
+        }
+
+        if (!sensorManager || !sensorManager->isOK())
+        {
+            LOGE("Sensor manager not available or not OK for measurement update.");
+            return;
+        }
+
+        // Update time
+        double dt = 0.0;
         if (newTime != -1)
+        {
+            dt = newTime - currentTime;
             currentTime = newTime;
+        }
         else
-            currentTime = millis() / 1000.0;
+        {
+            double newT = millis() / 1000.0;
+            dt = newT - currentTime;
+            currentTime = newT;
+        }
 
-        // Prepare measurements
+        // Update orientation (happens every measurement update step too)
+        if (dt > 0)
+        {
+            updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
+        }
+
+        // Prepare measurements. ownership passed to KF.
         double *measurements = new double[filter->getMeasurementSize()];
 
-        // gps x y barometer z
-        measurements[0] = hasGPS ? (gpsPos.x() - origin.x()) : 0;
-        measurements[1] = hasGPS ? (gpsPos.y() - origin.y()) : 0;
+        // GPS measurements: use displacement from origin (in meters)
+        // gpsPos is expected to be lat/lon/alt from GPS
+        // We compute displacement in meters using GPS::getDisplacement static method
+        if (hasGPS)
+        {
+            // gpsPos contains lat, lon, alt - compute displacement in meters from origin
+            // getDisplacement returns Vector<3> with x (north), y (east), z (up) in meters
+            Vector<3> displacement = sensorManager->getPrimaryGPS()->getDisplacement(origin);
+            measurements[0] = displacement.x(); // displacement in meters (north)
+            measurements[1] = displacement.y(); // displacement in meters (east)
+        }
+        else
+        {
+            measurements[0] = 0;
+            measurements[1] = 0;
+        }
+
+        // Barometer measurement: altitude
         measurements[2] = hasBaro ? baroAlt : 0;
 
         LinearKalmanFilter *kf = static_cast<LinearKalmanFilter *>(filter);
@@ -224,20 +403,7 @@ namespace astra
         velocity.x() = stateVars[3];
         velocity.y() = stateVars[4];
         velocity.z() = stateVars[5];
-    }
 
-    void State::updatePositionVelocity(double lat, double lon, double heading, bool hasFix)
-    {
-        if (hasFix)
-        {
-            coordinates = Vector<2>(lat, lon);
-            this->heading = heading;
-        }
-        else
-        {
-            coordinates = Vector<2>(0, 0);
-            this->heading = 0;
-        }
     }
 
 #pragma endregion Update Functions

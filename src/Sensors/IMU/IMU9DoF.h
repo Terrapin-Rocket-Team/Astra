@@ -1,8 +1,6 @@
 #ifndef IMU9DOF_H
 #define IMU9DOF_H
 
-#include "../Sensor.h"
-#include "../SensorManager/RotatableSensor.h"
 #include "../Accel/Accel.h"
 #include "../Gyro/Gyro.h"
 #include "../Mag/Mag.h"

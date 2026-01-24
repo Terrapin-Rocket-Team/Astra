@@ -7,6 +7,7 @@
 #include "Sensors/Baro/Barometer.h"
 #include "Math/Vector.h"
 #include "Wire.h"
+#include "Sensors/SensorManager/SensorManager.h"
 #ifndef NATIVE
 #include "RetrieveData/RetrieveSDCardData.h"
 #endif
@@ -22,28 +23,12 @@ BlinkBuzz bb;
 
 Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 {
-    // Store sensors from config
-    if (config->sensors && config->numSensors > 0)
-    {
-        sensors = config->sensors;
-        numSensors = config->numSensors;
-    }
 
-    // Use user-provided SensorManager or mark for later creation
-    if (config->sensorManager)
-    {
-        sensorManager = config->sensorManager;
-        ownsSensorManager = false;
-    }
 }
 
 Astra::~Astra()
 {
-    if (ownsSensorManager && sensorManager)
-    {
-        delete sensorManager;
-        sensorManager = nullptr;
-    }
+
 }
 
 void Astra::handleCommandMessage(const char* message, const char* prefix, Stream* source)
@@ -67,63 +52,6 @@ void Astra::handleCommandMessage(const char* message, const char* prefix, Stream
     }
 }
 
-bool Astra::initAllSensors()
-{
-    int good = 0;
-    for (int i = 0; i < numSensors; i++)
-    {
-        if (sensors[i])
-        {
-            if (sensors[i]->begin())
-            {
-                good++;
-                LOGI("%s [%s] initialized.", sensors[i]->getTypeString(), sensors[i]->getName());
-            }
-            else
-            {
-                LOGE("%s [%s] failed to initialize.", sensors[i]->getTypeString(), sensors[i]->getName());
-            }
-        }
-        else
-        {
-            LOGE("Sensor index %d in the array was null!", i);
-        }
-    }
-    LOGI("Initialized %d of %d sensors.", good, numSensors);
-    return good == numSensors;
-}
-
-void Astra::updateAllSensors()
-{
-    for (int i = 0; i < numSensors; i++)
-    {
-        if (sensors[i] && sensors[i]->isInitialized())
-        {
-            sensors[i]->update();
-        }
-    }
-}
-
-Sensor *Astra::findSensor(uint32_t type, int sensorNum) const
-{
-    for (int i = 0; i < numSensors; i++)
-    {
-        if (sensors[i] && type == sensors[i]->getType() && --sensorNum == 0)
-            return sensors[i];
-    }
-    return nullptr;
-}
-
-GPS *Astra::findGPS(int sensorNum) const
-{
-    return static_cast<GPS *>(findSensor("GPS"_i, sensorNum));
-}
-
-Barometer *Astra::findBaro(int sensorNum) const
-{
-    return static_cast<Barometer *>(findSensor("Barometer"_i, sensorNum));
-}
-
 void Astra::init()
 {
     LOGI("Initializing Astra version %s", ASTRA_VERSION);
@@ -142,36 +70,27 @@ void Astra::init()
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
-    // Initialize sensors directly
-    initAllSensors();
+    // Loggign next
+    DataLogger::configure(config->logs, config->numLogs);
 
-    // Create default SensorManager if not provided
-    if (!sensorManager && sensors && numSensors > 0)
+    // setup for HITL
+    if (config->hitlMode)
     {
-        SensorManager *defaultMgr = new SensorManager();
-        defaultMgr->withSensors(sensors, numSensors);
-        sensorManager = defaultMgr;
-        ownsSensorManager = true;
-        LOGI("Created default SensorManager");
+        LOGI("HITL mode enabled - configuring for simulation.");
+        // Set all intervals to 0 for maximum simulation speed
+        // User must pass simulation time to update()
+        config->sensorUpdateInterval = 0;
+        config->loggingInterval = 0;
+        config->measurementUpdateInterval = 0;
+        config->predictInterval = 0;
     }
 
     // Initialize SensorManager
-    if (sensorManager)
+    if (config->sensorManager)
     {
-        sensorManager->begin();
+        config->sensorManager->begin();
+        config->state->withSensorManager(config->sensorManager);
     }
-
-    // then Logger - combine sensors and other reporters
-    DataReporter **reporters = new DataReporter *[config->numReporters + numSensors + 1];
-
-    reporters[0] = config->state;
-    int i = 1;
-    for (int s = 0; s < numSensors; s++)
-        reporters[i++] = sensors[s];
-    for (int r = 0; r < config->numReporters; r++)
-        reporters[i++] = config->reporters[r];
-
-    DataLogger::configure(config->logs, config->numLogs, reporters, i);
 
     // Setup SerialMessageRouter for command handling
     messageRouter = new SerialMessageRouter(4, 8, 256);
@@ -182,7 +101,6 @@ void Astra::init()
     // then State
     if (config->state)
     {
-        config->state->withSensorManager(sensorManager);
         config->state->begin();
     }
     ready = true;
@@ -190,7 +108,11 @@ void Astra::init()
 }
 bool Astra::update(double ms)
 {
-    bool didUpdate = false;
+    didLog = false;
+    didUpdateSensors = false;
+    didUpdateState = false;
+    didPredictState = false;
+
     if (!ready)
     {
         LOGW("Attempted to update Astra before it was initialized. Initializing it now...");
@@ -213,34 +135,23 @@ bool Astra::update(double ms)
     if (!config->state)
     {
         LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
-        return didUpdate;
+        return false;
+    }
+    if(!config->sensorManager)
+    {
+        LOGW("Astra Attempted to update SensorManager without a reference to it! (use AstraConfig.withSensorManager(&sensorManager))");
+        return false;
     }
 
     // Sensor update - highest frequency
     if (ms - lastSensorUpdate > config->sensorUpdateInterval)
     {
         lastSensorUpdate = ms;
-        updateAllSensors();
-
-        // Update SensorManager (transforms to body frame)
         if (sensorManager)
         {
             sensorManager->update();
         }
-        didUpdate = true;
-    }
-
-    // Orientation update - runs after sensors using body-frame data
-    if (didUpdate && config->state && sensorManager)
-    {
-        const BodyFrameData &bodyData = sensorManager->getBodyFrameData();
-
-        if (bodyData.hasAccel && bodyData.hasGyro)
-        {
-            double dt = currentTime - (lastOrientationUpdate / 1000.0);
-            config->state->updateOrientation(bodyData, dt);
-            lastOrientationUpdate = ms;
-        }
+        didUpdateSensors = true;
     }
 
     // Prediction step - run at predict rate
@@ -248,29 +159,16 @@ bool Astra::update(double ms)
     {
         lastPredictUpdate = ms;
         config->state->predictState(currentTime);
+        didPredictState = true;
     }
 
     // Measurement update - run at measurement update rate
     if (ms - lastMeasurementUpdate > config->measurementUpdateInterval)
     {
         lastMeasurementUpdate = ms;
-
-        // Get GPS sensor directly (not managed by SensorManager)
-        GPS *gps = findGPS();
-        bool hasGPS = gps && gps->isInitialized();
-        Vector<3> gpsPos = hasGPS ? gps->getPos() : Vector<3>();
-
-        // Get baro data from SensorManager if available
-        bool hasBaro = sensorManager && sensorManager->getBodyFrameData().hasBaro;
-        double baroAlt = hasBaro ? sensorManager->getBaroAltitude() : 0.0;
-
-        config->state->updateMeasurements(gpsPos, baroAlt, hasGPS, hasBaro, currentTime);
-
-        // Update position/velocity tracking
-        if (hasGPS)
-        {
-            config->state->updatePositionVelocity(gpsPos.x(), gpsPos.y(), gps->getHeading(), gps->getHasFix());
-        }
+        config->state->update(ms);
+        didUpdateState = true;
+    
     }
 
     // Logging update
@@ -279,15 +177,17 @@ bool Astra::update(double ms)
         lastLoggingUpdate = ms;
         if (DataLogger::available())
         {
+            for(uint8_t i = 0; i < DataLogger::instance().getNumReporters(); i++)
+                {
+                    auto d = DataLogger::instance().getReporters()[i];
+                    if (d && d->getAutoUpdate())
+                    {
+                        d->update();
+                    }
+                }
             DataLogger::instance().appendLine();
         }
+        didLog = true;
     }
-
-    // Keep backward compatibility with old updateInterval (deprecated)
-    if (ms - lastStateUpdate > config->updateInterval)
-    {
-        lastStateUpdate = ms;
-    }
-
-    return didUpdate;
+    return true; // bool here is deprecated
 }

@@ -22,11 +22,11 @@ namespace astra
 
     protected:
         Barometer(const char *name = "Barometer");
-        double pressure = 0;
-        double temp = 0;
+        double pressure = 0; // hPa
+        double temp = 0; // deg c
 
         // Altitude-related data
-        double altitudeASL = 0;
+        double altitudeASL = 0; // m
 
         double calcAltitude(double pressure);
     };

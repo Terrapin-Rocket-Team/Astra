@@ -3,14 +3,13 @@
 
 #include "../Filters/Filter.h"
 #include "../Filters/Mahony.h"
-#include "../Sensors/SensorManager/BodyFrameData.h"
 #include "../RecordData/DataReporter/DataReporter.h"
 #include "../Math/Vector.h"
 #include "../Math/Quaternion.h"
 
 namespace astra
 {
-    class ISensorManager;
+    class SensorManager;
 
     /**
      * State - Inertial state estimation
@@ -31,14 +30,14 @@ namespace astra
     class State : public DataReporter
     {
     public:
-        State(Filter *filter, MahonyAHRS *orientationFilter = nullptr);
+        State(Filter *filter, MahonyAHRS *orientationFilter);
         virtual ~State();
 
         /**
          * Configure sensor manager for state estimation
          * Call this before begin() to enable auto-calibration
          */
-        void withSensorManager(ISensorManager *sensorManager);
+        void withSensorManager(SensorManager *sensorManager);
 
         /**
          * Initialize state estimation
@@ -128,7 +127,7 @@ namespace astra
         MahonyAHRS *orientationFilter;
 
         // Sensor manager reference (optional, for calibration)
-        ISensorManager *sensorManager = nullptr;
+        SensorManager *sensorManager = nullptr;
 
         bool initialized = false;
     };

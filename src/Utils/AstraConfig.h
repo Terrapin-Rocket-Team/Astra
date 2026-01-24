@@ -9,7 +9,6 @@ namespace astra
     class State;
     class DataReporter;
     class Sensor;
-    class ISensorManager;
     class SensorManager;
 
     class AstraConfig
@@ -23,22 +22,7 @@ namespace astra
 
         // Add sensors to Astra's knowledge. Astra will manage updating them.
         // No default.
-        AstraConfig &withSensors(Sensor **sensors, int numSensors);
-
-        // Set a custom sensor manager. If not provided, Astra will create a default SensorManager.
-        // The sensor manager handles sensor selection, fallback, and body-frame transformation.
-        // No default (Astra creates one internally).
-        AstraConfig &withSensorManager(ISensorManager *sensorManager);
-
-        // Set a sensor/state update rate (in hz).
-        // Mutually exclusive with `withUpdateInterval()`. Last one called will take effect.
-        // Default `10`.
-        AstraConfig &withUpdateRate(double updateRate);
-
-        // Set a sensor/state update interval (in ms).
-        // Mutually exclusive with `withUpdateRate()`. Last one called will take effect.
-        // Default `100`.
-        AstraConfig &withUpdateInterval(unsigned int updateInterval);
+        AstraConfig &withSensorManager(SensorManager *sensorManager);
 
         // Set sensor read rate (in hz). Sensors will be polled at this rate.
         // Default `30`.
@@ -105,11 +89,6 @@ namespace astra
         // Default `true`, `50`.
         AstraConfig &withBBAsync(bool bbAsync, unsigned int queueSize = 50);
 
-        // Add more `DataReporter` objects for Logger to record flight data from.
-        // Passing in a State (via `withState()`) will also capture the state's sensors for logging, so adding them here is redundant.
-        // No other `DataReporter`s added by default.
-        AstraConfig &withOtherDataReporters(DataReporter **others, uint8_t numOthers);
-
         // Setup which telemetry logs will be written to on update
         // No default
         AstraConfig &withDataLogs(ILogSink **logs, uint8_t numLogs);
@@ -124,22 +103,15 @@ namespace astra
 
     private:
         State *state = nullptr;
-        Sensor **sensors = nullptr;
-        int numSensors = 0;
-        ISensorManager *sensorManager = nullptr;
-        bool ownsSensorManager = false;  // true if Astra created it, false if user provided
+        SensorManager *sensorManager = nullptr;
         int pins[50];
         ILogSink *logs[50];
         uint8_t numLogs = 0;
         bool bbAsync;
         unsigned int maxQueueSize = 50;
-        DataReporter *reporters[50];
-        unsigned int updateInterval = 100;  // in ms (deprecated, use specific intervals)
         unsigned int loggingInterval = 100; // in ms
         double loggingRate = 10;            // in hz
-        double updateRate = 10;             // in hz (deprecated, use specific rates)
 
-        // New split update intervals
         unsigned int sensorUpdateInterval = 33;      // in ms (~30 Hz)
         unsigned int predictInterval = 33;           // in ms (~30 Hz)
         unsigned int measurementUpdateInterval = 50; // in ms (20 Hz)

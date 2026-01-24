@@ -19,19 +19,10 @@ namespace astra
         return *this;
     }
 
-    AstraConfig &AstraConfig::withSensors(Sensor **sensors, int numSensors)
-    {
-        this->sensors = sensors;
-        this->numSensors = numSensors;
-        LOGI("Added %d sensors to Astra", numSensors);
-        return *this;
-    }
-
-    AstraConfig &AstraConfig::withSensorManager(ISensorManager *sensorManager)
+    AstraConfig &AstraConfig::withSensorManager(SensorManager *sensorManager)
     {
         this->sensorManager = sensorManager;
-        this->ownsSensorManager = false;  // User provided, we don't own it
-        LOGI("Custom SensorManager configured");
+        LOGI("Custom SensorManager configured.");
         return *this;
     }
 
@@ -198,17 +189,7 @@ namespace astra
     AstraConfig &AstraConfig::withHITLMode(bool hitlEnabled)
     {
         this->hitlMode = hitlEnabled;
-        if (hitlEnabled) {
-            LOGI("HITL mode enabled - configuring for simulation");
-            // Set all intervals to 0 for maximum simulation speed
-            // User must pass simulation time to update()
-            this->sensorUpdateInterval = 0;
-            this->loggingInterval = 0;
-            this->measurementUpdateInterval = 0;
-            this->predictInterval = 0;
-        } else {
-            LOGI("HITL mode disabled - using normal timing");
-        }
+
         return *this;
     }
 

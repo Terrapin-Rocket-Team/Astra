@@ -1,7 +1,7 @@
 #ifndef MOUNTING_TRANSFORM_H
 #define MOUNTING_TRANSFORM_H
 
-#include "../../Math/Vector.h"
+#include "../Math/Vector.h"
 
 namespace astra
 {

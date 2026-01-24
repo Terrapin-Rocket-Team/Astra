@@ -1,151 +1,206 @@
-// #include <unity.h>
-// #include "NativeTestHelper.h"
+#include <unity.h>
+#include "NativeTestHelper.h"
+#include "UnitTestSensors.h"
+#include <Sensors/MountingTransform.h>
 
-// // include other headers you need to test here
+using namespace astra;
 
-// #include "UnitTestSensors.h"
+// Set up and global variables or mocks for testing here
+FakeIMU imu;
 
-// // ---
+// These two functions are called before and after each test function, and are required in unity, even if empty.
+void setUp(void)
+{
+    imu.begin(); // reset the imu before each test
+}
 
+void tearDown(void)
+{
+    // clean stuff up after each test here, if needed
+}
 
+// Test that IMU initializes correctly
+void test_imu_begin()
+{
+    TEST_ASSERT_TRUE(imu.begin());
+    TEST_ASSERT_TRUE(imu.isInitialized());
 
-// // Set up and global variables or mocks for testing here
+    // Check default values after initialization
+    TEST_ASSERT_EQUAL_FLOAT(0, imu.getAccel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0, imu.getAccel().y());
+    TEST_ASSERT_EQUAL_FLOAT(-9.81, imu.getAccel().z());
+    TEST_ASSERT_EQUAL_FLOAT(0, imu.getAngVel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0, imu.getAngVel().y());
+    TEST_ASSERT_EQUAL_FLOAT(0, imu.getAngVel().z());
+}
 
-// FakeIMU imu;
+// Test setting IMU data
+void test_imu_set()
+{
+    imu.set(Vector<3>{0, 0, 9.8}, Vector<3>{0.01, 0.1, 0.05});
+    imu.update();
 
-// // ---
+    TEST_ASSERT_EQUAL_FLOAT(0, imu.getAccel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0, imu.getAccel().y());
+    TEST_ASSERT_EQUAL_FLOAT(9.8, imu.getAccel().z());
+    TEST_ASSERT_EQUAL_FLOAT(0.01, imu.getAngVel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0.1, imu.getAngVel().y());
+    TEST_ASSERT_EQUAL_FLOAT(0.05, imu.getAngVel().z());
+}
 
+// Test getting individual sensor components
+void test_imu_get_sensors()
+{
+    Accel* accel = imu.getAccelSensor();
+    Gyro* gyro = imu.getGyroSensor();
 
+    TEST_ASSERT_NOT_NULL(accel);
+    TEST_ASSERT_NOT_NULL(gyro);
 
-// // These two functions are called before and after each test function, and are required in unity, even if empty.
-// void setUp(void)
-// {
-//     imu.begin(); // reset the imu before each test
-// }
+    imu.set(Vector<3>{1.0, 2.0, 3.0}, Vector<3>{0.1, 0.2, 0.3});
+    imu.update();
 
-// void tearDown(void)
-// {
-//     // clean stuff up after each test here, if needed
-// }
-// // ---
+    // Test that component sensors return the same data as the IMU
+    TEST_ASSERT_EQUAL_FLOAT(1.0, accel->getAccel().x());
+    TEST_ASSERT_EQUAL_FLOAT(2.0, accel->getAccel().y());
+    TEST_ASSERT_EQUAL_FLOAT(3.0, accel->getAccel().z());
 
+    TEST_ASSERT_EQUAL_FLOAT(0.1, gyro->getAngVel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0.2, gyro->getAngVel().y());
+    TEST_ASSERT_EQUAL_FLOAT(0.3, gyro->getAngVel().z());
+}
 
+// Test IMU with mounting orientation
+void test_imu_mounting_orientation()
+{
+    imu.set(Vector<3>{1.0, 2.0, 3.0}, Vector<3>{0.1, 0.2, 0.3});
 
-// // Test functions must be void and take no arguments, put them here
+    // Set FLIP_YZ orientation (Y and Z flip)
+    imu.setMountingOrientation(MountingOrientation::FLIP_YZ);
+    imu.update();
 
-// // void test_function_name() {
-// //     TEST_ASSERT_EQUAL(expected, actual);
-// //     TEST_ASSERT_EQUAL_FLOAT(expected, actual);
-// // }
+    Vector<3> accel = imu.getAccel();
+    Vector<3> gyro = imu.getAngVel();
 
-// void test_imu_begin()
-// {
-//     TEST_ASSERT_TRUE(imu.begin());
-//     TEST_ASSERT_TRUE(imu.begin());
+    // X unchanged, Y and Z flipped
+    TEST_ASSERT_EQUAL_FLOAT(1.0, accel.x());
+    TEST_ASSERT_EQUAL_FLOAT(-2.0, accel.y());
+    TEST_ASSERT_EQUAL_FLOAT(-3.0, accel.z());
 
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getAcceleration().x());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getAcceleration().y());
-//     TEST_ASSERT_EQUAL_FLOAT(-9.8, imu.getAcceleration().z());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getAngularVelocity().x());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getAngularVelocity().y());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getAngularVelocity().z());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getMagField().x());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getMagField().y());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getMagField().z());
-// }
+    TEST_ASSERT_EQUAL_FLOAT(0.1, gyro.x());
+    TEST_ASSERT_EQUAL_FLOAT(-0.2, gyro.y());
+    TEST_ASSERT_EQUAL_FLOAT(-0.3, gyro.z());
+}
 
-// void test_imu_set()
-// {
-//     imu.set(Vector<3>{0, 0, 9.8}, Vector<3>{.01, .1, .05}, Vector<3>{1, 0, 0});
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getAcceleration().x());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getAcceleration().y());
-//     TEST_ASSERT_EQUAL_FLOAT(9.8, imu.getAcceleration().z());
-//     TEST_ASSERT_EQUAL_FLOAT(.01, imu.getAngularVelocity().x());
-//     TEST_ASSERT_EQUAL_FLOAT(.1, imu.getAngularVelocity().y());
-//     TEST_ASSERT_EQUAL_FLOAT(.05, imu.getAngularVelocity().z());
-//     TEST_ASSERT_EQUAL_FLOAT(1, imu.getMagField().x());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getMagField().y());
-//     TEST_ASSERT_EQUAL_FLOAT(0, imu.getMagField().z());
-// }
+// Test that mounting orientation is applied to component sensors
+void test_imu_component_orientation()
+{
+    imu.set(Vector<3>{1.0, 2.0, 3.0}, Vector<3>{0.1, 0.2, 0.3});
+    imu.setMountingOrientation(MountingOrientation::FLIP_XY);
+    imu.update();
 
-// void test_imu_adaptiveAccelGain()
-// {
-//     TEST_IGNORE();
-//     // Test case 1: Error is less than t_1 (should return 1)
-//     // imu.set(Vector<3>{0, 0, 9.8}, Vector<3>{0, 0, 0}, Vector<3>{0, 0, 0}); // Set acceleration to gravitational acceleration
-//     // double result = imu.adaptiveAccelGain(0.9);
-//     // TEST_ASSERT_EQUAL_FLOAT(.9, result);
+    Accel* accel = imu.getAccelSensor();
+    Gyro* gyro = imu.getGyroSensor();
 
-//     // // Test case 2: Error is between t_1 and t_2 (should return value between 1 and 0)
-//     // imu.set(Vector<3>{0, 0, 8}, Vector<3>{0, 0, 0}, Vector<3>{0, 0, 0}); // Set acceleration close to gravitational acceleration
-//     // result = imu.adaptiveAccelGain(0.9);
-//     // TEST_ASSERT(result < 1.0 && result > 0.0); // Check that result is in range (0, 1)
+    // Component sensors should also have the orientation applied
+    Vector<3> accelData = accel->getAccel();
+    Vector<3> gyroData = gyro->getAngVel();
 
-//     // // Test case 3: Error is greater than t_2 (should return 0)
-//     // imu.set(Vector<3>{0, 0, 12}, Vector<3>{0, 0, 0}, Vector<3>{0, 0, 0}); // Set acceleration significantly above gravitational acceleration
-//     // result = imu.adaptiveAccelGain(0.9);
-//     // TEST_ASSERT_EQUAL_FLOAT(0.0, result);
-// }
+    // X and Y flipped, Z unchanged
+    TEST_ASSERT_EQUAL_FLOAT(-1.0, accelData.x());
+    TEST_ASSERT_EQUAL_FLOAT(-2.0, accelData.y());
+    TEST_ASSERT_EQUAL_FLOAT(3.0, accelData.z());
 
-// void test_quaternion_based_complimentary_filter()
-// {
-//     TEST_IGNORE();
-//     // Test case 1: Propagate orientation with zero angular velocity, and acceleration aligning with gravity
-//     // imu.begin();
-//     // imu.set(Vector<3>{0.0, 0.0, 9.81}, Vector<3>{0.0, 0.0, 0.0}, Vector<3>{0.0, 0.0, 0.0}); // Set accel to gravity and angular velocity to 0
-//     // imu.quaternionBasedComplimentaryFilter((double)updateInterval/1000); // Run filter with small time step
+    TEST_ASSERT_EQUAL_FLOAT(-0.1, gyroData.x());
+    TEST_ASSERT_EQUAL_FLOAT(-0.2, gyroData.y());
+    TEST_ASSERT_EQUAL_FLOAT(0.3, gyroData.z());
+}
 
-//     // // Expected orientation should still be close to identity quaternion (no angular motion)
-//     // Quaternion expected_orientation = Quaternion{1.0, 0.0, 0.0, 0.0};
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.w(), imu.getOrientation().w());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.x(), imu.getOrientation().x());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.y(), imu.getOrientation().y());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.z(), imu.getOrientation().z());
+// Test multiple updates with changing data
+void test_imu_multiple_updates()
+{
+    // First update
+    imu.set(Vector<3>{1.0, 0.0, 0.0}, Vector<3>{0.1, 0.0, 0.0});
+    imu.update();
 
-//     // // Test case 2: Small angular velocity with no external acceleration, identity quaternion
-//     // imu.begin();
-//     // imu.set(Vector<3>{0.0, 0.0, 9.81}, Vector<3>{0.1, 0.0, 0.0}, Vector<3>{0.0, 0.0, 0.0}); // Set small angular velocity in x direction
-//     // imu.quaternionBasedComplimentaryFilter((double)updateInterval/1000); // Run filter
-    
-//     // // Check if the orientation has slightly changed due to angular velocity
-//     // expected_orientation = Quaternion{0.999999875, .000499994313, 0.0, 0.0};
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.w(), imu.getOrientation().w());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.x(), imu.getOrientation().x());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.y(), imu.getOrientation().y());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.z(), imu.getOrientation().z());
+    TEST_ASSERT_EQUAL_FLOAT(1.0, imu.getAccel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0.1, imu.getAngVel().x());
 
-//     // // Test case 3: Large angular velocity and non-gravitational acceleration
-//     // imu.begin();
-//     // imu.set(Vector<3>{2.0, 2.0, 5.0}, Vector<3>{1.0, 1.0, 1.0}, Vector<3>{0.5, 0.5, 0.5}); // Random non-gravity forces
-//     // imu.quaternionBasedComplimentaryFilter((double)updateInterval/1000); // Run filter
+    // Second update with different values
+    imu.set(Vector<3>{0.0, 2.0, 0.0}, Vector<3>{0.0, 0.2, 0.0});
+    imu.update();
 
-//     // TEST_IGNORE_MESSAGE("Magnetometer code doesn't work");
-//     // // The result should deviate significantly from the identity quaternion
-//     // expected_orientation = Quaternion{0.9517171, 0.06399739, 0.02944679, -0.29878383};
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.w(), imu.getOrientation().w());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.x(), imu.getOrientation().x());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.y(), imu.getOrientation().y());
-//     // TEST_ASSERT_EQUAL_FLOAT(expected_orientation.z(), imu.getOrientation().z());
-// }
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAccel().x());
+    TEST_ASSERT_EQUAL_FLOAT(2.0, imu.getAccel().y());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAngVel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0.2, imu.getAngVel().y());
 
-// // ---
+    // Third update
+    imu.set(Vector<3>{0.0, 0.0, 3.0}, Vector<3>{0.0, 0.0, 0.3});
+    imu.update();
 
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAccel().y());
+    TEST_ASSERT_EQUAL_FLOAT(3.0, imu.getAccel().z());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAngVel().y());
+    TEST_ASSERT_EQUAL_FLOAT(0.3, imu.getAngVel().z());
+}
 
+// Test zero values
+void test_imu_zero_values()
+{
+    imu.set(Vector<3>{0.0, 0.0, 0.0}, Vector<3>{0.0, 0.0, 0.0});
+    imu.update();
 
-// // This is the main function that runs all the tests. It should be the last thing in the file.
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAccel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAccel().y());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAccel().z());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAngVel().x());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAngVel().y());
+    TEST_ASSERT_EQUAL_FLOAT(0.0, imu.getAngVel().z());
+}
+
+// Test large values
+void test_imu_large_values()
+{
+    imu.set(Vector<3>{100.0, 200.0, 300.0}, Vector<3>{10.0, 20.0, 30.0});
+    imu.update();
+
+    TEST_ASSERT_EQUAL_FLOAT(100.0, imu.getAccel().x());
+    TEST_ASSERT_EQUAL_FLOAT(200.0, imu.getAccel().y());
+    TEST_ASSERT_EQUAL_FLOAT(300.0, imu.getAccel().z());
+    TEST_ASSERT_EQUAL_FLOAT(10.0, imu.getAngVel().x());
+    TEST_ASSERT_EQUAL_FLOAT(20.0, imu.getAngVel().y());
+    TEST_ASSERT_EQUAL_FLOAT(30.0, imu.getAngVel().z());
+}
+
+// Test negative values
+void test_imu_negative_values()
+{
+    imu.set(Vector<3>{-1.0, -2.0, -3.0}, Vector<3>{-0.1, -0.2, -0.3});
+    imu.update();
+
+    TEST_ASSERT_EQUAL_FLOAT(-1.0, imu.getAccel().x());
+    TEST_ASSERT_EQUAL_FLOAT(-2.0, imu.getAccel().y());
+    TEST_ASSERT_EQUAL_FLOAT(-3.0, imu.getAccel().z());
+    TEST_ASSERT_EQUAL_FLOAT(-0.1, imu.getAngVel().x());
+    TEST_ASSERT_EQUAL_FLOAT(-0.2, imu.getAngVel().y());
+    TEST_ASSERT_EQUAL_FLOAT(-0.3, imu.getAngVel().z());
+}
+
 int main(int argc, char **argv)
 {
-//     UNITY_BEGIN();
+    UNITY_BEGIN();
 
-//     // Add your tests here
-//     // RUN_TEST(test_function_name); // no parentheses after function name
-//     RUN_TEST(test_imu_begin);
-//     RUN_TEST(test_imu_set);
-//     RUN_TEST(test_imu_adaptiveAccelGain);
-    
-//     RUN_TEST(test_quaternion_based_complimentary_filter); // TODO: Fix test
-//     UNITY_END();
+    RUN_TEST(test_imu_begin);
+    RUN_TEST(test_imu_set);
+    RUN_TEST(test_imu_get_sensors);
+    RUN_TEST(test_imu_mounting_orientation);
+    RUN_TEST(test_imu_component_orientation);
+    RUN_TEST(test_imu_multiple_updates);
+    RUN_TEST(test_imu_zero_values);
+    RUN_TEST(test_imu_large_values);
+    RUN_TEST(test_imu_negative_values);
 
+    UNITY_END();
     return 0;
 }
-// ---

@@ -1,8 +1,7 @@
 #ifndef GYRO_H
 #define GYRO_H
 
-#include "../Sensor.h"
-#include "../SensorManager/RotatableSensor.h"
+#include "Sensors/RotatableSensor.h"
 #include "../../Math/Vector.h"
 
 namespace astra
