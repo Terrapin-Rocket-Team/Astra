@@ -21,6 +21,7 @@ namespace astra
         bool info(const char *fmt, ...);
         bool warn(const char *fmt, ...);
         bool err(const char *fmt, ...);
+        bool dbg(const char *fmt, ...);
 
         static void configure(ILogSink **sinks, uint8_t count);
         static EventLogger &instance();
@@ -34,4 +35,5 @@ namespace astra
 #define LOGI(...) ::astra::EventLogger::instance().info(__VA_ARGS__)
 #define LOGW(...) ::astra::EventLogger::instance().warn(__VA_ARGS__)
 #define LOGE(...) ::astra::EventLogger::instance().err(__VA_ARGS__)
+#define LOGD(...) ::astra::EventLogger::instance().dbg(__VA_ARGS__)
 #endif

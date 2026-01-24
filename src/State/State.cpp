@@ -77,20 +77,35 @@ namespace astra
         if (sensorManager && sensorManager->isOK())
         {
             LOGI("Auto-calibrating orientation filter...");
+
+            // Set to CALIBRATING to accumulate bias and track vertical
             orientationFilter->setMode(MahonyMode::CALIBRATING);
+
 #ifndef NATIVE
-            // Collect calibration samples using body frame data
+            // Collect calibration samples
+            // The new Mahony update() accumulates sums internally in CALIBRATING mode
             const int calibSamples = 200;
             for (int i = 0; i < calibSamples; i++)
             {
                 sensorManager->update();
-                orientationFilter->update(sensorManager->getAccel(), sensorManager->getGyro(), 0.01); // Assume ~100Hz
+                // Assume ~100Hz for the delay(10) loop
+                orientationFilter->update(sensorManager->getAccel(), sensorManager->getGyro(), 0.01);
                 delay(10);
             }
 #endif
-            // Keep in CALIBRATING mode - don't auto-switch out
-            orientationFilter->setMode(MahonyMode::CORRECTING);
-            LOGI("Orientation filter calibrated and staying in CALIBRATING mode.");
+            // Compute the bias from the samples we just took
+            orientationFilter->finalizeCalibration();
+
+            // IMPORTANT: We REMAIN in CALIBRATING mode.
+            // This allows the filter to continue snapping to the "nearest vertical"
+            // while the rocket is on the rail, compensating for rail tilt or loading.
+            //
+            // The Launch Detection logic (in StateMachine) MUST call:
+            // orientationFilter->lockFrame();
+            // orientationFilter->setMode(MahonyMode::CORRECTING);
+            // at the moment of liftoff.
+
+            LOGI("Orientation calibration complete. Filter remaining in CALIBRATING mode until liftoff.");
         }
         else
         {
@@ -163,7 +178,9 @@ namespace astra
         }
 
         if (dt <= 0)
+        {
             return;
+        }
 
         // Update orientation (happens every update)
         updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
@@ -220,6 +237,7 @@ namespace astra
         velocity.x() = stateVars[3];
         velocity.y() = stateVars[4];
         velocity.z() = stateVars[5];
+
     }
 
     void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)
@@ -227,24 +245,29 @@ namespace astra
         if (!orientationFilter)
             return;
 
-        // Automatic mode switching based on accelerometer magnitude
-        // EXCEPT when in CALIBRATING mode - stay in calibration until explicitly changed
-        if (orientationFilter->isInitialized())
+        MahonyMode currentMode = orientationFilter->getMode();
+
+        // High-G Logic:
+        // Only perform automatic switching if we are NOT in CALIBRATING mode.
+        // If we are CALIBRATING (on pad), we trust the specific pad logic (snapping to gravity)
+        // and ignore the magnitude checks.
+        if (orientationFilter->isReady() && currentMode != MahonyMode::CALIBRATING)
         {
             double accelMag = accel.magnitude();
             double accelError = abs(accelMag - 9.81);
 
             // Threshold: if accel error < 1 m/s^2, trust the accelerometer
+            // This switches between normal flight (CORRECTING) and motor burn (GYRO_ONLY)
             if (accelError < 1.0)
             {
-                if (orientationFilter->getMode() != MahonyMode::CORRECTING)
+                if (currentMode != MahonyMode::CORRECTING)
                 {
                     orientationFilter->setMode(MahonyMode::CORRECTING);
                 }
             }
             else
             {
-                if (orientationFilter->getMode() != MahonyMode::GYRO_ONLY)
+                if (currentMode != MahonyMode::GYRO_ONLY)
                 {
                     orientationFilter->setMode(MahonyMode::GYRO_ONLY);
                 }
@@ -255,11 +278,14 @@ namespace astra
         orientationFilter->update(accel, gyro, dt);
 
         // Update orientation and earth-frame acceleration from filter
-        if (orientationFilter->isInitialized())
+        if (orientationFilter->isReady())
         {
             orientation = orientationFilter->getQuaternion();
             // Get earth-frame acceleration (with gravity subtracted)
             acceleration = orientationFilter->getEarthAcceleration(accel);
+
+            // Debugging output could go here
+            fprintf(stderr, "DEBUG State::updateOrientation: ...\n");
         }
     }
 
@@ -291,13 +317,15 @@ namespace astra
             currentTime = millis() / 1000.0;
 
         double dt = currentTime - lastTime;
+
         if (dt <= 0)
+        {
             return;
+        }
 
         // Update orientation first (happens every predict step)
         updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
 
-        //ownership of this is passed to KF.
         // Prepare control inputs (earth-frame acceleration from orientation filter)
         double *inputs = new double[filter->getInputSize()];
         inputs[0] = acceleration.x();
@@ -314,6 +342,7 @@ namespace astra
 
         LinearKalmanFilter *kf = static_cast<LinearKalmanFilter *>(filter);
         kf->setState(stateVars);
+
         kf->predict(dt, inputs);
         kf->getState(stateVars);
 

@@ -1,5 +1,9 @@
 #include "EventLogger.h"
 
+#ifdef NATIVE
+#include <stdio.h>
+#endif
+
 namespace astra
 {
     EventLogger EventLogger::_global{nullptr, 0};
@@ -25,6 +29,9 @@ namespace astra
 
     bool EventLogger::info(const char *fmt, ...)
     {
+#if defined(NATIVE) && defined(NOLOGI)
+        return false;
+#endif
         va_list ap;
         va_start(ap, fmt);
         const bool rc = vrecord("INFO", fmt, ap);
@@ -34,6 +41,9 @@ namespace astra
 
     bool EventLogger::warn(const char *fmt, ...)
     {
+#if defined(NATIVE) && defined(NOLOGW)
+        return false;
+#endif
         va_list ap;
         va_start(ap, fmt);
         const bool rc = vrecord("WARNING", fmt, ap);
@@ -43,11 +53,26 @@ namespace astra
 
     bool EventLogger::err(const char *fmt, ...)
     {
+#if defined(NATIVE) && defined(NOLOGE)
+        return false;
+#endif
         va_list ap;
         va_start(ap, fmt);
         const bool rc = vrecord("ERROR", fmt, ap);
         va_end(ap);
         return rc;
+    }
+    bool EventLogger::dbg(const char *fmt, ...)
+    {
+#ifdef DEBUG
+        va_list ap;
+        va_start(ap, fmt);
+        const bool rc = vrecord("DEBUG", fmt, ap);
+        va_end(ap);
+        return rc;
+#else
+        return false;
+#endif
     }
 
     void EventLogger::configure(ILogSink **sinks, uint8_t count)
@@ -84,6 +109,15 @@ namespace astra
 
         char pre[32];
         int m = snprintf(pre, sizeof(pre), "%.3f [%s]: ", millis() / 1000.0, lvl);
+
+#ifdef NATIVE
+        // On native builds, also output to stdout/stderr
+        #ifndef NATIVE_NO_STDOUT_LOG
+        FILE* stream = (strcmp(lvl, "ERROR") == 0) ? stderr : stdout;
+        fprintf(stream, "%s%s\n", pre, msg);
+        fflush(stream);
+        #endif
+#endif
 
         bool wroteAny = false;
         for (uint8_t i = 0; i < _count; i++)

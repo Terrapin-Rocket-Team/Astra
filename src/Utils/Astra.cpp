@@ -70,7 +70,6 @@ void Astra::init()
 
     // Loggign next
     DataLogger::configure(config->logs, config->numLogs);
-    LOGI("config -> hitl %d", config->hitlMode);
     // setup for HITL
     if (config->hitlMode)
     {
@@ -106,6 +105,7 @@ void Astra::init()
 }
 bool Astra::update(double ms)
 {
+    
     _didLog = false;
     _didUpdateSensors = false;
     _didUpdateState = false;
@@ -129,6 +129,7 @@ bool Astra::update(double ms)
 
     // Convert ms to seconds for State time tracking (HITL compatibility)
     double currentTime = ms / 1000.0;
+    
 
     if (!config->state)
     {
@@ -142,39 +143,46 @@ bool Astra::update(double ms)
     }
 
     // Sensor update - highest frequency
-    if (ms - lastSensorUpdate > config->sensorUpdateInterval)
+    
+    if (ms - lastSensorUpdate >= config->sensorUpdateInterval)
     {
+        
         lastSensorUpdate = ms;
         if (config->sensorManager)
         {
             config->sensorManager->update();
-            LOGI("Accel: %.2f, %.2f, %.2f", config->sensorManager->getAccel().x(), config->sensorManager->getAccel().y(), config->sensorManager->getAccel().z());
         }
         _didUpdateSensors = true;
-    }
-    else{
-        LOGI("Not time to update yet: %f - %f < %d", ms, lastSensorUpdate, config->sensorUpdateInterval);
+        
     }
 
     // Prediction step - run at predict rate
-    if (ms - lastPredictUpdate > config->predictInterval)
+    
+    if (ms - lastPredictUpdate >= config->predictInterval)
     {
+        
         lastPredictUpdate = ms;
         config->state->predictState(currentTime);
         _didPredictState = true;
+        
     }
 
     // Measurement update - run at measurement update rate
-    if (ms - lastMeasurementUpdate > config->measurementUpdateInterval)
+    
+    if (ms - lastMeasurementUpdate >= config->measurementUpdateInterval)
     {
+        
         lastMeasurementUpdate = ms;
         config->state->update(ms);
         _didUpdateState = true;
+        
     }
 
     // Logging update
-    if (ms - lastLoggingUpdate > config->loggingInterval)
+    
+    if (ms - lastLoggingUpdate >= config->loggingInterval)
     {
+        
         lastLoggingUpdate = ms;
         if (DataLogger::available())
         {
@@ -189,6 +197,8 @@ bool Astra::update(double ms)
             DataLogger::instance().appendLine();
         }
         _didLog = true;
+        
     }
+    
     return true; // bool here is deprecated
 }

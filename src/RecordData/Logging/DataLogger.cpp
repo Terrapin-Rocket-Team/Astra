@@ -1,5 +1,26 @@
 #include "DataLogger.h"
 
+#ifdef NATIVE
+#include <stdio.h>
+
+// Simple Print wrapper for stdout on native builds
+class StdoutPrint : public Print
+{
+public:
+    size_t write(uint8_t c) override
+    {
+        return fputc(c, stdout) != EOF ? 1 : 0;
+    }
+
+    size_t write(const uint8_t *buffer, size_t size) override
+    {
+        return fwrite(buffer, 1, size, stdout);
+    }
+};
+
+static StdoutPrint stdoutPrint;
+#endif
+
 namespace astra
 {
     DataLogger DataLogger::_global{};
@@ -56,6 +77,31 @@ namespace astra
     {
         if (!_ok)
             return false;
+
+#ifdef NATIVE
+        // On native builds, also output to stdout
+        #ifndef NATIVE_NO_STDOUT_DATA
+        if (_countReporters > 0 && _reporterRegistry[0]->getNumColumns() > 0)
+        {
+            stdoutPrint.print("TELEM/");
+        }
+        for (int j = 0; j < _countReporters; ++j)
+        {
+            for (DataPoint *d = _reporterRegistry[j]->getDataPoints(); d != nullptr; d = d->next)
+            {
+                d->emit(&stdoutPrint, d);
+                if (d != _reporterRegistry[j]->getLastPoint())
+                    stdoutPrint.write(',');
+            }
+            if (j != _countReporters - 1)
+                stdoutPrint.write(',');
+            else
+                stdoutPrint.write('\n');
+        }
+        fflush(stdout);
+        #endif
+#endif
+
         for (int i = 0; i < _countSinks; i++)
         {
             if (!_sinks[i]->ok())
