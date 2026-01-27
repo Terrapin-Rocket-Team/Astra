@@ -109,17 +109,17 @@ namespace astra
         uint8_t numLogs = 0;
         bool bbAsync;
         unsigned int maxQueueSize = 50;
-        unsigned int loggingInterval = 100; // in ms
-        double loggingRate = 10;            // in hz
+        double loggingInterval = 0.100; // in seconds (100ms = 10Hz)
+        double loggingRate = 10;        // in hz
 
-        unsigned int sensorUpdateInterval = 33;      // in ms (~30 Hz)
-        unsigned int predictInterval = 33;           // in ms (~30 Hz)
-        unsigned int measurementUpdateInterval = 50; // in ms (20 Hz)
-        double sensorUpdateRate = 30;                // in hz
-        double predictRate = 30;                     // in hz
-        double measurementUpdateRate = 20;           // in hz
+        double sensorUpdateInterval = 0.033;      // in seconds (~30 Hz)
+        double predictInterval = 0.033;           // in seconds (~30 Hz)
+        double measurementUpdateInterval = 0.050; // in seconds (20 Hz)
+        double sensorUpdateRate = 30;             // in hz
+        double predictRate = 30;                  // in hz
+        double measurementUpdateRate = 20;        // in hz
 
-        bool hitlMode = false;                       // HITL mode enabled
+        bool hitlMode = false;                    // HITL mode enabled
 
         uint8_t numReporters = 0;
     };

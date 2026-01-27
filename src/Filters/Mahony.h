@@ -96,9 +96,10 @@ namespace astra
                 Vector<3> bodyAccel = _boardToBody.rotateVector(accel);
 
                 // 4. Compute absolute tilt (residual rotation)
+                // Accelerometer measures specific force (reaction), not gravity direction
+                // If accel reads +Z, gravity points -Z
                 // In ENU Body frame, gravity should be -Z (0, 0, -1).
-                // We calculate rotation from Earth Down (-Z) to Measured Down.
-                Vector<3> bodyDown = bodyAccel;
+                Vector<3> bodyDown = bodyAccel * (-1.0);  // Invert: specific force -> gravity direction
                 bodyDown.normalize();
                 Vector<3> earthDown(0.0, 0.0, -1.0);
 
@@ -185,7 +186,7 @@ namespace astra
          * Returns true if the filter has processed at least one sample
          * and can provide a valid quaternion.
          */
-        bool isReady() const { return _orientationValid; }
+        virtual bool isReady() const { return _orientationValid; }
 
         bool isFrameLocked() const { return _frameLocked; }
 
@@ -198,7 +199,7 @@ namespace astra
          * If frame is locked (flight), returns orientation relative to launch.
          * If frame unlocked (pad), returns absolute tilt relative to vertical.
          */
-        Quaternion getQuaternion() const
+        virtual Quaternion getQuaternion() const
         {
             if (!_orientationValid)
                 return Quaternion(1.0, 0.0, 0.0, 0.0);
@@ -214,12 +215,12 @@ namespace astra
             }
         }
 
-        Vector<3> getEarthAcceleration(const Vector<3> &accel) const
+        virtual Vector<3> getEarthAcceleration(const Vector<3> &accel) const
         {
             Vector<3> bodyAccel = _boardToBody.rotateVector(accel);
             Quaternion qInv = _q.conjugate();
             Vector<3> earthAcc = qInv.rotateVector(bodyAccel);
-            earthAcc.z() += 9.81; // Remove gravity
+            earthAcc.z() -= 9.81; // Convert specific force to inertial accel (add gravity: g=[0,0,-9.81] in ENU)
             return earthAcc;
         }
 
@@ -239,6 +240,7 @@ namespace astra
 
     private:
         // Logic to snap board frame to body frame (ENU) based on gravity vector
+        // Maps sensor reading to ENU: +Z up, +X east, +Y north
         Quaternion computeBoardToBodyRotation(const Vector<3> &accel) const
         {
             double absX = fabs(accel.x());
@@ -247,24 +249,33 @@ namespace astra
 
             if (absZ >= absX && absZ >= absY)
             {
-                if (accel.z() < 0)
-                    return Quaternion(1.0, 0.0, 0.0, 0.0);
+                // Z-axis dominant: sensor Z-axis aligned with vertical
+                if (accel.z() > 0)
+                    // +Z reads gravity: sensor aligned correctly (Z-up = ENU)
+                    return Quaternion(1.0, 0.0, 0.0, 0.0);  // Identity
                 else
-                    return Quaternion(0.0, 1.0, 0.0, 0.0);
+                    // -Z reads gravity: sensor upside down
+                    return Quaternion(0.0, 1.0, 0.0, 0.0);  // 180° around X
             }
             else if (absX >= absY && absX >= absZ)
             {
-                if (accel.x() < 0)
-                    return Quaternion(0.707107, 0.0, 0.707107, 0.0);
-                else
+                // X-axis dominant: sensor X-axis aligned with vertical
+                if (accel.x() > 0)
+                    // +X reads gravity: rotate -90° around Y to bring X->Z
                     return Quaternion(0.707107, 0.0, -0.707107, 0.0);
+                else
+                    // -X reads gravity: rotate +90° around Y
+                    return Quaternion(0.707107, 0.0, 0.707107, 0.0);
             }
             else
             {
-                if (accel.y() < 0)
-                    return Quaternion(0.707107, -0.707107, 0.0, 0.0);
-                else
+                // Y-axis dominant: sensor Y-axis aligned with vertical
+                if (accel.y() > 0)
+                    // +Y reads gravity: rotate +90° around X to bring Y->Z
                     return Quaternion(0.707107, 0.707107, 0.0, 0.0);
+                else
+                    // -Y reads gravity: rotate -90° around X
+                    return Quaternion(0.707107, -0.707107, 0.0, 0.0);
             }
         }
 

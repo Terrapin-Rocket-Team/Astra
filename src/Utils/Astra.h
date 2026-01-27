@@ -19,7 +19,7 @@ namespace astra
         ~Astra();
 
         void init();
-        bool update(double ms = -1); // returns true if state update occurred
+        bool update(double timeSeconds = -1); // Pass simulation time in seconds, or -1 to use millis()
         SerialMessageRouter* getMessageRouter() { return messageRouter; }
 
         bool didLog() { return _didLog; }

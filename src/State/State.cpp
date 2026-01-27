@@ -8,7 +8,7 @@
 
 namespace astra
 {
-    State::State(Filter *filter, MahonyAHRS *orientationFilter) : DataReporter("State")
+    State::State(LinearKalmanFilter *filter, MahonyAHRS *orientationFilter) : DataReporter("State")
     {
         if (!filter)
         {
@@ -39,7 +39,6 @@ namespace astra
 
     State::~State()
     {
-        delete[] stateVars;
     }
 
 #pragma endregion
@@ -71,7 +70,6 @@ namespace astra
 
         // Initialize Kalman filter
         filter->initialize();
-        stateVars = new double[filter->getStateSize()];
 
         // Auto-calibrate orientation filter if sensor manager is available
         if (sensorManager && sensorManager->isOK())
@@ -163,30 +161,13 @@ namespace astra
             return;
         }
 
-        // Update time
-        double dt = 0.0;
-        if (newTime != -1)
-        {
-            dt = newTime - currentTime;
-            currentTime = newTime;
-        }
-        else
-        {
-            double newT = millis() / 1000.0;
-            dt = newT - currentTime;
-            currentTime = newT;
-        }
+        // NOTE: In split predict/update mode, time management is handled by predictState()
+        // This method just performs the measurement update without time propagation
+        // Orientation is also already updated by predictState(), so we skip it here
 
-        if (dt <= 0)
-        {
-            return;
-        }
-
-        // Update orientation (happens every update)
-        updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
-
-        // Prepare measurements from SensorManager
-        double *measurements = new double[filter->getMeasurementSize()];
+        // Prepare measurements: [px, py, pz, ax, ay, az]
+        // State now includes acceleration, so we measure it
+        double measurementData[6];
 
         // Check if we have GPS data
         bool hasGPS = false;
@@ -204,13 +185,13 @@ namespace astra
             hasGPS = true;
             // Get displacement from origin in meters
             Vector<3> displacement = sensorManager->getPrimaryGPS()->getDisplacement(origin);
-            measurements[0] = displacement.x(); // displacement in meters (north)
-            measurements[1] = displacement.y(); // displacement in meters (east)
+            measurementData[0] = displacement.x(); // displacement in meters (north)
+            measurementData[1] = displacement.y(); // displacement in meters (east)
         }
         else
         {
-            measurements[0] = 0;
-            measurements[1] = 0;
+            measurementData[0] = 0;
+            measurementData[1] = 0;
         }
 
         // Check if we have barometer data
@@ -218,25 +199,41 @@ namespace astra
         if (sensorManager->getPrimaryBaro() && sensorManager->getPrimaryBaro()->isInitialized())
         {
             hasBaro = true;
-            measurements[2] = sensorManager->getPrimaryBaro()->getASLAltM() - origin.z();
+            measurementData[2] = sensorManager->getPrimaryBaro()->getASLAltM() - origin.z();
         }
         else
         {
-            measurements[2] = 0;
+            measurementData[2] = 0;
         }
 
-        // Run KF measurement update
-        LinearKalmanFilter *kf = static_cast<LinearKalmanFilter *>(filter);
-        kf->update(measurements);
-        kf->getState(stateVars);
+        // Convert body-frame acceleration to earth-frame for measurement
+        // This is the MEASUREMENT, not the state variable
+        Vector<3> earthAccelMeasurement(0, 0, 0);
+        if (orientationFilter && orientationFilter->isReady())
+        {
+            earthAccelMeasurement = orientationFilter->getEarthAcceleration(sensorManager->getAccel());
+        }
+        measurementData[3] = earthAccelMeasurement.x();
+        measurementData[4] = earthAccelMeasurement.y();
+        measurementData[5] = earthAccelMeasurement.z();
+
+        // Create measurement matrix and run KF update
+        Matrix measurements(6, 1, measurementData);
+        filter->update(measurements);
+
+        // Extract updated state: [px, py, pz, vx, vy, vz, ax, ay, az]
+        Matrix state = filter->getState();
 
         // Update state variables from measurement update
-        position.x() = stateVars[0];
-        position.y() = stateVars[1];
-        position.z() = stateVars[2];
-        velocity.x() = stateVars[3];
-        velocity.y() = stateVars[4];
-        velocity.z() = stateVars[5];
+        position.x() = state(0, 0);
+        position.y() = state(1, 0);
+        position.z() = state(2, 0);
+        velocity.x() = state(3, 0);
+        velocity.y() = state(4, 0);
+        velocity.z() = state(5, 0);
+        acceleration.x() = state(6, 0);
+        acceleration.y() = state(7, 0);
+        acceleration.z() = state(8, 0);
 
     }
 
@@ -277,15 +274,15 @@ namespace astra
         // Update the orientation filter
         orientationFilter->update(accel, gyro, dt);
 
-        // Update orientation and earth-frame acceleration from filter
+        // Update orientation quaternion from filter
         if (orientationFilter->isReady())
         {
             orientation = orientationFilter->getQuaternion();
-            // Get earth-frame acceleration (with gravity subtracted)
-            acceleration = orientationFilter->getEarthAcceleration(accel);
 
-            // Debugging output could go here
-            fprintf(stderr, "DEBUG State::updateOrientation: ...\n");
+            // NOTE: We DO NOT set acceleration here!
+            // Acceleration comes from the Kalman Filter state, not directly from sensors.
+            // The orientation filter's job is only to provide the quaternion for rotating
+            // body-frame measurements to earth-frame.
         }
     }
 
@@ -324,35 +321,28 @@ namespace astra
         }
 
         // Update orientation first (happens every predict step)
+        // This computes earth-frame acceleration from body-frame measurements
         updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
 
-        // Prepare control inputs (earth-frame acceleration from orientation filter)
-        double *inputs = new double[filter->getInputSize()];
-        inputs[0] = acceleration.x();
-        inputs[1] = acceleration.y();
-        inputs[2] = acceleration.z();
+        // Run KF prediction step with no control input (acceleration is now part of state)
+        // The KF maintains its own internal state continuity from the previous update/predict
+        // Control matrix is empty (0 inputs), so we pass an empty Matrix
+        Matrix emptyControl(0, 1, nullptr);
+        filter->predict(dt, emptyControl);
 
-        // Set current state into filter before predicting
-        stateVars[0] = position.x();
-        stateVars[1] = position.y();
-        stateVars[2] = position.z();
-        stateVars[3] = velocity.x();
-        stateVars[4] = velocity.y();
-        stateVars[5] = velocity.z();
-
-        LinearKalmanFilter *kf = static_cast<LinearKalmanFilter *>(filter);
-        kf->setState(stateVars);
-
-        kf->predict(dt, inputs);
-        kf->getState(stateVars);
+        // Extract predicted state: [px, py, pz, vx, vy, vz, ax, ay, az]
+        Matrix state = filter->getState();
 
         // Update state variables from prediction
-        position.x() = stateVars[0];
-        position.y() = stateVars[1];
-        position.z() = stateVars[2];
-        velocity.x() = stateVars[3];
-        velocity.y() = stateVars[4];
-        velocity.z() = stateVars[5];
+        position.x() = state(0, 0);
+        position.y() = state(1, 0);
+        position.z() = state(2, 0);
+        velocity.x() = state(3, 0);
+        velocity.y() = state(4, 0);
+        velocity.z() = state(5, 0);
+        acceleration.x() = state(6, 0);
+        acceleration.y() = state(7, 0);
+        acceleration.z() = state(8, 0);
 
     }
 

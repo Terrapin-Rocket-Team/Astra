@@ -1,7 +1,7 @@
 #ifndef STATE_H
 #define STATE_H
 
-#include "../Filters/Filter.h"
+#include "../Filters/LinearKalmanFilter.h"
 #include "../Filters/Mahony.h"
 #include "../RecordData/DataReporter/DataReporter.h"
 #include "../Math/Vector.h"
@@ -30,7 +30,7 @@ namespace astra
     class State : public DataReporter
     {
     public:
-        State(Filter *filter, MahonyAHRS *orientationFilter);
+        State(LinearKalmanFilter *filter, MahonyAHRS *orientationFilter);
         virtual ~State();
 
         /**
@@ -89,9 +89,8 @@ namespace astra
         double heading;         // in degrees
         Vector<3> origin;       // in lat, lon, alt
 
-        // Kalman Filter for position/velocity estimation
-        Filter *filter;
-        double *stateVars = nullptr;
+        // Kalman Filter for position/velocity/acceleration estimation
+        LinearKalmanFilter *filter;
 
         // Orientation filter (Mahony AHRS) - body to inertial transformation
         MahonyAHRS *orientationFilter;

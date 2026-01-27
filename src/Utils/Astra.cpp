@@ -103,9 +103,9 @@ void Astra::init()
     ready = true;
     LOGI("Astra initialized.");
 }
-bool Astra::update(double ms)
+bool Astra::update(double timeSeconds)
 {
-    
+
     _didLog = false;
     _didUpdateSensors = false;
     _didUpdateState = false;
@@ -124,11 +124,12 @@ bool Astra::update(double ms)
     }
 
     bb.update();
-    if (ms == -1)
-        ms = millis();
 
-    // Convert ms to seconds for State time tracking (HITL compatibility)
-    double currentTime = ms / 1000.0;
+    // If no time provided, use system time in seconds
+    if (timeSeconds == -1)
+        timeSeconds = millis() / 1000.0;
+
+    double currentTime = timeSeconds;
     
 
     if (!config->state)
@@ -143,47 +144,47 @@ bool Astra::update(double ms)
     }
 
     // Sensor update - highest frequency
-    
-    if (ms - lastSensorUpdate >= config->sensorUpdateInterval)
+
+    if (timeSeconds - lastSensorUpdate >= config->sensorUpdateInterval)
     {
-        
-        lastSensorUpdate = ms;
+
+        lastSensorUpdate = timeSeconds;
         if (config->sensorManager)
         {
             config->sensorManager->update();
         }
         _didUpdateSensors = true;
-        
+
     }
 
     // Prediction step - run at predict rate
-    
-    if (ms - lastPredictUpdate >= config->predictInterval)
+
+    if (timeSeconds - lastPredictUpdate >= config->predictInterval)
     {
-        
-        lastPredictUpdate = ms;
+
+        lastPredictUpdate = timeSeconds;
         config->state->predictState(currentTime);
         _didPredictState = true;
-        
+
     }
 
     // Measurement update - run at measurement update rate
-    
-    if (ms - lastMeasurementUpdate >= config->measurementUpdateInterval)
+
+    if (timeSeconds - lastMeasurementUpdate >= config->measurementUpdateInterval)
     {
-        
-        lastMeasurementUpdate = ms;
-        config->state->update(ms);
+
+        lastMeasurementUpdate = timeSeconds;
+        config->state->update(currentTime);
         _didUpdateState = true;
-        
+
     }
 
     // Logging update
-    
-    if (ms - lastLoggingUpdate >= config->loggingInterval)
+
+    if (timeSeconds - lastLoggingUpdate >= config->loggingInterval)
     {
-        
-        lastLoggingUpdate = ms;
+
+        lastLoggingUpdate = timeSeconds;
         if (DataLogger::available())
         {
             for (uint8_t i = 0; i < DataLogger::instance().getNumReporters(); i++)

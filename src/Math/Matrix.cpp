@@ -4,247 +4,238 @@ namespace astra
 {
 
     // Default constructor
-    Matrix::Matrix()
+    Matrix::Matrix() : rows(0), cols(0), array(nullptr) {}
+
+    // Allocating constructor: Creates a zero-initialized matrix
+    Matrix::Matrix(uint8_t rows, uint8_t cols) : rows(rows), cols(cols)
     {
-        this->rows = 0;
-        this->cols = 0;
-        this->array = nullptr;
+        if (rows > 0 && cols > 0) {
+            this->array = new double[rows * cols](); // () initializes to 0.0
+        } else {
+            this->array = nullptr;
+        }
     }
 
-    // Constructor
-    //  int rows -> number of rows of matrix
-    //  int cols -> number of columns of matrix
-    //  double[] array -> array of elements of matrix in column-major order
-    // IMPORTANT: DO NOT modify array after use in constructor!
-    Matrix::Matrix(uint8_t rows, uint8_t cols, double *array)
+    // Constructor from array
+    // NOW PERFORMS A DEEP COPY. Safe to use with stack arrays or transient data.
+    Matrix::Matrix(uint8_t rows, uint8_t cols, const double *data) : rows(rows), cols(cols)
     {
-        this->rows = rows;
-        this->cols = cols;
-        this->array = array;
+        if (rows > 0 && cols > 0 && data != nullptr) {
+            this->array = new double[rows * cols];
+            std::memcpy(this->array, data, rows * cols * sizeof(double));
+        } else {
+            this->array = nullptr;
+        }
     }
 
     // Destructor
     Matrix::~Matrix()
     {
-        if (this->array != nullptr)
-        {
-            delete[] this->array;
+        delete[] this->array;
+    }
+
+    // Copy Constructor
+    Matrix::Matrix(const Matrix &other) : rows(other.rows), cols(other.cols)
+    {
+        if (other.rows > 0 && other.cols > 0) {
+            this->array = new double[rows * cols];
+            std::memcpy(this->array, other.array, rows * cols * sizeof(double));
+        } else {
             this->array = nullptr;
         }
     }
 
-    Matrix::Matrix(const Matrix &other)
-    {
-        rows = other.rows;
-        cols = other.cols;
-        array = new double[rows * cols];
-        std::copy(other.array, other.array + rows * cols, array);
-    }
-
+    // Assignment Operator
     Matrix &Matrix::operator=(const Matrix &other)
     {
         if (this != &other)
-        {                   // self-assignment check
-            delete[] array; // free existing resource
-            rows = other.rows;
-            cols = other.cols;
-            array = new double[rows * cols];
-            std::copy(other.array, other.array + rows * cols, array);
+        {
+            delete[] this->array; // Clean up old memory
+            
+            this->rows = other.rows;
+            this->cols = other.cols;
+            
+            if (other.rows > 0 && other.cols > 0) {
+                this->array = new double[this->rows * this->cols];
+                std::memcpy(this->array, other.array, this->rows * this->cols * sizeof(double));
+            } else {
+                this->array = nullptr;
+            }
         }
         return *this;
     }
 
-    // Gets #rows of the matrix
-    uint8_t Matrix::getRows() const
+    // Move Constructor (Crucial for performance: A = B * C)
+    // "Steals" the pointer from the temporary object 'other'
+    Matrix::Matrix(Matrix &&other) noexcept 
+        : rows(other.rows), cols(other.cols), array(other.array)
     {
-        return this->rows;
+        other.rows = 0;
+        other.cols = 0;
+        other.array = nullptr;
     }
 
-    // Gets #columns of the matrix
-    uint8_t Matrix::getCols() const
+    // Move Assignment Operator
+    Matrix &Matrix::operator=(Matrix &&other) noexcept
     {
-        return this->cols;
+        if (this != &other)
+        {
+            delete[] this->array; // Free our current memory
+
+            // Steal their memory
+            this->rows = other.rows;
+            this->cols = other.cols;
+            this->array = other.array;
+
+            // Nullify them
+            other.rows = 0;
+            other.cols = 0;
+            other.array = nullptr;
+        }
+        return *this;
     }
 
-    double *Matrix::getArr() const
-    {
-        return this->array;
-    }
+    uint8_t Matrix::getRows() const { return this->rows; }
+    uint8_t Matrix::getCols() const { return this->cols; }
+    double *Matrix::getArr() const { return this->array; }
 
-    double Matrix::get(uint8_t i, uint8_t j)
+    double Matrix::get(uint8_t i, uint8_t j) const
     {
+        // Add bounds checking if desired
         return this->array[i * this->cols + j];
     }
 
-    // Overloads * operator to multiply two matrices
-    Matrix Matrix::operator*(Matrix other)
+    Matrix Matrix::operator*(const Matrix &other) const
     {
         return this->multiply(other);
     }
 
-    // Overloads * operator to multiply a matrix and a scalar
-    //  Note: The scalar must be on the right hand side of the *
-    Matrix Matrix::operator*(double scalar)
+    Matrix Matrix::operator*(double scalar) const
     {
         return this->multiply(scalar);
     }
 
-    // Multiply two matrices
-    //  Matrix other -> matrix to multiply with
-    //  return -> the product
-    Matrix Matrix::multiply(Matrix other)
+    Matrix Matrix::multiply(const Matrix &other) const
     {
         if (this->cols != other.rows)
         {
-            LOGE("Tried to multiple matrix with incorrect dimensions. This matrix cols: %d and other matrix rows: %d. Returning first Matrix.", cols, other.getRows());
-            return Matrix(this->rows, this->cols, this->array);
+            LOGE("Matrix Mult Dim Error: %d vs %d. Returning Copy.", cols, other.rows);
+            return *this; 
         }
 
-        double *result = new double[this->rows * other.cols];
+        // Create the result matrix (allocates its own memory)
+        Matrix result(this->rows, other.cols);
 
         for (int i = 0; i < this->rows; ++i)
         {
             for (int j = 0; j < other.cols; ++j)
             {
-                result[i * other.cols + j] = 0;
+                double sum = 0;
                 for (int k = 0; k < this->cols; ++k)
                 {
-                    result[i * other.cols + j] += this->array[i * this->cols + k] * other.array[k * other.cols + j];
+                    sum += this->array[i * this->cols + k] * other.array[k * other.cols + j];
                 }
+                result(i, j) = sum;
             }
         }
 
-        return Matrix(this->rows, other.cols, result); // returns product matrix
+        return result; // Move constructor will handle the return efficiently
     }
 
-    // Multiply a matrix and a scalar
-    //  double scalar -> scalar to multiply by
-    //  return -> the product
-    Matrix Matrix::multiply(double scalar)
+    Matrix Matrix::multiply(double scalar) const
     {
-        double *result = new double[this->rows * this->cols];
-
+        Matrix result(this->rows, this->cols);
         for (int i = 0; i < this->rows * this->cols; ++i)
         {
-            result[i] = this->array[i] * scalar;
+            result.array[i] = this->array[i] * scalar;
         }
-
-        return Matrix(this->rows, this->cols, result); // returns product matrix
+        return result;
     }
 
-    // Overloads the + operator to add two matrices
-    Matrix Matrix::operator+(Matrix other)
+    Matrix Matrix::operator+(const Matrix &other) const
     {
         return this->add(other);
     }
 
-    // Add two matrices
-    //  Matrix other -> matrix to add
-    //  return -> sum of matrices
-    Matrix Matrix::add(Matrix other)
+    Matrix Matrix::add(const Matrix &other) const
     {
         if (this->rows != other.rows || this->cols != other.cols)
         {
-            LOGE("Addition error: Dimensions do not match! Matrix 1: row: %d, column: %d. Matrix 2: row: %d, column %d. Returning input Matrix.", rows, cols, other.getRows(), other.getCols());
-            return Matrix(this->rows, this->cols, this->array);
+            LOGE("Matrix Add Dim Error. Returning Copy.");
+            return *this;
         }
 
-        double *result = new double[this->rows * this->cols];
-
+        Matrix result(this->rows, this->cols);
         for (int i = 0; i < this->rows * this->cols; ++i)
         {
-            result[i] = this->array[i] + other.array[i];
+            result.array[i] = this->array[i] + other.array[i];
         }
-
-        return Matrix(this->rows, this->cols, result); // returns sum matrix
+        return result;
     }
 
-    // Overloads the - operator to subtract two matrices
-    Matrix Matrix::operator-(Matrix other)
+    Matrix Matrix::operator-(const Matrix &other) const
     {
         return this->subtract(other);
     }
 
-    // Subtract two matrices
-    //  Matrix other -> matrix to subtract
-    //  return -> difference of matrices
-    Matrix Matrix::subtract(Matrix other)
+    Matrix Matrix::subtract(const Matrix &other) const
     {
         if (this->rows != other.rows || this->cols != other.cols)
         {
-            LOGE("Subtraction error: Dimensions do not match! Matrix 1: row: %d, column: %d. Matrix 2: row: %d, column %d. Returning input Matrix.", rows, cols, other.getRows(), other.getCols());
-            return Matrix(this->rows, this->cols, this->array);
+            LOGE("Matrix Sub Dim Error. Returning Copy.");
+            return *this;
         }
 
-        double *result = new double[this->rows * this->cols];
-
+        Matrix result(this->rows, this->cols);
         for (int i = 0; i < this->rows * this->cols; ++i)
         {
-            result[i] = this->array[i] - other.array[i];
+            result.array[i] = this->array[i] - other.array[i];
         }
-
-        return Matrix(this->rows, this->cols, result); // returns difference matrix
+        return result;
     }
 
-    // Alias for transpose()
-    Matrix Matrix::T()
+    Matrix Matrix::T() const
     {
         return this->transpose();
     }
 
-    // Transpose a matrix
-    //  return -> transposed matrix
-    Matrix Matrix::transpose()
+    Matrix Matrix::transpose() const
     {
-        double *result = new double[this->rows * this->cols];
-
+        Matrix result(this->cols, this->rows);
         for (int i = 0; i < this->rows; ++i)
         {
             for (int j = 0; j < this->cols; ++j)
             {
-                result[j * this->rows + i] = this->array[i * this->cols + j];
+                result(j, i) = this->array[i * this->cols + j];
             }
         }
-
-        return Matrix(this->cols, this->rows, result); // returns transposed matrix
+        return result;
     }
 
-    // From Avi's code to invert a matrix; copied verbatim
-    void Matrix::luDecompositionWithPartialPivoting(double *A, int *pivot, int n)
+    void Matrix::luDecompositionWithPartialPivoting(double *A, int *pivot, int n) const
     {
-        for (int i = 0; i < n; ++i)
-        {
-            pivot[i] = i;
-        }
+        // Implementation remains same, just marked const function
+        for (int i = 0; i < n; ++i) pivot[i] = i;
 
         for (int i = 0; i < n; ++i)
         {
-            // Partial pivoting
-            double max = std::abs(A[i * n + i]);
+            double maxVal = std::abs(A[i * n + i]);
             int maxRow = i;
             for (int k = i + 1; k < n; ++k)
             {
-                if (std::abs(A[k * n + i]) > max)
+                if (std::abs(A[k * n + i]) > maxVal)
                 {
-                    max = std::abs(A[k * n + i]);
+                    maxVal = std::abs(A[k * n + i]);
                     maxRow = k;
                 }
             }
 
-            if (max == 0.0)
-            {
-                LOGE("Inversion error: Matrix is singular!");
-            }
+            if (maxVal == 0.0) LOGE("Matrix Singular!");
 
-            // Swap rows in A matrix
-            for (int k = 0; k < n; ++k)
-            {
-                std::swap(A[i * n + k], A[maxRow * n + k]);
-            }
-            // Swap pivot indices
+            // Swap rows
+            for (int k = 0; k < n; ++k) std::swap(A[i * n + k], A[maxRow * n + k]);
             std::swap(pivot[i], pivot[maxRow]);
 
-            // LU Decomposition
             for (int j = i + 1; j < n; ++j)
             {
                 A[j * n + i] /= A[i * n + i];
@@ -256,71 +247,55 @@ namespace astra
         }
     }
 
-    // From Avi's code to invert a matrix; copied verbatim
-    void Matrix::solveLU(double *A, int *pivot, double *b, double *x, int n)
+    void Matrix::solveLU(double *A, int *pivot, double *b, double *x, int n) const
     {
-        // Forward substitution for Ly = Pb
+        // Forward subst
         for (int i = 0; i < n; ++i)
         {
             x[i] = b[pivot[i]];
-            for (int j = 0; j < i; ++j)
-            {
-                x[i] -= A[i * n + j] * x[j];
-            }
+            for (int j = 0; j < i; ++j) x[i] -= A[i * n + j] * x[j];
         }
-
-        // Backward substitution for Ux = y
+        // Backward subst
         for (int i = n - 1; i >= 0; --i)
         {
-            for (int j = i + 1; j < n; ++j)
-            {
-                x[i] -= A[i * n + j] * x[j];
-            }
+            for (int j = i + 1; j < n; ++j) x[i] -= A[i * n + j] * x[j];
             x[i] /= A[i * n + i];
         }
     }
 
-    // Alias for inverse()
-    Matrix Matrix::inv()
-    {
-        return this->inverse();
-    }
+    Matrix Matrix::inv() const { return this->inverse(); }
 
-    // Invert a matrix
-    //  return -> inverted matrix
-    Matrix Matrix::inverse()
+    Matrix Matrix::inverse() const
     {
         if (this->rows != this->cols)
         {
-            LOGE("Tried to invert matrix with dimensions row: %d, column: %d. Returning input Matrix.", rows, cols);
-            return Matrix(rows, cols, array);
+            LOGE("Matrix Inverse Error: Non-square. Returning Copy.");
+            return *this;
         }
 
-        int n = this->rows;            // at this point, n = rows = cols
-        double *A = new double[n * n]; // makes a copy of the array to avoid modification
-        for (int i = 0; i < n * n; ++i)
-        {
-            A[i] = this->array[i];
-        }
+        int n = this->rows;
+        Matrix result(n, n); // Holds the inverse
 
-        // below code closely follows Avi's code
-        double *inverse = new double[n * n];
+        // Helper buffers (still using new/delete internally, but contained)
+        double *A = new double[n * n];
+        std::memcpy(A, this->array, n * n * sizeof(double));
+        
         int *pivot = new int[n];
         double *b = new double[n];
         double *temp = new double[n];
 
-        this->luDecompositionWithPartialPivoting(A, pivot, n);
+        luDecompositionWithPartialPivoting(A, pivot, n);
 
         for (int i = 0; i < n; ++i)
         {
             std::fill(b, b + n, 0.0);
             b[i] = 1.0;
-
-            this->solveLU(A, pivot, b, temp, n);
-
+            solveLU(A, pivot, b, temp, n);
+            
+            // Fill result matrix column-by-column
             for (int j = 0; j < n; ++j)
             {
-                inverse[j * n + i] = temp[j];
+                result(j, i) = temp[j];
             }
         }
 
@@ -329,61 +304,42 @@ namespace astra
         delete[] b;
         delete[] temp;
 
-        return Matrix(n, n, inverse); // returns inverted matrix
+        return result;
     }
 
-    // Get the trace of a square matrix
-    double Matrix::trace()
+    double Matrix::trace() const
     {
-        if (rows != cols)
-        {
-            LOGE("Tried to take the trace of a matrix with dimensions row: %d, column: %d. Returning 1.", rows, cols);
-            return 1;
-        }
-
-        double traceValue = 0;
-        for (int i = 0; i < rows; ++i)
-        {
-            traceValue += array[i + i * rows]; // Sum the diagonal elements
-        }
-        return traceValue;
+        if (rows != cols) return 0.0;
+        double tr = 0;
+        for (int i = 0; i < rows; ++i) tr += array[i * cols + i];
+        return tr;
     }
 
-    // Get identity matrix of size [n n]
     Matrix Matrix::ident(uint8_t n)
     {
-        double *result = new double[n * n];
-
+        Matrix result(n, n); // Zeroed by default
         for (int i = 0; i < n; ++i)
         {
-            for (int j = 0; j < n; ++j)
-            {
-                if (i == j)
-                {
-                    result[j * n + i] = 1;
-                }
-                else
-                {
-                    result[j * n + i] = 0;
-                }
-            }
+            result(i, i) = 1.0;
         }
-
-        return Matrix(n, n, result); // returns identity matrix
+        return result;
     }
 
-    // Display matrix for debugging purposes
-    void Matrix::disp()
+    void Matrix::disp() const
     {
-        // prints each row of the matrix on a separate line
-        // for (int i = 0; i < this->rows; ++i)
-        // {
-        //     // separates each column of the matrix by a space
-        //     for (int j = 0; j < this->cols; ++j)
-        //     {
-        //         std::cout << this->array[i * this->cols + j] << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
+        // Debug display logic here
     }
-} // namespace astra
+
+    // Accessors
+    double &Matrix::operator()(uint8_t row, uint8_t col)
+    {
+        if (row < rows && col < cols) return array[row * cols + col];
+        return array[0]; // Fail-safe (risky but matches original intent)
+    }
+
+    const double &Matrix::operator()(uint8_t row, uint8_t col) const
+    {
+        if (row < rows && col < cols) return array[row * cols + col];
+        return array[0];
+    }
+}

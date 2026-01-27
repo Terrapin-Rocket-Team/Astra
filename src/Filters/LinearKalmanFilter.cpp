@@ -24,39 +24,6 @@ namespace astra
         this->controlSize = K.getRows();
     }
 
-    Matrix LinearKalmanFilter::iterate(double dt, Matrix measurement, Matrix control)
-    {
-        predictState(dt, control);
-        calculateKalmanGain();
-        estimateState(measurement);
-        covarianceUpdate();
-        covarianceExtrapolate(dt);
-        return X;
-    }
-
-    double *LinearKalmanFilter::iterate(double dt, double *state, double *measurements, double *controlVars)
-    {
-        // Convert arrays to matrices
-        // Matrix stateMatrix(stateSize, 1, state);
-        Matrix measurementMatrix(measurementSize, 1, measurements);
-        Matrix controlMatrix(controlSize, 1, controlVars);
-
-        // Kalman Filter steps
-        predictState(dt, controlMatrix);
-        calculateKalmanGain();
-        estimateState(measurementMatrix);
-        covarianceUpdate();
-        covarianceExtrapolate(dt);
-
-        // Update the state array with the new state values
-        for (int i = 0; i < stateSize; ++i)
-        {
-            state[i] = X.get(i, 0);
-        }
-
-        return state;
-    }
-
     void LinearKalmanFilter::predictState(double dt, Matrix U)
     {
         X = getF(dt) * X + getG(dt) * U;
@@ -90,39 +57,11 @@ namespace astra
         covarianceExtrapolate(dt);
     }
 
-    void LinearKalmanFilter::predict(double dt, double *controlVars)
-    {
-        Matrix controlMatrix(controlSize, 1, controlVars);
-        predict(dt, controlMatrix);
-    }
-
     void LinearKalmanFilter::update(Matrix measurement)
     {
         calculateKalmanGain();
         estimateState(measurement);
         covarianceUpdate();
-    }
-
-    void LinearKalmanFilter::update(double *measurements)
-    {
-        Matrix measurementMatrix(measurementSize, 1, measurements);
-        update(measurementMatrix);
-    }
-
-    void LinearKalmanFilter::getState(double *state) const
-    {
-        for (int i = 0; i < stateSize; ++i)
-        {
-            state[i] = X(i, 0);
-        }
-    }
-
-    void LinearKalmanFilter::setState(double *state)
-    {
-        for (int i = 0; i < stateSize; ++i)
-        {
-            X(i, 0) = state[i];
-        }
     }
 
 } // namespace astra

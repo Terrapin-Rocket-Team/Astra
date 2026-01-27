@@ -1,12 +1,11 @@
 #ifndef LINEAR_KALMAN_FILTER_H
 #define LINEAR_KALMAN_FILTER_H
 
-#include "Filter.h"
 #include "../Math/Matrix.h"
 
 namespace astra {
 
-class LinearKalmanFilter : public Filter {
+class LinearKalmanFilter {
 public:
 
     int measurementSize;
@@ -26,24 +25,17 @@ public:
     virtual Matrix getR() = 0;
     virtual Matrix getQ(double dt) = 0;
 
-    virtual Matrix iterate(double dt, Matrix measurement, Matrix control);
-
-    // Override core interface methods
-    virtual int getMeasurementSize() const override { return measurementSize; }
-    virtual int getInputSize() const override { return controlSize; }
-    virtual int getStateSize() const override { return stateSize; }
-    virtual double *iterate(double dt, double *state, double *measurements, double *controlVars) override;
+    // Query filter dimensions
+    virtual int getMeasurementSize() const { return measurementSize; }
+    virtual int getInputSize() const { return controlSize; }
+    virtual int getStateSize() const { return stateSize; }
 
     // Split predict/update for different update rates
     virtual void predict(double dt, Matrix control);
-    virtual void predict(double dt, double *controlVars);
     virtual void update(Matrix measurement);
-    virtual void update(double *measurements);
 
     // Get current state estimate
     virtual Matrix getState() const { return X; }
-    virtual void getState(double *state) const;
-    virtual void setState(double *state);
 
 protected:
     // Instance variables to store matrices
