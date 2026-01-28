@@ -165,9 +165,9 @@ namespace astra
         // This method just performs the measurement update without time propagation
         // Orientation is also already updated by predictState(), so we skip it here
 
-        // Prepare measurements: [px, py, pz, ax, ay, az]
-        // State now includes acceleration, so we measure it
-        double measurementData[6];
+        // Prepare measurements: [px, py, pz]
+        // Acceleration is now a control input, not a measurement
+        double measurementData[3];
 
         // Check if we have GPS data
         bool hasGPS = false;
@@ -206,22 +206,11 @@ namespace astra
             measurementData[2] = 0;
         }
 
-        // Convert body-frame acceleration to earth-frame for measurement
-        // This is the MEASUREMENT, not the state variable
-        Vector<3> earthAccelMeasurement(0, 0, 0);
-        if (orientationFilter && orientationFilter->isReady())
-        {
-            earthAccelMeasurement = orientationFilter->getEarthAcceleration(sensorManager->getAccel());
-        }
-        measurementData[3] = earthAccelMeasurement.x();
-        measurementData[4] = earthAccelMeasurement.y();
-        measurementData[5] = earthAccelMeasurement.z();
-
         // Create measurement matrix and run KF update
-        Matrix measurements(6, 1, measurementData);
+        Matrix measurements(3, 1, measurementData);
         filter->update(measurements);
 
-        // Extract updated state: [px, py, pz, vx, vy, vz, ax, ay, az]
+        // Extract updated state: [px, py, pz, vx, vy, vz]
         Matrix state = filter->getState();
 
         // Update state variables from measurement update
@@ -231,9 +220,15 @@ namespace astra
         velocity.x() = state(3, 0);
         velocity.y() = state(4, 0);
         velocity.z() = state(5, 0);
-        acceleration.x() = state(6, 0);
-        acceleration.y() = state(7, 0);
-        acceleration.z() = state(8, 0);
+
+        // Acceleration is computed from orientation filter (not from KF state)
+        if (orientationFilter && orientationFilter->isReady())
+        {
+            Vector<3> earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccel());
+            acceleration.x() = earthAccel.x();
+            acceleration.y() = earthAccel.y();
+            acceleration.z() = earthAccel.z();
+        }
 
     }
 
@@ -324,13 +319,23 @@ namespace astra
         // This computes earth-frame acceleration from body-frame measurements
         updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
 
-        // Run KF prediction step with no control input (acceleration is now part of state)
-        // The KF maintains its own internal state continuity from the previous update/predict
-        // Control matrix is empty (0 inputs), so we pass an empty Matrix
-        Matrix emptyControl(0, 1, nullptr);
-        filter->predict(dt, emptyControl);
+        // Get earth-frame acceleration to use as control input
+        Vector<3> earthAccel(0, 0, 0);
+        if (orientationFilter && orientationFilter->isReady())
+        {
+            earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccel());
+            // Update acceleration state variable
+            acceleration.x() = earthAccel.x();
+            acceleration.y() = earthAccel.y();
+            acceleration.z() = earthAccel.z();
+        }
 
-        // Extract predicted state: [px, py, pz, vx, vy, vz, ax, ay, az]
+        // Run KF prediction step with acceleration as control input
+        double controlData[3] = {earthAccel.x(), earthAccel.y(), earthAccel.z()};
+        Matrix controlInput(3, 1, controlData);
+        filter->predict(dt, controlInput);
+
+        // Extract predicted state: [px, py, pz, vx, vy, vz]
         Matrix state = filter->getState();
 
         // Update state variables from prediction
@@ -340,9 +345,6 @@ namespace astra
         velocity.x() = state(3, 0);
         velocity.y() = state(4, 0);
         velocity.z() = state(5, 0);
-        acceleration.x() = state(6, 0);
-        acceleration.y() = state(7, 0);
-        acceleration.z() = state(8, 0);
 
     }
 
