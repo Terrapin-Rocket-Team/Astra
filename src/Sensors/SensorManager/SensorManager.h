@@ -112,6 +112,14 @@ namespace astra
 
         void update()
         {
+
+            for (uint8_t i = 0; i < numMisc; i++)
+            {
+                if (miscSensors[i])
+                    miscSensors[i]->update();
+                else
+                    LOGW("Misc sensor at index %d is null during update.", i);
+            }
             if (primaryAccel)
                 primaryAccel->update();
             if (primaryGyro)
@@ -122,14 +130,6 @@ namespace astra
                 primaryBaro->update();
             if (primaryGPS)
                 primaryGPS->update();
-
-            for (uint8_t i = 0; i < numMisc; i++)
-            {
-                if (miscSensors[i])
-                    miscSensors[i]->update();
-                else
-                    LOGW("Misc sensor at index %d is null during update.", i);
-            }
         }
 
         /**
