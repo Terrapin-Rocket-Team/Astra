@@ -7,6 +7,7 @@ namespace astra
         addColumn("%0.3f", &mag.x(), "Mag X (uT)");
         addColumn("%0.3f", &mag.y(), "Mag Y (uT)");
         addColumn("%0.3f", &mag.z(), "Mag Z (uT)");
+        setUpdateRate(100);
     }
 
     Mag::~Mag()

@@ -25,6 +25,7 @@ namespace astra
             // Clear columns added by Accel constructor - parent IMU handles data reporting
             clearColumns();
         }
+
         virtual ~IMU6DoFAccel() {}
 
         Vector<3> getAccel() const override { return orient.transform(*accRef); }
@@ -81,7 +82,10 @@ namespace astra
     class IMU6DoF : public RotatableSensor
     {
     public:
-        virtual ~IMU6DoF() {}
+        virtual ~IMU6DoF()
+        {
+            setUpdateRate(100);
+        }
 
         // Get the contained accelerometer sensor object
         Accel *getAccelSensor() { return &accelComponent; }

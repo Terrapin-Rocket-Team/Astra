@@ -26,6 +26,7 @@ namespace astra
         HITLBarometer(const char *name = "HITL_Barometer")
             : Barometer(name)
         {
+            updateInterval = 0;
         }
 
         virtual ~HITLBarometer() {}

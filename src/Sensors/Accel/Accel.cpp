@@ -7,6 +7,7 @@ namespace astra
         addColumn("%0.3f", &acc.x(), "Acc X (m/s^2)");
         addColumn("%0.3f", &acc.y(), "Acc Y (m/s^2)");
         addColumn("%0.3f", &acc.z(), "Acc Z (m/s^2)");
+        setUpdateRate(100);
     }
 
     Accel::~Accel()

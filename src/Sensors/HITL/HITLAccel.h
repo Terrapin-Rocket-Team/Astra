@@ -25,6 +25,7 @@ namespace astra
         HITLAccel(const char *name = "HITL_Accelerometer")
             : Accel(name)
         {
+            updateInterval = 0;
         }
 
         virtual ~HITLAccel() {}
