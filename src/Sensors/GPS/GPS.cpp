@@ -143,7 +143,7 @@ void GPS::findTimeZone()
 
 #pragma region Sensor Virtual Function Implementations
 
-bool GPS::update()
+bool GPS::update(double currentTime)
 {
     if (!read())
         return false;

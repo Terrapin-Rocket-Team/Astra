@@ -34,6 +34,10 @@ public:
     virtual void predict(double dt, Matrix control);
     virtual void update(Matrix measurement);
 
+    // Flexible update with custom measurement matrix and noise
+    // Allows sensor-specific updates (e.g., GPS-only, baro-only)
+    virtual void update(Matrix z, Matrix H, Matrix R);
+
     // Get current state estimate
     virtual Matrix getState() const { return X; }
 

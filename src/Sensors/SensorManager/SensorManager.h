@@ -20,6 +20,13 @@ namespace astra
         Barometer *baro = nullptr;
         GPS *gps = nullptr;
 
+        // Update flags for primary sensors (set when new data is available)
+        bool accelUpdated = false;
+        bool gyroUpdated = false;
+        bool magUpdated = false;
+        bool baroUpdated = false;
+        bool gpsUpdated = false;
+
         // Misc sensors that need updating but aren't used in state
         static constexpr uint8_t MAX_MISC_SENSORS = 16;
         Sensor *miscSensors[MAX_MISC_SENSORS] = {nullptr};
@@ -40,6 +47,20 @@ namespace astra
         Mag *getMagSource() const { return mag; }
         Barometer *getBaroSource() const { return baro; }
         GPS *getGPSSource() const { return gps; }
+
+        // Check if sensor has new data since last check
+        bool hasAccelUpdate() const { return accelUpdated; }
+        bool hasGyroUpdate() const { return gyroUpdated; }
+        bool hasMagUpdate() const { return magUpdated; }
+        bool hasBaroUpdate() const { return baroUpdated; }
+        bool hasGPSUpdate() const { return gpsUpdated; }
+
+        // Clear update flags after consuming the data
+        void clearAccelUpdate() { accelUpdated = false; }
+        void clearGyroUpdate() { gyroUpdated = false; }
+        void clearMagUpdate() { magUpdated = false; }
+        void clearBaroUpdate() { baroUpdated = false; }
+        void clearGPSUpdate() { gpsUpdated = false; }
 
         bool addMiscSensor(Sensor *s)
         {
@@ -110,26 +131,45 @@ namespace astra
             return ok = success;
         }
 
-        void update()
+        void update(double currentTime)
         {
+            // Update primary sensors only if their update interval has elapsed
+            if (accel && accel->shouldUpdate(currentTime))
+            {
+                accel->update();
+                accelUpdated = true;
+            }
 
+            if (gyro && gyro->shouldUpdate(currentTime))
+            {
+                gyro->update();
+                gyroUpdated = true;
+            }
+
+            if (mag && mag->shouldUpdate(currentTime))
+            {
+                mag->update();
+                magUpdated = true;
+            }
+
+            if (baro && baro->shouldUpdate(currentTime))
+            {
+                baro->update();
+                baroUpdated = true;
+            }
+
+            if (gps && gps->shouldUpdate(currentTime))
+            {
+                gps->update();
+                gpsUpdated = true;
+            }
+
+            // Update misc sensors
             for (uint8_t i = 0; i < numMisc; i++)
             {
-                if (miscSensors[i])
+                if (miscSensors[i] && miscSensors[i]->shouldUpdate(currentTime))
                     miscSensors[i]->update();
-                else
-                    LOGW("Misc sensor at index %d is null during update.", i);
             }
-            if (accel)
-                accel->update();
-            if (gyro)
-                gyro->update();
-            if (mag)
-                mag->update();
-            if (baro)
-                baro->update();
-            if (gps)
-                gps->update();
         }
 
         /**

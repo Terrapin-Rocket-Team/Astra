@@ -42,7 +42,7 @@ void test_calibration_and_initialization(void) {
 
     // Initial state should be CALIBRATING
     TEST_ASSERT_EQUAL(MahonyMode::CALIBRATING, ahrs.getMode());
-    TEST_ASSERT_FALSE(ahrs.isInitialized());
+    TEST_ASSERT_FALSE(ahrs.isReady());
 
     // Simulate 100 calibration samples with sensor pointing up (Z-axis aligned with gravity)
     Vector<3> accel(0.0, 0.0, 9.81);  // Gravity in Z
@@ -52,10 +52,11 @@ void test_calibration_and_initialization(void) {
         ahrs.update(accel, gyro, 0.01);
     }
 
-    // Initialize the filter
-    ahrs.initialize();
+    // Finalize calibration and lock the frame
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
 
-    TEST_ASSERT_TRUE(ahrs.isInitialized());
+    TEST_ASSERT_TRUE(ahrs.isReady());
 
     // After initialization with Z-up, the quaternion should be identity (or close to it)
     // since body frame Z aligns with earth frame Z
@@ -73,13 +74,14 @@ void test_calibration_tilted_sensor(void) {
     Vector<3> gyro(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel, gyro);
+        ahrs.update(accel, gyro, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::CORRECTING);
 
-    TEST_ASSERT_TRUE(ahrs.isInitialized());
+    TEST_ASSERT_TRUE(ahrs.isReady());
 
     // The quaternion should represent a rotation that aligns X with Z
     Quaternion q = ahrs.getQuaternion();
@@ -98,10 +100,11 @@ void test_static_orientation(void) {
     Vector<3> gyro(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel, gyro);
+        ahrs.update(accel, gyro, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::CORRECTING);
 
     // Run filter for 5 seconds with no movement
@@ -125,10 +128,11 @@ void test_gyro_rotation_z_axis(void) {
     Vector<3> gyro_calib(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel, gyro_calib);
+        ahrs.update(accel, gyro_calib, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::GYRO_ONLY);  // Pure gyro integration
 
     // Rotate 90 degrees about Z-axis over 1 second (π/2 rad/s)
@@ -157,10 +161,11 @@ void test_accel_correction(void) {
     Vector<3> gyro_calib(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel_calib, gyro_calib);
+        ahrs.update(accel_calib, gyro_calib, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::CORRECTING);
 
     // Now simulate a tilted accelerometer (as if sensor tilted 45 degrees on X-axis)
@@ -178,8 +183,9 @@ void test_accel_correction(void) {
     // The filter should have corrected to the tilted orientation
     Quaternion q = ahrs.getQuaternion();
 
-    // Rotate gravity vector by quaternion and check it aligns with measured accel
-    Vector<3> gravity_earth(0.0, 0.0, 1.0);
+    // Rotate gravity DOWN vector by quaternion and check it aligns with measured accel
+    // Accelerometer measures specific force (opposite of gravity), so we use -Z for gravity
+    Vector<3> gravity_earth(0.0, 0.0, -1.0);
     Vector<3> gravity_body = q.rotateVector(gravity_earth);
 
     Vector<3> accel_normalized = accel_tilted;
@@ -219,20 +225,21 @@ void test_reset(void) {
     Vector<3> gyro(0.1, 0.2, 0.3);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel, gyro);
+        ahrs.update(accel, gyro, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::CORRECTING);
 
-    TEST_ASSERT_TRUE(ahrs.isInitialized());
+    TEST_ASSERT_TRUE(ahrs.isReady());
     TEST_ASSERT_EQUAL(MahonyMode::CORRECTING, ahrs.getMode());
 
     // Reset
     ahrs.reset();
 
     // Should be back to initial state
-    TEST_ASSERT_FALSE(ahrs.isInitialized());
+    TEST_ASSERT_FALSE(ahrs.isReady());
     TEST_ASSERT_EQUAL(MahonyMode::CALIBRATING, ahrs.getMode());
 }
 
@@ -245,10 +252,11 @@ void test_earth_frame_acceleration(void) {
     Vector<3> gyro(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel_calib, gyro);
+        ahrs.update(accel_calib, gyro, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::CORRECTING);
 
     // With no acceleration (just gravity), earth frame accel should be ~zero
@@ -269,10 +277,11 @@ void test_earth_frame_acceleration_with_motion(void) {
     Vector<3> gyro(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel_calib, gyro);
+        ahrs.update(accel_calib, gyro, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::CORRECTING);
 
     // Simulate upward acceleration of 10 m/s² (total 19.81 m/s² measured)
@@ -294,10 +303,11 @@ void test_earth_frame_acceleration_tilted(void) {
     Vector<3> gyro(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel_calib_upright, gyro);
+        ahrs.update(accel_calib_upright, gyro, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::GYRO_ONLY);  // Use gyro-only so we can set a specific orientation
 
     // Rotate 90 degrees about X-axis (now Y points down)
@@ -333,10 +343,11 @@ void test_earth_frame_acceleration_lateral(void) {
     Vector<3> gyro(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel_calib, gyro);
+        ahrs.update(accel_calib, gyro, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::CORRECTING);
 
     // Sensor is upright, but accelerating sideways (X-direction in body frame)
@@ -362,10 +373,11 @@ void test_gyro_bias_removal(void) {
     Vector<3> gyro_bias(0.1, -0.05, 0.08);
 
     for (int i = 0; i < 200; i++) {
-        ahrs.calibrate(accel, gyro_bias);
+        ahrs.update(accel, gyro_bias, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::GYRO_ONLY);
 
     // After initialization, the same gyro reading (which is just bias)
@@ -391,10 +403,11 @@ void test_gyro_only_mode_ignores_accel(void) {
     Vector<3> gyro(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel_calib, gyro);
+        ahrs.update(accel_calib, gyro, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::GYRO_ONLY);
 
     // Get initial quaternion
@@ -423,10 +436,11 @@ void test_continuous_rotation(void) {
     Vector<3> gyro_calib(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel, gyro_calib);
+        ahrs.update(accel, gyro_calib, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::GYRO_ONLY);
 
     // Rotate continuously at 45 deg/s for 4 seconds = 180 degrees
@@ -455,10 +469,11 @@ void test_full_rotation(void) {
     Vector<3> gyro_calib(0.0, 0.0, 0.0);
 
     for (int i = 0; i < 100; i++) {
-        ahrs.calibrate(accel, gyro_calib);
+        ahrs.update(accel, gyro_calib, 0.01);
     }
 
-    ahrs.initialize();
+    ahrs.finalizeCalibration();
+    ahrs.lockFrame();
     ahrs.setMode(MahonyMode::GYRO_ONLY);
 
     // Rotate 360 degrees about Z-axis over 4 seconds

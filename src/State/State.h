@@ -26,6 +26,12 @@ namespace astra
      * Frame convention:
      *   - Body frame: X forward, Y right, Z down (NED-like, attached to vehicle)
      *   - Inertial frame: NED (North, East, Down) relative to launch point
+     *
+     * Architecture:
+     *   - Base class (State) provides common functionality and virtual methods
+     *   - DefaultState provides ready-to-use implementation with DefaultKalmanFilter
+     *   - Custom derived classes can implement application-specific dynamics
+     *   - Supports asynchronous sensor updates (sensors update at their own rates)
      */
     class State : public DataReporter
     {
@@ -45,8 +51,8 @@ namespace astra
          */
         virtual bool begin();
 
-
-        virtual void update(double currentTime = -1);
+        // DataReporter interface - updates state with measurements
+        virtual bool update(double currentTime = -1) override;
 
         // ========================= Split Update Methods =========================
         // These are called at different rates by Astra
