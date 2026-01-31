@@ -4,7 +4,7 @@ using namespace astra;
 
 #pragma region GPS Specific Functions
 
-GPS::GPS(const char *name) : Sensor("GPS", name)
+GPS::GPS(const char *name) : Sensor(name)
 {
     hr = 0;
     min = 0;

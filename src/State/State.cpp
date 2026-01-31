@@ -135,23 +135,30 @@ namespace astra
 
     void State::update(double newTime)
     {
+        fprintf(stderr, "DEBUG State: update() called with newTime=%0.3f\n", newTime);
+
         if (!initialized)
         {
+            fprintf(stderr, "ERROR State: not initialized!\n");
             LOGE("State is not initialized! Call begin() first.");
             return;
         }
         if (!sensorManager)
         {
+            fprintf(stderr, "ERROR State: no sensor manager!\n");
             LOGE("No Sensor Manager configured. Add one to Astra or directly to state.");
             return;
         }
         if (!sensorManager->isOK())
         {
+            fprintf(stderr, "ERROR State: sensor manager not OK!\n");
             LOGE("Sensor Manager reports an error. Cannot update State.");
             return;
         }
         if (!orientationFilter)
         {
+            fprintf(stderr, "ERROR State: no orientation filter or not initialized! initialized=%d\n",
+                    orientationFilter ? (int)orientationFilter->isInitialized() : -1);
             LOGE("Orientation Filter not available or not initialized. Cannot update State.");
             return;
         }

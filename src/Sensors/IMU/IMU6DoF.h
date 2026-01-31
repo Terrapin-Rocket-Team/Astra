@@ -114,7 +114,7 @@ namespace astra
 
     protected:
         IMU6DoF(const char *name = "IMU6DoF")
-            : RotatableSensor("IMU6DoF", name),
+            : RotatableSensor(name),
               accelComponent(&acc, name),
               gyroComponent(&angVel, name)
         {

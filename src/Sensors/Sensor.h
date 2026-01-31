@@ -16,22 +16,38 @@ namespace astra
     {
     public:
         virtual ~Sensor() {};
-        // ------------------------------- SENSOR TYPE IMPLEMENTATION ---------------------------------------------
 
-        virtual const SensorType getType() const { return type; }        // Returns the type of the sensor
-        virtual const char *getTypeString() const { return typeString; } // Returns the type of the sensor as a string
+        void setUpdateRate(double hz) { updateInterval = 1.0 / hz; }
 
-        // ----------------------------------------------------------------------------------------------------------
+        // currentTime in S. returns if enough time has passed that more data should be ready.
+        bool shouldUpdate(double currentTime)
+        {
+            if (currentTime - lastUpdateTime >= updateInterval)
+            {
+                lastUpdateTime = currentTime;
+                return true;
+            }
+            return false;
+        }
+        
+        virtual bool begin() override
+        {
+            return initialized = init();
+        }
 
+        virtual bool update() override
+        {
+            return read();
+        }
     protected:
         // --------------------------------- HARDWARE IMPLEMENTATION -----------------------------------------------
 
-        Sensor(const char *type, const char *name = nullptr) : DataReporter(name)
+        Sensor(const char *name = nullptr) : DataReporter(name)
         {
-            this->type = fnv1a_32(type, strlen(type));
-            typeString = type;
-            autoUpdate = false;
+            autoUpdate = false; //stop the logging system from automatically udpating sensors before logging data
         }
+
+
 
         // Sets up the sensor and stores any critical parameters. Needs to reset the sensor if it is already initialized. Called by begin()
         virtual bool init() = 0;
@@ -39,8 +55,11 @@ namespace astra
         // Physically reads the outputs from the sensor hardware. Called by update()
         virtual bool read() = 0;
 
-        SensorType type;
-        const char *typeString;
+
+
+
+        double updateInterval = 0.1; // default to 10 hz
+        double lastUpdateTime = 0;
     };
 }; // namespace astra
 
