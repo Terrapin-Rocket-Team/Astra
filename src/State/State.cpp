@@ -85,9 +85,10 @@ namespace astra
             const int calibSamples = 200;
             for (int i = 0; i < calibSamples; i++)
             {
-                sensorManager->update();
+                double t = millis() / 1000.0;
+                sensorManager->update(t);
                 // Assume ~100Hz for the delay(10) loop
-                orientationFilter->update(sensorManager->getAccel(), sensorManager->getGyro(), 0.01);
+                orientationFilter->update(sensorManager->getAccelSource(), sensorManager->getGyroSource(), 0.01);
                 delay(10);
             }
 #endif
@@ -112,9 +113,9 @@ namespace astra
         }
 
         // Set origin altitude from barometer (sensors have settled during calibration)
-        if (sensorManager->getPrimaryBaro() && sensorManager->getPrimaryBaro()->isInitialized())
+        if (sensorManager->getBaroSource() && sensorManager->getBaroSource()->isInitialized())
         {
-            origin.z() = sensorManager->getPrimaryBaro()->getASLAltM();
+            origin.z() = sensorManager->getBaroSource()->getASLAltM();
             LOGI("Origin altitude set to %.2f m ASL from barometer.", origin.z());
         }
         else
@@ -133,7 +134,7 @@ namespace astra
 
 #pragma region Update Functions
 
-    void State::update(double newTime)
+    bool State::update(double newTime)
     {
         fprintf(stderr, "DEBUG State: update() called with newTime=%0.3f\n", newTime);
 
@@ -141,31 +142,31 @@ namespace astra
         {
             fprintf(stderr, "ERROR State: not initialized!\n");
             LOGE("State is not initialized! Call begin() first.");
-            return;
+            return false;
         }
         if (!sensorManager)
         {
             fprintf(stderr, "ERROR State: no sensor manager!\n");
             LOGE("No Sensor Manager configured. Add one to Astra or directly to state.");
-            return;
+            return false;
         }
         if (!sensorManager->isOK())
         {
             fprintf(stderr, "ERROR State: sensor manager not OK!\n");
             LOGE("Sensor Manager reports an error. Cannot update State.");
-            return;
+            return false;
         }
         if (!orientationFilter)
         {
             fprintf(stderr, "ERROR State: no orientation filter or not initialized! initialized=%d\n",
-                    orientationFilter ? (int)orientationFilter->isInitialized() : -1);
+                    orientationFilter ? (int)orientationFilter->isReady() : -1);
             LOGE("Orientation Filter not available or not initialized. Cannot update State.");
-            return;
+            return false;
         }
         if (!filter)
         {
             LOGE("Kalman Filter not available. Cannot update State.");
-            return;
+            return false;
         }
 
         // NOTE: In split predict/update mode, time management is handled by predictState()
@@ -178,12 +179,12 @@ namespace astra
 
         // Check if we have GPS data
         bool hasGPS = false;
-        if (sensorManager->getPrimaryGPS() && sensorManager->getPrimaryGPS()->getHasFix())
+        if (sensorManager->getGPSSource() && sensorManager->getGPSSource()->getHasFix())
         {
             // Set GPS origin on first fix (when origin x,y are still 0)
             if (origin.x() == 0 && origin.y() == 0)
             {
-                Vector<3> gpsPos = sensorManager->getPrimaryGPS()->getPos();
+                Vector<3> gpsPos = sensorManager->getGPSSource()->getPos();
                 origin.x() = gpsPos.x(); // latitude
                 origin.y() = gpsPos.y(); // longitude
                 LOGI("GPS origin set to lat=%.6f, lon=%.6f", origin.x(), origin.y());
@@ -191,7 +192,7 @@ namespace astra
 
             hasGPS = true;
             // Get displacement from origin in meters
-            Vector<3> displacement = sensorManager->getPrimaryGPS()->getDisplacement(origin);
+            Vector<3> displacement = sensorManager->getGPSSource()->getDisplacement(origin);
             measurementData[0] = displacement.x(); // displacement in meters (north)
             measurementData[1] = displacement.y(); // displacement in meters (east)
         }
@@ -203,10 +204,10 @@ namespace astra
 
         // Check if we have barometer data
         bool hasBaro = false;
-        if (sensorManager->getPrimaryBaro() && sensorManager->getPrimaryBaro()->isInitialized())
+        if (sensorManager->getBaroSource() && sensorManager->getBaroSource()->isInitialized())
         {
             hasBaro = true;
-            measurementData[2] = sensorManager->getPrimaryBaro()->getASLAltM() - origin.z();
+            measurementData[2] = sensorManager->getBaroSource()->getASLAltM() - origin.z();
         }
         else
         {
@@ -231,12 +232,13 @@ namespace astra
         // Acceleration is computed from orientation filter (not from KF state)
         if (orientationFilter && orientationFilter->isReady())
         {
-            Vector<3> earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccelSource());
+            Vector<3> earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccelSource()->getAccel());
             acceleration.x() = earthAccel.x();
             acceleration.y() = earthAccel.y();
             acceleration.z() = earthAccel.z();
         }
 
+        return true;
     }
 
     void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)
@@ -324,13 +326,13 @@ namespace astra
 
         // Update orientation first (happens every predict step)
         // This computes earth-frame acceleration from body-frame measurements
-        updateOrientation(sensorManager->getGyroSource(), sensorManager->getAccelSource(), dt);
+        updateOrientation(sensorManager->getGyroSource()->getAngVel(), sensorManager->getAccelSource()->getAccel(), dt);
 
         // Get earth-frame acceleration to use as control input
         Vector<3> earthAccel(0, 0, 0);
         if (orientationFilter && orientationFilter->isReady())
         {
-            earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccelSource());
+            earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccelSource()->getAccel());
             // Update acceleration state variable
             acceleration.x() = earthAccel.x();
             acceleration.y() = earthAccel.y();

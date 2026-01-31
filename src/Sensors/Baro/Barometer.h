@@ -19,7 +19,7 @@ namespace astra
         static double calcAltitude(double pressure);
         
         // Sensor virtual functions
-        virtual bool update() override;
+        virtual bool update(double currentTime = -1) override;
         virtual bool begin() override;
 
     protected:

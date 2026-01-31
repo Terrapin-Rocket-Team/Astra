@@ -82,6 +82,17 @@ public:
         ay = ay_;
         count = c;
     }
+
+    bool begin() override
+    {
+        initialized = true;
+        return true;
+    }
+
+    bool update(double currentTime = -1) override
+    {
+        return true;
+    }
 };
 
 // A second reporter to test multi-reporter composition
@@ -98,6 +109,17 @@ public:
     {
         lat = la;
         lon = lo;
+    }
+
+    bool begin() override
+    {
+        initialized = true;
+        return true;
+    }
+
+    bool update(double currentTime = -1) override
+    {
+        return true;
     }
 };
 
@@ -258,6 +280,8 @@ void test_empty_reporter_is_handled(void)
     {
     public:
         explicit EmptyReporter(const char *n) : DataReporter(n) {}
+        bool begin() override { initialized = true; return true; }
+        bool update(double currentTime = -1) override { return true; }
     } empty("empty");
 
     MockSink sink(true);

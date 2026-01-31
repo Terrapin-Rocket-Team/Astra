@@ -28,8 +28,7 @@ void tearDown(void)
 void test_constructor() {
     FakeBarometer fake;
     TEST_ASSERT_EQUAL_STRING("FakeBarometer", fake.getName());
-    TEST_ASSERT_EQUAL_STRING("Barometer", fake.getTypeString());
-    TEST_ASSERT_EQUAL_INT32("Barometer"_i, fake.getType());
+    // Note: Sensor typing system (getType/getTypeString) has been removed
 }
 
 // ---

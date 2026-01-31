@@ -71,6 +71,17 @@ public:
         ay = ay_;
         count = c;
     }
+
+    bool begin() override
+    {
+        initialized = true;
+        return true;
+    }
+
+    bool update(double currentTime = -1) override
+    {
+        return true;
+    }
 };
 
 // --------------- Test Streams ---------------
