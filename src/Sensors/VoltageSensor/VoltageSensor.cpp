@@ -4,7 +4,7 @@
 namespace astra
 {
     VoltageSensor::VoltageSensor(int pin, const char *name)
-        : Sensor("Voltage Sensor", name),
+        : Sensor(name),
           pin(pin),
           r1(0),
           r2(0),
@@ -16,7 +16,7 @@ namespace astra
     }
 
     VoltageSensor::VoltageSensor(int pin, int r1, int r2, const char *name, double refVoltage)
-        : Sensor("Voltage Sensor", name),
+        : Sensor(name),
           pin(pin),
           r1(r1),
           r2(r2),

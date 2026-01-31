@@ -52,16 +52,10 @@ namespace astra
         DataPoint *getLastPoint() { return last; }
 
         // Initializes the reporter and sets up any necessary parameters (calls init() internally)
-        virtual bool begin()
-        {
-            return initialized = init();
-        }
+        virtual bool begin() = 0;
 
         // Updates the reporter's fields by querying for new data (calls read() internally)
-        virtual bool update()
-        {
-            return read();
-        }
+        virtual bool update() = 0;
 
         virtual bool isInitialized() const { return initialized; } // Returns whether the reporter has been initialized or not
 
@@ -96,12 +90,6 @@ namespace astra
             last = nullptr;
             numColumns = 0;
         }
-
-        // Sets up the reporter and stores any critical parameters. Needs to reset if already initialized. Called by begin()
-        virtual bool init() { return true; }
-
-        // Reads/updates the data for this reporter. Called by update()
-        virtual bool read() { return true; }
 
         bool initialized = false;
         bool autoUpdate = true;

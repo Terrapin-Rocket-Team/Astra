@@ -30,7 +30,7 @@ namespace astra
         }
 
     protected:
-        RotatableSensor(const char *type, const char *name) : Sensor(type, name) {}
+        RotatableSensor(const char *name) : Sensor(name) {}
         MountingTransform orient;
     };
 }

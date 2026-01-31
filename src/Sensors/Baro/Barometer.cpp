@@ -6,7 +6,7 @@ namespace astra
 {
 
 #pragma region Barometer Specific Functions
-    Barometer::Barometer(const char *name) : Sensor("Barometer", name)
+    Barometer::Barometer(const char *name) : Sensor(name)
     {
         addColumn("%0.3f", &pressure, "Pres (hPa)");
         addColumn("%0.3f", &temp, "Temp (C)");
@@ -27,7 +27,7 @@ namespace astra
 
     double Barometer::getASLAltM() const { return altitudeASL; }
 
-    static double Barometer::calcAltitude(double pressure)
+    double Barometer::calcAltitude(double pressure)
     {
         // Equation from NOAA, but for meters: https://www.weather.gov/media/epz/wxcalc/pressureAltitude.pdf
         return 44307.69 * (1.0 - pow(pressure / MEAN_SEA_LEVEL_PRESSURE_HPA, 0.190284));
