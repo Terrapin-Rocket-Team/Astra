@@ -196,6 +196,11 @@ bool Astra::update(double timeSeconds)
                 }
             }
             DataLogger::instance().appendLine();
+            LOGI("DEBUG Astra: appendLine() complete");
+        }
+        else
+        {
+            LOGE("DEBUG Astra: DataLogger NOT available!");
         }
         _didLog = true;
         

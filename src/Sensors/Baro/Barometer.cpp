@@ -6,7 +6,7 @@ namespace astra
 {
 
 #pragma region Barometer Specific Functions
-    Barometer::Barometer(const char *name) : Sensor("Barometer", name)
+    Barometer::Barometer(const char *name) : Sensor(name)
     {
         addColumn("%0.3f", &pressure, "Pres (hPa)");
         addColumn("%0.3f", &temp, "Temp (C)");
