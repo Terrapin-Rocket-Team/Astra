@@ -25,6 +25,7 @@ namespace astra
         HITLGyro(const char *name = "HITL_Gyroscope")
             : Gyro(name)
         {
+            updateInterval = 0;
         }
 
         virtual ~HITLGyro() {}

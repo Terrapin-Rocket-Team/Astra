@@ -14,30 +14,32 @@ namespace astra
     {
     private:
         // Primary sensors for state estimation
-        Accel *primaryAccel = nullptr;
-        Gyro *primaryGyro = nullptr;
-        Mag *primaryMag = nullptr;
-        Barometer *primaryBaro = nullptr;
-        GPS *primaryGPS = nullptr;
+        Accel *accel = nullptr;
+        Gyro *gyro = nullptr;
+        Mag *mag = nullptr;
+        Barometer *baro = nullptr;
+        GPS *gps = nullptr;
 
         // Misc sensors that need updating but aren't used in state
         static constexpr uint8_t MAX_MISC_SENSORS = 16;
         Sensor *miscSensors[MAX_MISC_SENSORS] = {nullptr};
         uint8_t numMisc = 0;
+        bool ok = false;
+
 
     public:
         // Configuration
-        void setPrimaryAccel(Accel *a) { primaryAccel = a; }
-        void setPrimaryGyro(Gyro *g) { primaryGyro = g; }
-        void setPrimaryMag(Mag *m) { primaryMag = m; }
-        void setPrimaryBaro(Barometer *b) { primaryBaro = b; }
-        void setPrimaryGPS(GPS *g) { primaryGPS = g; }
+        void setAccelSource(Accel *a) { accel = a; }
+        void setGyroSource(Gyro *g) { gyro = g; }
+        void setMagSource(Mag *m) { mag = m; }
+        void setBaroSource(Barometer *b) { baro = b; }
+        void setGPSSource(GPS *g) { gps = g; }
 
-        Accel *getPrimaryAccel() const { return primaryAccel; }
-        Gyro *getPrimaryGyro() const { return primaryGyro; }
-        Mag *getPrimaryMag() const { return primaryMag; }
-        Barometer *getPrimaryBaro() const { return primaryBaro; }
-        GPS *getPrimaryGPS() const { return primaryGPS; }
+        Accel *getAccelSource() const { return accel; }
+        Gyro *getGyroSource() const { return gyro; }
+        Mag *getMagSource() const { return mag; }
+        Barometer *getBaroSource() const { return baro; }
+        GPS *getGPSSource() const { return gps; }
 
         bool addMiscSensor(Sensor *s)
         {
@@ -61,9 +63,7 @@ namespace astra
         bool begin()
         {
             bool success = true;
-
             // --- Primary Sensors (Critical) ---
-
             // Helper lambda to reduce boilerplate for primary sensors
             auto initPrimary = [&](Sensor *sensor, const char *label)
             {
@@ -81,11 +81,11 @@ namespace astra
                     LOGW("No %s sensor defined.", label);
             };
 
-            initPrimary(primaryAccel, "Primary Accel");
-            initPrimary(primaryGyro, "Primary Gyro");
-            initPrimary(primaryMag, "Primary Mag");
-            initPrimary(primaryBaro, "Primary Baro");
-            initPrimary(primaryGPS, "Primary GPS");
+            initPrimary(accel, "Accelerometer");
+            initPrimary(gyro, "Gyroscope");
+            initPrimary(mag, "Magnetometer");
+            initPrimary(baro, "Barometer");
+            initPrimary(gps, "GPS");
 
             // --- Miscellaneous Sensors (Iterative) ---
 
@@ -107,7 +107,7 @@ namespace astra
                 LOGI("All sensors initialized successfully.");
             else
                 LOGE("Sensor initialization completed with ERRORS.");
-            return success;
+            return ok = success;
         }
 
         void update()
@@ -120,16 +120,16 @@ namespace astra
                 else
                     LOGW("Misc sensor at index %d is null during update.", i);
             }
-            if (primaryAccel)
-                primaryAccel->update();
-            if (primaryGyro)
-                primaryGyro->update();
-            if (primaryMag)
-                primaryMag->update();
-            if (primaryBaro)
-                primaryBaro->update();
-            if (primaryGPS)
-                primaryGPS->update();
+            if (accel)
+                accel->update();
+            if (gyro)
+                gyro->update();
+            if (mag)
+                mag->update();
+            if (baro)
+                baro->update();
+            if (gps)
+                gps->update();
         }
 
         /**
@@ -142,122 +142,7 @@ namespace astra
          */
         bool isOK() const
         {
-            // Must have at least a primary accelerometer
-            if (!primaryAccel)
-            {
-                LOGE("SensorManager is not OK: No primary accelerometer configured.");
-                return false;
-            }
-
-            if (!primaryAccel->isInitialized())
-            {
-                LOGE("SensorManager is not OK: Primary accelerometer not initialized.");
-                return false;
-            }
-
-            // Check other critical sensors and warn if missing/not initialized
-            if (primaryGyro && !primaryGyro->isInitialized())
-            {
-                LOGW("Primary gyroscope is configured but not initialized.");
-            }
-
-            if (primaryBaro && !primaryBaro->isInitialized())
-            {
-                LOGW("Primary barometer is configured but not initialized.");
-            }
-
-            if (primaryMag && !primaryMag->isInitialized())
-            {
-                LOGW("Primary magnetometer is configured but not initialized.");
-            }
-
-            if (primaryGPS && !primaryGPS->isInitialized())
-            {
-                LOGW("Primary GPS is configured but not initialized.");
-            }
-
-            return true;
-        }
-
-        // Accessors for state estimation
-        Vector<3> getAccel() const
-        {
-            if (!primaryAccel)
-            {
-                LOGW("Attempted to get accel data but primaryAccel is null.");
-                return Vector<3>();
-            }
-            return primaryAccel->getAccel();
-        }
-
-        Vector<3> getGyro() const
-        {
-            if (!primaryGyro)
-            {
-                LOGW("Attempted to get gyro data but primaryGyro is null.");
-                return Vector<3>();
-            }
-            return primaryGyro->getAngVel();
-        }
-
-        Vector<3> getMag() const
-        {
-            if (!primaryMag)
-            {
-                LOGW("Attempted to get mag data but primaryMag is null.");
-                return Vector<3>();
-            }
-            return primaryMag->getMag();
-        }
-
-        double getPressure() const
-        {
-            if (!primaryBaro)
-            {
-                LOGW("Attempted to get pressure data but primaryBaro is null.");
-                return 0.0;
-            }
-            return primaryBaro->getPressure();
-        }
-
-        double getTemp() const
-        {
-            if (!primaryBaro)
-            {
-                LOGW("Attempted to get temperature data but primaryBaro is null.");
-                return 0.0;
-            }
-            return primaryBaro->getTemp();
-        }
-
-        Vector<3> getGPSPos() const
-        {
-            if (!primaryGPS)
-            {
-                LOGW("Attempted to get GPS position but primaryGPS is null.");
-                return Vector<3>();
-            }
-            return primaryGPS->getPos();
-        }
-
-        double getHeading() const
-        {
-            if (!primaryGPS)
-            {
-                LOGW("Attempted to get heading but primaryGPS is null.");
-                return 0.0;
-            }
-            return primaryGPS->getHeading();
-        }
-
-        const char *getTimeOfDay() const
-        {
-            if (!primaryGPS)
-            {
-                LOGW("Attempted to get time of day but primaryGPS is null.");
-                return "";
-            }
-            return primaryGPS->getTimeOfDay();
+            return ok;
         }
     };
 }

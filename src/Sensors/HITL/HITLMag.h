@@ -25,6 +25,7 @@ namespace astra
         HITLMag(const char *name = "HITL_Magnetometer")
             : Mag(name)
         {
+            updateInterval = 0;
         }
 
         virtual ~HITLMag() {}

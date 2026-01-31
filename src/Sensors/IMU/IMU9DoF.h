@@ -72,7 +72,10 @@ namespace astra
         {
             clearColumns();
         }
-        virtual ~IMU9DoFMag() {}
+        virtual ~IMU9DoFMag()
+        {
+            setUpdateRate(100);
+        }
 
         Vector<3> getMag() const override { return orient.transform(*magRef); }
 
