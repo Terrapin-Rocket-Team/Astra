@@ -64,4 +64,20 @@ namespace astra
         covarianceUpdate();
     }
 
+    // Flexible update with custom H and R matrices
+    // Allows partial measurements (e.g., GPS horizontal only, baro vertical only)
+    void LinearKalmanFilter::update(Matrix z, Matrix H, Matrix R)
+    {
+        // Calculate Kalman gain for this specific measurement
+        Matrix K_custom = P * H.transpose() * (H * P * H.transpose() + R).inverse();
+
+        // Update state estimate
+        X = X + K_custom * (z - H * X);
+
+        // Update covariance (Joseph form for numerical stability)
+        int n = X.getRows();
+        Matrix I_KH = Matrix::ident(n) - K_custom * H;
+        P = I_KH * P * I_KH.transpose() + K_custom * R * K_custom.transpose();
+    }
+
 } // namespace astra

@@ -35,7 +35,7 @@ namespace astra
             return initialized = init();
         }
 
-        virtual bool update() override
+        virtual bool update(double currentTime = -1) override
         {
             return read();
         }

@@ -151,7 +151,7 @@ bool Astra::update(double timeSeconds)
         lastSensorUpdate = timeSeconds;
         if (config->sensorManager)
         {
-            config->sensorManager->update();
+            config->sensorManager->update(timeSeconds);
         }
         _didUpdateSensors = true;
 

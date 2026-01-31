@@ -38,7 +38,7 @@ namespace astra
 
 #pragma region Sensor Virtual Function Implementations
 
-    bool Barometer::update()
+    bool Barometer::update(double currentTime)
     {
         if (!read())
             return false;

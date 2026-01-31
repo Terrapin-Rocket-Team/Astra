@@ -8,7 +8,7 @@
 #include "RecordData/DataReporter/DataReporter.h"
 #include "RecordData/Logging/DataLogger.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
-#include "State/State.h"
+#include "State/DefaultState.h"
 #include "Utils/Astra.h"
 
 using namespace astra;
@@ -28,6 +28,10 @@ public:
     {
         value = v;
     }
+
+    // Implement pure virtual methods from DataReporter
+    virtual bool begin() override { return true; }
+    virtual bool update(double currentTime = -1) override { return true; }
 };
 
 // ---------- Tests ----------
@@ -161,8 +165,7 @@ public:
 void test_datareporter_integration_with_datalogger(void)
 {
     // Create a minimal State with no sensors
-    Filter *filter = nullptr;
-    State state(filter, nullptr);
+    DefaultState state;
 
     // Create custom reporters (they auto-register)
     TestReporter customReporter1("custom1");
