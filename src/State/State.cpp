@@ -231,7 +231,7 @@ namespace astra
         // Acceleration is computed from orientation filter (not from KF state)
         if (orientationFilter && orientationFilter->isReady())
         {
-            Vector<3> earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccel());
+            Vector<3> earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccelSource());
             acceleration.x() = earthAccel.x();
             acceleration.y() = earthAccel.y();
             acceleration.z() = earthAccel.z();
@@ -324,13 +324,13 @@ namespace astra
 
         // Update orientation first (happens every predict step)
         // This computes earth-frame acceleration from body-frame measurements
-        updateOrientation(sensorManager->getGyro(), sensorManager->getAccel(), dt);
+        updateOrientation(sensorManager->getGyroSource(), sensorManager->getAccelSource(), dt);
 
         // Get earth-frame acceleration to use as control input
         Vector<3> earthAccel(0, 0, 0);
         if (orientationFilter && orientationFilter->isReady())
         {
-            earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccel());
+            earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccelSource());
             // Update acceleration state variable
             acceleration.x() = earthAccel.x();
             acceleration.y() = earthAccel.y();

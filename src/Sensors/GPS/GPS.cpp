@@ -20,6 +20,7 @@ GPS::GPS(const char *name) : Sensor(name)
     addColumn("%s", &tod, "Time of Day");
     hasFirstFix = false;
     hasFix = false;
+    setUpdateRate(5);
 }
 
 GPS::~GPS() {}

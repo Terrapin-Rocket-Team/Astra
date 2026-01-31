@@ -13,6 +13,7 @@ namespace astra
           rawValue(0)
     {
         addColumn("%0.3f", &voltage, "Voltage (V)");
+        setUpdateRate(10);
     }
 
     VoltageSensor::VoltageSensor(int pin, int r1, int r2, const char *name, double refVoltage)

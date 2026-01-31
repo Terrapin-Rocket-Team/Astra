@@ -11,6 +11,7 @@ namespace astra
         addColumn("%0.3f", &pressure, "Pres (hPa)");
         addColumn("%0.3f", &temp, "Temp (C)");
         addColumn("%0.3f", &altitudeASL, "Alt ASL (m)");
+        setUpdateRate(20);
     }
 
     Barometer::~Barometer() {}

@@ -25,6 +25,7 @@ namespace astra
         HITLGPS(const char *name = "HITL_GPS")
             : GPS(name)
         {
+            updateInterval = 0;
         }
 
         virtual ~HITLGPS() {}
