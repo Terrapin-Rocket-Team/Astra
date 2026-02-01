@@ -18,12 +18,12 @@ MAX_M10S gps;
 DPS368 baro;
 Sensor *sensors[2] = {&gps, &baro};
 AvionicsKF kfilter;
-State avionicsState(&kfilter);
+MahonyAHRS ahrs;
+State avionicsState(&kfilter, &ahrs);
 
 AstraConfig config = AstraConfig()
                          .withBBPin(LED_BUILTIN)
                          .withBuzzerPin(BUZZER_PIN)
-                         .withSensors(sensors, 2)
                          .withState(&avionicsState);
 
 Astra sys(&config);
