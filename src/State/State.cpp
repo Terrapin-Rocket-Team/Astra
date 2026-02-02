@@ -88,7 +88,7 @@ namespace astra
                 double t = millis() / 1000.0;
                 sensorManager->update(t);
                 // Assume ~100Hz for the delay(10) loop
-                orientationFilter->update(sensorManager->getAccelSource(), sensorManager->getGyroSource(), 0.01);
+                orientationFilter->update(sensorManager->getAccelSource()->getAccel(), sensorManager->getGyroSource()->getAngVel(), 0.01);
                 delay(10);
             }
 #endif
