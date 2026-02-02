@@ -136,8 +136,6 @@ namespace astra
 
     bool State::update(double newTime)
     {
-        fprintf(stderr, "DEBUG State: update() called with newTime=%0.3f\n", newTime);
-
         if (!initialized)
         {
             fprintf(stderr, "ERROR State: not initialized!\n");
