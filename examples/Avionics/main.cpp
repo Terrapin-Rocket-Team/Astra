@@ -1,7 +1,11 @@
 #include <Arduino.h>
 #include "AvionicsKF.h"
-#include "Sensors/HW/GPS/MAX_M10S.h"
+#include "Sensors/HW/GPS/SAM_M10Q.h"
 #include "Sensors/HW/Baro/DPS368.h"
+#include "Sensors/HW/IMU/BMI088.h"
+#include "Sensors/HW/Mag/MMC5603NJ.h"
+#include "Sensors/SensorManager/SensorManager.h"
+#include "Filters/Mahony.h"
 #include "State/State.h"
 #include "Utils/Astra.h"
 #include "RecordData/Logging/EventLogger.h"
@@ -14,16 +18,19 @@ const int BUZZER_PIN = 33;
 HardwareSerial Serial1(PA10, PA9);
 #endif
 
-MAX_M10S gps;
+SAM_M10Q gps;
 DPS368 baro;
-Sensor *sensors[2] = {&gps, &baro};
+BMI088 imu("BMI088");
+MMC5603NJ mag("MMC5603NJ");
+SensorManager sensorManager;
 AvionicsKF kfilter;
-State avionicsState(&kfilter);
+MahonyAHRS orientationFilter;
+State avionicsState(&kfilter, &orientationFilter);
 
 AstraConfig config = AstraConfig()
                          .withBBPin(LED_BUILTIN)
                          .withBuzzerPin(BUZZER_PIN)
-                         .withSensors(sensors, 2)
+                         .withSensorManager(&sensorManager)
                          .withState(&avionicsState);
 
 Astra sys(&config);
@@ -42,6 +49,14 @@ void setup()
     Serial.println("Starting up");
 
     EventLogger::configure(bufLogs, 1);
+
+    // Setup sensor manager
+    sensorManager.setGPSSource(&gps);
+    sensorManager.setBaroSource(&baro);
+    sensorManager.setAccelSource(imu.getAccelSensor());
+    sensorManager.setGyroSource(imu.getGyroSensor());
+    sensorManager.setMagSource(&mag);
+    avionicsState.withSensorManager(&sensorManager);
 
     sys.init();
     // Serial.println(); // getLogger().isReady());
