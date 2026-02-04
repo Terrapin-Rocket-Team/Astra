@@ -43,19 +43,8 @@ namespace astra
 
 #pragma endregion
 
-    void State::withSensorManager(SensorManager *sensorManager)
-    {
-        this->sensorManager = sensorManager;
-    }
-
     bool State::begin()
     {
-        if (!sensorManager)
-        {
-            LOGE("State does not have a reference to a sensor manager!");
-            return false;
-        }
-
         if (!filter)
         {
             LOGE("No Kalman filter available for State. Required!");
@@ -71,128 +60,98 @@ namespace astra
         // Initialize Kalman filter
         filter->initialize();
 
-        // Auto-calibrate orientation filter if sensor manager is available
-        if (sensorManager && sensorManager->isOK())
-        {
-            LOGI("Auto-calibrating orientation filter...");
-
-            // Set to CALIBRATING to accumulate bias and track vertical
-            orientationFilter->setMode(MahonyMode::CALIBRATING);
-
-#ifndef NATIVE
-            // Collect calibration samples
-            // The new Mahony update() accumulates sums internally in CALIBRATING mode
-            const int calibSamples = 200;
-            for (int i = 0; i < calibSamples; i++)
-            {
-                double t = millis() / 1000.0;
-                sensorManager->update(t);
-                // Assume ~100Hz for the delay(10) loop
-                orientationFilter->update(sensorManager->getAccelSource()->getAccel(), sensorManager->getGyroSource()->getAngVel(), 0.01);
-                delay(10);
-            }
-#endif
-            // Compute the bias from the samples we just took
-            orientationFilter->finalizeCalibration();
-
-            // IMPORTANT: We REMAIN in CALIBRATING mode.
-            // This allows the filter to continue snapping to the "nearest vertical"
-            // while the rocket is on the rail, compensating for rail tilt or loading.
-            //
-            // The Launch Detection logic (in StateMachine) MUST call:
-            // orientationFilter->lockFrame();
-            // orientationFilter->setMode(MahonyMode::CORRECTING);
-            // at the moment of liftoff.
-
-            LOGI("Orientation calibration complete. Filter remaining in CALIBRATING mode until liftoff.");
-        }
-        else
-        {
-            LOGW("No SensorManager available for orientation filter calibration.");
-            return false;
-        }
-
-        // Set origin altitude from barometer (sensors have settled during calibration)
-        if (sensorManager->getBaroSource() && sensorManager->getBaroSource()->isInitialized())
-        {
-            origin.z() = sensorManager->getBaroSource()->getASLAltM();
-            LOGI("Origin altitude set to %.2f m ASL from barometer.", origin.z());
-        }
-        else
-        {
-            LOGW("No barometer available to set origin altitude.");
-        }
-
-        // Origin x,y (GPS position) will be set during first update when GPS gets fix
-        origin.x() = 0;
-        origin.y() = 0;
-
+        LOGI("State initialized. Ready for data.");
         initialized = true;
-        LOGI("State Initialized.");
         return true;
     }
 
-#pragma region Update Functions
-
-    bool State::update(double newTime)
+    void State::setGPSOrigin(double lat, double lon, double alt)
     {
-        if (!initialized)
+        if (!gpsOriginSet)
         {
-            fprintf(stderr, "ERROR State: not initialized!\n");
-            LOGE("State is not initialized! Call begin() first.");
-            return false;
+            origin.x() = lat;
+            origin.y() = lon;
+            origin.z() = alt;  // Will be overwritten by baro if available
+            gpsOriginSet = true;
+            LOGI("GPS origin set to lat=%.6f, lon=%.6f, alt=%.2f", lat, lon, alt);
         }
-        if (!sensorManager)
+    }
+
+    void State::setBaroOrigin(double altASL)
+    {
+        if (!baroOriginSet)
         {
-            fprintf(stderr, "ERROR State: no sensor manager!\n");
-            LOGE("No Sensor Manager configured. Add one to Astra or directly to state.");
-            return false;
+            origin.z() = altASL;
+            baroOriginSet = true;
+            LOGI("Baro origin set to %.2f m ASL", altASL);
         }
-        if (!sensorManager->isOK())
+    }
+
+    void State::predict(double dt)
+    {
+        if (!filter || !orientationFilter)
         {
-            fprintf(stderr, "ERROR State: sensor manager not OK!\n");
-            LOGE("Sensor Manager reports an error. Cannot update State.");
-            return false;
+            LOGE("Cannot predict - filter not available");
+            return;
         }
-        if (!orientationFilter)
+
+        // Get earth-frame acceleration from orientation filter
+        Vector<3> earthAccel(0, 0, 0);
+        if (orientationFilter && orientationFilter->isReady())
         {
-            fprintf(stderr, "ERROR State: no orientation filter or not initialized! initialized=%d\n",
-                    orientationFilter ? (int)orientationFilter->isReady() : -1);
-            LOGE("Orientation Filter not available or not initialized. Cannot update State.");
-            return false;
+            // Note: getEarthAcceleration expects body-frame accel,
+            // but we've already transformed it in updateOrientation
+            // For now, just use the stored acceleration
+            earthAccel = acceleration;
         }
+
+        // Run KF prediction step with acceleration as control input
+        double controlData[3] = {earthAccel.x(), earthAccel.y(), earthAccel.z()};
+        Matrix controlInput(3, 1, controlData);
+        filter->predict(dt, controlInput);
+
+        // Extract predicted state: [px, py, pz, vx, vy, vz]
+        Matrix state = filter->getState();
+
+        // Update state variables from prediction
+        position.x() = state(0, 0);
+        position.y() = state(1, 0);
+        position.z() = state(2, 0);
+        velocity.x() = state(3, 0);
+        velocity.y() = state(4, 0);
+        velocity.z() = state(5, 0);
+    }
+
+    void State::updateMeasurements(const Vector<3> &gpsPos, const Vector<3> &gpsVel,
+                                   double baroAlt, bool hasGPS, bool hasBaro)
+    {
         if (!filter)
         {
-            LOGE("Kalman Filter not available. Cannot update State.");
-            return false;
+            LOGE("Cannot update measurements - filter not available");
+            return;
         }
 
-        // NOTE: In split predict/update mode, time management is handled by predictState()
-        // This method just performs the measurement update without time propagation
-        // Orientation is also already updated by predictState(), so we skip it here
+        // Set GPS origin on first valid GPS reading
+        if (hasGPS && !gpsOriginSet)
+        {
+            setGPSOrigin(gpsPos.x(), gpsPos.y(), gpsPos.z());
+        }
 
         // Prepare measurements: [px, py, pz]
-        // Acceleration is now a control input, not a measurement
         double measurementData[3];
 
-        // Check if we have GPS data
-        bool hasGPS = false;
-        if (sensorManager->getGPSSource() && sensorManager->getGPSSource()->getHasFix())
+        if (hasGPS)
         {
-            // Set GPS origin on first fix (when origin x,y are still 0)
-            if (origin.x() == 0 && origin.y() == 0)
-            {
-                Vector<3> gpsPos = sensorManager->getGPSSource()->getPos();
-                origin.x() = gpsPos.x(); // latitude
-                origin.y() = gpsPos.y(); // longitude
-                LOGI("GPS origin set to lat=%.6f, lon=%.6f", origin.x(), origin.y());
-            }
+            // Calculate displacement from origin in meters
+            // This is a simplified calculation - proper implementation would use haversine
+            double latDiff = gpsPos.x() - origin.x();
+            double lonDiff = gpsPos.y() - origin.y();
 
-            hasGPS = true;
-            // Get displacement from origin in meters
-            Vector<3> displacement = sensorManager->getGPSSource()->getDisplacement(origin);
-            measurementData[0] = displacement.x(); // displacement in meters (north)
-            measurementData[1] = displacement.y(); // displacement in meters (east)
+            // Approximate conversion (works for small distances)
+            const double EARTH_RADIUS = 6371000.0; // meters
+            const double DEG_TO_RAD = 3.14159265358979323846 / 180.0;
+            measurementData[0] = latDiff * DEG_TO_RAD * EARTH_RADIUS; // North
+            measurementData[1] = lonDiff * DEG_TO_RAD * EARTH_RADIUS * cos(origin.x() * DEG_TO_RAD); // East
         }
         else
         {
@@ -200,12 +159,9 @@ namespace astra
             measurementData[1] = 0;
         }
 
-        // Check if we have barometer data
-        bool hasBaro = false;
-        if (sensorManager->getBaroSource() && sensorManager->getBaroSource()->isInitialized())
+        if (hasBaro && baroOriginSet)
         {
-            hasBaro = true;
-            measurementData[2] = sensorManager->getBaroSource()->getASLAltM() - origin.z();
+            measurementData[2] = baroAlt - origin.z();
         }
         else
         {
@@ -226,17 +182,18 @@ namespace astra
         velocity.x() = state(3, 0);
         velocity.y() = state(4, 0);
         velocity.z() = state(5, 0);
+    }
 
-        // Acceleration is computed from orientation filter (not from KF state)
-        if (orientationFilter && orientationFilter->isReady())
-        {
-            Vector<3> earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccelSource()->getAccel());
-            acceleration.x() = earthAccel.x();
-            acceleration.y() = earthAccel.y();
-            acceleration.z() = earthAccel.z();
-        }
+#pragma region Update Functions
 
-        return true;
+    bool State::update(double newTime)
+    {
+        // DEPRECATED: Use the new vector-based API instead:
+        // - updateOrientation(gyro, accel, dt)
+        // - predict(dt)
+        // - updateMeasurements(gpsPos, gpsVel, baroAlt, hasGPS, hasBaro)
+        LOGE("State::update() is deprecated. Use the new vector-based API.");
+        return false;
     }
 
     void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)
@@ -281,78 +238,18 @@ namespace astra
         {
             orientation = orientationFilter->getQuaternion();
 
-            // NOTE: We DO NOT set acceleration here!
-            // Acceleration comes from the Kalman Filter state, not directly from sensors.
-            // The orientation filter's job is only to provide the quaternion for rotating
-            // body-frame measurements to earth-frame.
+            // Transform body-frame acceleration to earth-frame
+            Vector<3> earthAccel = orientationFilter->getEarthAcceleration(accel);
+            acceleration.x() = earthAccel.x();
+            acceleration.y() = earthAccel.y();
+            acceleration.z() = earthAccel.z();
         }
     }
 
     void State::predictState(double newTime)
     {
-        if (!filter)
-        {
-            LOGE("No Kalman filter available for prediction.");
-            return;
-        }
-
-        if (!orientationFilter)
-        {
-            LOGE("Orientation filter not available or not initialized for prediction.");
-            return;
-        }
-
-        if (!sensorManager || !sensorManager->isOK())
-        {
-            LOGE("Sensor manager not available or not OK for prediction.");
-            return;
-        }
-
-        // Update time
-        lastTime = currentTime;
-        if (newTime != -1)
-            currentTime = newTime;
-        else
-            currentTime = millis() / 1000.0;
-
-        double dt = currentTime - lastTime;
-
-        if (dt <= 0)
-        {
-            return;
-        }
-
-        // Update orientation first (happens every predict step)
-        // This computes earth-frame acceleration from body-frame measurements
-        updateOrientation(sensorManager->getGyroSource()->getAngVel(), sensorManager->getAccelSource()->getAccel(), dt);
-
-        // Get earth-frame acceleration to use as control input
-        Vector<3> earthAccel(0, 0, 0);
-        if (orientationFilter && orientationFilter->isReady())
-        {
-            earthAccel = orientationFilter->getEarthAcceleration(sensorManager->getAccelSource()->getAccel());
-            // Update acceleration state variable
-            acceleration.x() = earthAccel.x();
-            acceleration.y() = earthAccel.y();
-            acceleration.z() = earthAccel.z();
-        }
-
-        // Run KF prediction step with acceleration as control input
-        double controlData[3] = {earthAccel.x(), earthAccel.y(), earthAccel.z()};
-        Matrix controlInput(3, 1, controlData);
-        filter->predict(dt, controlInput);
-
-        // Extract predicted state: [px, py, pz, vx, vy, vz]
-        Matrix state = filter->getState();
-
-        // Update state variables from prediction
-        position.x() = state(0, 0);
-        position.y() = state(1, 0);
-        position.z() = state(2, 0);
-        velocity.x() = state(3, 0);
-        velocity.y() = state(4, 0);
-        velocity.z() = state(5, 0);
-
+        // DEPRECATED: Use predict(dt) instead
+        LOGE("State::predictState() is deprecated. Use predict(dt) instead.");
     }
 
 #pragma endregion Update Functions

@@ -9,25 +9,22 @@
 
 namespace astra
 {
-    class SensorManager;
-
     /**
      * State - Inertial state estimation
      *
+     * Pure math component - receives sensor data as vectors, no hardware knowledge.
+     *
      * Responsible for:
-     * 1. Body Frame → Inertial Frame transformation (dynamic, via Mahony AHRS)
+     * 1. Body Frame → Inertial Frame transformation (via Mahony AHRS)
      * 2. Position/velocity estimation (via Kalman Filter)
      * 3. GPS/coordinate tracking
-     *
-     * State receives body-frame data from SensorManager (which handles sensor
-     * selection, fallback, and sensor-to-body frame transforms). State then
-     * transforms to inertial frame and runs the estimation filters.
      *
      * Frame convention:
      *   - Body frame: X forward, Y right, Z down (NED-like, attached to vehicle)
      *   - Inertial frame: NED (North, East, Down) relative to launch point
      *
      * Architecture:
+     *   - State is pure math - Astra orchestrates data flow
      *   - Base class (State) provides common functionality and virtual methods
      *   - DefaultState provides ready-to-use implementation with DefaultKalmanFilter
      *   - Custom derived classes can implement application-specific dynamics
@@ -40,30 +37,59 @@ namespace astra
         virtual ~State();
 
         /**
-         * Configure sensor manager for state estimation
-         * Call this before begin() to enable auto-calibration
-         */
-        void withSensorManager(SensorManager *sensorManager);
-
-        /**
          * Initialize state estimation
-         * If a sensor manager is configured, will auto-calibrate orientation filter
          */
         virtual bool begin();
 
-        // DataReporter interface - updates state with measurements
-        virtual bool update(double currentTime = -1) override;
+        // ========================= Pure Vector-Based Interface =========================
+        // State receives data as vectors, no hardware knowledge
 
-        // ========================= Split Update Methods =========================
-        // These are called at different rates by Astra
-
+        /**
+         * Update orientation estimate from gyro and accel data
+         * Should be called at high rate (100+ Hz)
+         * @param gyro Angular velocity in rad/s (body frame)
+         * @param accel Acceleration in m/s^2 (body frame)
+         * @param dt Time step in seconds
+         */
         virtual void updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt);
 
         /**
          * Run Kalman filter prediction step
          * Uses inertial-frame acceleration from orientation filter
+         * @param dt Time step in seconds since last prediction
          */
-        virtual void predictState(double currentTime = -1);
+        virtual void predict(double dt);
+
+        /**
+         * Update state with GPS and/or barometer measurements
+         * @param gpsPos GPS position (lat, lon, alt) or zero vector if no GPS
+         * @param gpsVel GPS velocity (NED frame) or zero vector if no GPS
+         * @param baroAlt Barometric altitude ASL in meters, or 0 if no baro
+         * @param hasGPS True if GPS data is valid
+         * @param hasBaro True if barometer data is valid
+         */
+        virtual void updateMeasurements(const Vector<3> &gpsPos, const Vector<3> &gpsVel,
+                                       double baroAlt, bool hasGPS, bool hasBaro);
+
+        /**
+         * Set GPS origin (call once when GPS gets first fix)
+         * @param lat Latitude in degrees
+         * @param lon Longitude in degrees
+         * @param alt Altitude ASL in meters
+         */
+        virtual void setGPSOrigin(double lat, double lon, double alt);
+
+        /**
+         * Set barometric origin (call once at startup)
+         * @param altASL Altitude ASL in meters from barometer
+         */
+        virtual void setBaroOrigin(double altASL);
+
+        // ========================= Legacy Methods (deprecated) =========================
+        // These will be removed in v0.3
+
+        virtual bool update(double currentTime = -1) override;  // Deprecated
+        virtual void predictState(double currentTime = -1);     // Deprecated - use predict(dt)
         // ========================= State Getters =========================
 
         virtual Vector<3> getPosition() const { return position; }         // in m away from point of launch (inertial frame)
@@ -101,10 +127,9 @@ namespace astra
         // Orientation filter (Mahony AHRS) - body to inertial transformation
         MahonyAHRS *orientationFilter;
 
-        // Sensor manager reference (optional, for calibration)
-        SensorManager *sensorManager = nullptr;
-
         bool initialized = false;
+        bool gpsOriginSet = false;
+        bool baroOriginSet = false;
     };
 }
 #endif // STATE_H

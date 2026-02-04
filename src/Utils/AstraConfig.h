@@ -2,6 +2,7 @@
 #define Astra_CONFIG_H
 
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "Sensors/SensorManager/SensorManager.h"
 #include <stdint.h>
 
 namespace astra
@@ -9,7 +10,13 @@ namespace astra
     class State;
     class DataReporter;
     class Sensor;
-    class SensorManager;
+    class Accel;
+    class Gyro;
+    class Mag;
+    class Barometer;
+    class GPS;
+    class IMU6DoF;
+    class IMU9DoF;
 
     class AstraConfig
     {
@@ -20,9 +27,47 @@ namespace astra
         // No default.
         AstraConfig &withState(State *state);
 
-        // Add sensors to Astra's knowledge. Astra will manage updating them.
-        // No default.
-        AstraConfig &withSensorManager(SensorManager *sensorManager);
+        // ===== Individual Sensor Configuration =====
+        // These methods configure sensors without requiring manual SensorManager creation
+        // Astra will create and manage the SensorManager internally
+
+        // Set accelerometer sensor
+        // Astra will manage this sensor internally
+        AstraConfig &withAccel(Accel *accel);
+
+        // Set gyroscope sensor
+        // Astra will manage this sensor internally
+        AstraConfig &withGyro(Gyro *gyro);
+
+        // Set magnetometer sensor (optional for most applications)
+        // Astra will manage this sensor internally
+        AstraConfig &withMag(Mag *mag);
+
+        // Set barometer sensor
+        // Astra will manage this sensor internally
+        AstraConfig &withBaro(Barometer *baro);
+
+        // Set GPS sensor
+        // Astra will manage this sensor internally
+        AstraConfig &withGPS(GPS *gps);
+
+        // Add miscellaneous sensor for logging only (not used in state estimation)
+        // Can be called multiple times to add multiple misc sensors
+        // Astra will manage these sensors internally
+        AstraConfig &withMiscSensor(Sensor *sensor);
+
+        // ===== IMU Convenience Methods =====
+        // These methods automatically extract accelerometer and gyroscope from IMU
+
+        // Set 6-DOF IMU (accelerometer + gyroscope)
+        // Automatically extracts and configures accel and gyro sensors
+        // The IMU itself is added as a misc sensor for data logging
+        AstraConfig &with6DoFIMU(IMU6DoF *imu);
+
+        // Set 9-DOF IMU (accelerometer + gyroscope + magnetometer)
+        // Automatically extracts and configures accel, gyro, and mag sensors
+        // The IMU itself is added as a misc sensor for data logging
+        AstraConfig &with9DoFIMU(IMU9DoF *imu);
 
         // Set sensor read rate (in hz). Sensors will be polled at this rate.
         // Default `30`.
@@ -101,9 +146,27 @@ namespace astra
 
         AstraConfig();
 
+    private:
+        // Internal method called by Astra to populate SensorManager from individual sensor pointers
+        void populateSensorManager();
+
     protected:
         State *state = nullptr;
-        SensorManager *sensorManager = nullptr;
+
+        // SensorManager owned by config, populated from individual sensor pointers
+        SensorManager sensorManager;  // OWNED by config
+
+        // Individual sensor pointers for configuration
+        Accel *accel = nullptr;
+        Gyro *gyro = nullptr;
+        Mag *mag = nullptr;
+        Barometer *baro = nullptr;
+        GPS *gps = nullptr;
+
+        static constexpr uint8_t MAX_MISC_SENSORS = 16;
+        Sensor *miscSensors[MAX_MISC_SENSORS] = {nullptr};
+        uint8_t numMiscSensors = 0;
+
         int pins[50];
         ILogSink *logs[50];
         uint8_t numLogs = 0;

@@ -184,6 +184,76 @@ namespace astra
         {
             return ok;
         }
+
+        // ========================= Convenience Data Access Methods =========================
+        // These methods provide clean access to sensor data without verbose chaining
+        // Returns safe defaults (zero vectors) if sensor is not present or initialized
+
+        /**
+         * Get current acceleration vector in m/s^2
+         * Returns zero vector if accelerometer not present or not initialized
+         */
+        Vector<3> getAcceleration() const
+        {
+            if (accel && accel->isInitialized())
+                return accel->getAccel();
+            return Vector<3>(0, 0, 0);
+        }
+
+        /**
+         * Get current angular velocity vector in rad/s
+         * Returns zero vector if gyroscope not present or not initialized
+         */
+        Vector<3> getAngularVelocity() const
+        {
+            if (gyro && gyro->isInitialized())
+                return gyro->getAngVel();
+            return Vector<3>(0, 0, 0);
+        }
+
+        /**
+         * Get current magnetic field vector in uT (microtesla)
+         * Returns zero vector if magnetometer not present or not initialized
+         */
+        Vector<3> getMagneticField() const
+        {
+            if (mag && mag->isInitialized())
+                return mag->getMag();
+            return Vector<3>(0, 0, 0);
+        }
+
+        /**
+         * Get current barometric altitude in meters ASL (Above Sea Level)
+         * Returns 0.0 if barometer not present or not initialized
+         */
+        double getBarometricAltitude() const
+        {
+            if (baro && baro->isInitialized())
+                return baro->getASLAltM();
+            return 0.0;
+        }
+
+        /**
+         * Get current GPS position as Vector<3> (latitude, longitude, altitude)
+         * Returns zero vector if GPS not present, not initialized, or no fix
+         */
+        Vector<3> getGPSPosition() const
+        {
+            if (gps && gps->isInitialized() && gps->getHasFix())
+                return gps->getPos();
+            return Vector<3>(0, 0, 0);
+        }
+
+        /**
+         * Get current GPS velocity in m/s (NED frame: North, East, Down)
+         * Returns zero vector if GPS not present, not initialized, or no fix
+         */
+        Vector<3> getGPSVelocity() const
+        {
+            if (gps && gps->isInitialized() && gps->getHasFix())
+                return gps->getVel();
+            return Vector<3>(0, 0, 0);
+        }
     };
 }
 #endif // SENSOR_MANAGER_H
