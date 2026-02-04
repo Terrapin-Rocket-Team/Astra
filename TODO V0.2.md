@@ -6,6 +6,7 @@
 - [ ] Add Radio Sensor (for GPS eventually)
 - [ ] Add STM32 EMMC support
 - [ ] Change init/read to int instead of bool?
+- [ ] Add servo and motor control interfaces
 
 ## User Feedback Systems
 - [ ] Proper buzzer/LED feedback systems
@@ -36,12 +37,21 @@
 - [ ] Add apogee time and altitude prediction
 - [ ] Add drogue deploy detection
 - [ ] Add main deploy detection
+- [ ] Add pyro charge deployment
+- [ ] Add multi stage state detection
 
 ## Data Handling & Logging
 - [X] Fix `withOtherDataReporters`
+- [X] Add a DataReporter callback interface for single item logging
 - [ ] Add debug log
 
 ## Build & Deployment
 - [X] Auto-increment version based on build/SHA
 - [ ] Reduce init verbosity/double init
 - [ ] Clean up comments in files
+
+## General
+- [ ] Add a scheduler to the update loop to detect hung or crashed tasks
+- [ ] Interactive flight data log viewer
+- [ ] Create a more comprehensive example set
+- [ ] Create a GUI configurator tool (and by extension have Astra be able to read from a config file)
