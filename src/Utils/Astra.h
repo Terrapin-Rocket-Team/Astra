@@ -32,6 +32,7 @@ namespace astra
         AstraConfig *config = nullptr;
         double lastLoggingUpdate = 0;
         double lastSensorUpdate = 0, lastPredictUpdate = 0, lastMeasurementUpdate = 0;
+        double lastTime = 0;  // For computing dt in orientation updates
         bool _didLog = false, _didUpdateSensors = false, _didUpdateState = false, _didPredictState = false;
         SerialMessageRouter *messageRouter = nullptr;
 
