@@ -82,12 +82,9 @@ void Astra::init()
         config->predictInterval = 0;
     }
 
-    // Initialize SensorManager
-    if (config->sensorManager)
-    {
-        config->sensorManager->begin();
-        config->state->withSensorManager(config->sensorManager);
-    }
+    // Populate and initialize SensorManager from config
+    config->populateSensorManager();
+    config->sensorManager.begin();
 
     // Setup SerialMessageRouter for command handling
     messageRouter = new SerialMessageRouter(4, 8, 256);
@@ -95,11 +92,21 @@ void Astra::init()
         .withListener("CMD/", handleCommandMessage);
 
     delay(10);
-    // then State
+
+    // Initialize State
     if (config->state)
     {
         config->state->begin();
     }
+
+    // Set baro origin if available (sensors have settled by now)
+    if (config->sensorManager.getBaroSource() && config->sensorManager.getBaroSource()->isInitialized())
+    {
+        double baroAlt = config->sensorManager.getBarometricAltitude();
+        if (config->state)
+            config->state->setBaroOrigin(baroAlt);
+    }
+
     ready = true;
     LOGI("Astra initialized.");
 }
@@ -137,46 +144,73 @@ bool Astra::update(double timeSeconds)
         LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
         return false;
     }
-    if (!config->sensorManager)
-    {
-        LOGW("Astra Attempted to update SensorManager without a reference to it! (use AstraConfig.withSensorManager(&sensorManager))");
-        return false;
-    }
 
-    // Sensor update - highest frequency
-
+    // =================== Sensor Update ===================
+    // Update sensors at configured rate
     if (timeSeconds - lastSensorUpdate >= config->sensorUpdateInterval)
     {
-
         lastSensorUpdate = timeSeconds;
-        if (config->sensorManager)
-        {
-            config->sensorManager->update(timeSeconds);
-        }
+        config->sensorManager.update(timeSeconds);
         _didUpdateSensors = true;
 
+        // Update orientation immediately after sensor update
+        // This should run at high rate (gyro rate)
+        Vector<3> gyro = config->sensorManager.getAngularVelocity();
+        Vector<3> accel = config->sensorManager.getAcceleration();
+        double dt = timeSeconds - lastTime;
+        if (dt > 0 && config->state)
+        {
+            config->state->updateOrientation(gyro, accel, dt);
+        }
+        lastTime = timeSeconds;
     }
 
-    // Prediction step - run at predict rate
-
+    // =================== Prediction Step ===================
+    // Run KF prediction at configured rate
     if (timeSeconds - lastPredictUpdate >= config->predictInterval)
     {
-
+        double predictDt = timeSeconds - lastPredictUpdate;
         lastPredictUpdate = timeSeconds;
-        config->state->predictState(currentTime);
-        _didPredictState = true;
 
+        if (config->state && predictDt > 0)
+        {
+            config->state->predict(predictDt);
+        }
+        _didPredictState = true;
     }
 
-    // Measurement update - run at measurement update rate
-
+    // =================== Measurement Update ===================
+    // Update KF with GPS/baro measurements at configured rate
     if (timeSeconds - lastMeasurementUpdate >= config->measurementUpdateInterval)
     {
-
         lastMeasurementUpdate = timeSeconds;
-        config->state->update(currentTime);
-        _didUpdateState = true;
 
+        // Fetch sensor data
+        Vector<3> gpsPos = config->sensorManager.getGPSPosition();
+        Vector<3> gpsVel = config->sensorManager.getGPSVelocity();
+        double baroAlt = config->sensorManager.getBarometricAltitude();
+
+        bool hasGPS = config->sensorManager.hasGPSUpdate() &&
+                     config->sensorManager.getGPSSource() &&
+                     config->sensorManager.getGPSSource()->getHasFix();
+
+        bool hasBaro = config->sensorManager.hasBaroUpdate() &&
+                      config->sensorManager.getBaroSource() &&
+                      config->sensorManager.getBaroSource()->isInitialized();
+
+        // Update state with measurements
+        if (config->state && (hasGPS || hasBaro))
+        {
+            config->state->updateMeasurements(gpsPos, gpsVel, baroAlt, hasGPS, hasBaro);
+        }
+
+        // Clear update flags after consuming
+        if (hasGPS)
+            config->sensorManager.clearGPSUpdate();
+        if (hasBaro)
+            config->sensorManager.clearBaroUpdate();
+
+        _didUpdateState = true;
     }
 
     // Logging update

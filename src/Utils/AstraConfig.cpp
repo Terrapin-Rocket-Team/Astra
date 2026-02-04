@@ -1,6 +1,16 @@
 #include "AstraConfig.h"
 #include "../State/State.h"
 #include "../BlinkBuzz/BlinkBuzz.h"
+#include "../Sensors/Accel/Accel.h"
+#include "../Sensors/Gyro/Gyro.h"
+#include "../Sensors/Mag/Mag.h"
+#include "../Sensors/Baro/Barometer.h"
+#include "../Sensors/GPS/GPS.h"
+#include "../Sensors/Sensor.h"
+#include "../Sensors/IMU/IMU6DoF.h"
+#include "../Sensors/IMU/IMU9DoF.h"
+#include "../Sensors/SensorManager/SensorManager.h"
+#include "../RecordData/Logging/EventLogger.h"
 
 namespace astra
 {
@@ -18,12 +28,6 @@ namespace astra
         return *this;
     }
 
-    AstraConfig &AstraConfig::withSensorManager(SensorManager *sensorManager)
-    {
-        this->sensorManager = sensorManager;
-        LOGI("Custom SensorManager configured.");
-        return *this;
-    }
     AstraConfig &AstraConfig::withLoggingRate(double loggingRate)
     {
         if (this->loggingRate == loggingRate)
@@ -157,6 +161,123 @@ namespace astra
         this->hitlMode = hitlEnabled;
 
         return *this;
+    }
+
+    AstraConfig &AstraConfig::withAccel(Accel *accel)
+    {
+        this->accel = accel;
+        LOGI("Accelerometer configured.");
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withGyro(Gyro *gyro)
+    {
+        this->gyro = gyro;
+        LOGI("Gyroscope configured.");
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withMag(Mag *mag)
+    {
+        this->mag = mag;
+        LOGI("Magnetometer configured.");
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withBaro(Barometer *baro)
+    {
+        this->baro = baro;
+        LOGI("Barometer configured.");
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withGPS(GPS *gps)
+    {
+        this->gps = gps;
+        LOGI("GPS configured.");
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withMiscSensor(Sensor *sensor)
+    {
+        if (!sensor)
+        {
+            LOGE("Cannot add null misc sensor.");
+            return *this;
+        }
+        if (numMiscSensors >= MAX_MISC_SENSORS)
+        {
+            LOGE("Cannot add misc sensor '%s': Maximum of %d misc sensors reached.",
+                 sensor->getName(), MAX_MISC_SENSORS);
+            return *this;
+        }
+        miscSensors[numMiscSensors++] = sensor;
+        LOGI("Misc sensor '%s' added (index %d).", sensor->getName(), numMiscSensors - 1);
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::with6DoFIMU(IMU6DoF *imu)
+    {
+        if (!imu)
+        {
+            LOGE("Cannot configure null 6-DOF IMU.");
+            return *this;
+        }
+
+        // Extract accelerometer and gyroscope from IMU
+        accel = imu->getAccelSensor();
+        gyro = imu->getGyroSensor();
+
+        LOGI("6-DOF IMU '%s' configured - extracted accel and gyro sensors.", imu->getName());
+
+        // Add the IMU itself as a misc sensor for data logging
+        // (The IMU logs its own data, the extracted sensors don't duplicate)
+        return withMiscSensor(imu);
+    }
+
+    AstraConfig &AstraConfig::with9DoFIMU(IMU9DoF *imu)
+    {
+        if (!imu)
+        {
+            LOGE("Cannot configure null 9-DOF IMU.");
+            return *this;
+        }
+
+        // Extract accelerometer, gyroscope, and magnetometer from IMU
+        accel = imu->getAccelSensor();
+        gyro = imu->getGyroSensor();
+        mag = imu->getMagSensor();
+
+        LOGI("9-DOF IMU '%s' configured - extracted accel, gyro, and mag sensors.", imu->getName());
+
+        // Add the IMU itself as a misc sensor for data logging
+        return withMiscSensor(imu);
+    }
+
+    void AstraConfig::populateSensorManager()
+    {
+        // Populate SensorManager from individual sensor pointers
+        if (accel)
+            sensorManager.setAccelSource(accel);
+        if (gyro)
+            sensorManager.setGyroSource(gyro);
+        if (mag)
+            sensorManager.setMagSource(mag);
+        if (baro)
+            sensorManager.setBaroSource(baro);
+        if (gps)
+            sensorManager.setGPSSource(gps);
+
+        // Add misc sensors
+        for (uint8_t i = 0; i < numMiscSensors; i++)
+        {
+            if (miscSensors[i])
+                sensorManager.addMiscSensor(miscSensors[i]);
+        }
+
+        LOGI("SensorManager populated with %d primary sensors and %d misc sensors.",
+             (accel ? 1 : 0) + (gyro ? 1 : 0) + (mag ? 1 : 0) + (baro ? 1 : 0) + (gps ? 1 : 0),
+             numMiscSensors);
     }
 
 }

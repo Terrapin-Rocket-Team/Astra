@@ -22,7 +22,6 @@ SAM_M10Q gps;
 DPS368 baro;
 BMI088 imu("BMI088");
 MMC5603NJ mag("MMC5603NJ");
-SensorManager sensorManager;
 AvionicsKF kfilter;
 MahonyAHRS orientationFilter;
 State avionicsState(&kfilter, &orientationFilter);
@@ -30,7 +29,10 @@ State avionicsState(&kfilter, &orientationFilter);
 AstraConfig config = AstraConfig()
                          .withBBPin(LED_BUILTIN)
                          .withBuzzerPin(BUZZER_PIN)
-                         .withSensorManager(&sensorManager)
+                         .with6DoFIMU(&imu)
+                         .withGPS(&gps)
+                         .withBaro(&baro)
+                         .withMag(&mag)
                          .withState(&avionicsState);
 
 Astra sys(&config);
@@ -49,14 +51,6 @@ void setup()
     Serial.println("Starting up");
 
     EventLogger::configure(bufLogs, 1);
-
-    // Setup sensor manager
-    sensorManager.setGPSSource(&gps);
-    sensorManager.setBaroSource(&baro);
-    sensorManager.setAccelSource(imu.getAccelSensor());
-    sensorManager.setGyroSource(imu.getGyroSensor());
-    sensorManager.setMagSource(&mag);
-    avionicsState.withSensorManager(&sensorManager);
 
     sys.init();
     // Serial.println(); // getLogger().isReady());

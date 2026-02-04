@@ -13,28 +13,30 @@
 - [ ] Teensy CrashReport
 
 ## Radio & Communication
-- [ ] Radio integration (Fix transmit and logging issues)
+- [X] Radio integration (Fix transmit and logging issues)
 - [ ] Data retrieval
 
 ## HITL (Hardware-in-the-Loop)
-- [ ] Better HITL initializing
-- [ ] Better HITL telem trading
-- [ ] Figure out a way to add noise to OR
-- [ ] Use real sensors for base in HITL and have OR "add" values to what those sensors read??
+- [X] Better HITL initializing
+- [X] Better HITL telem trading
+- [X] Figure out a way to add noise to OR
+- [X] Use real sensors for base in HITL and have OR "add" values to what those sensors read??
 
 ## Sensor Fusion & Filtering
 
 ### Mahony Filter
-- [ ] Unit test Mahony (At least Python visual test)
-- [ ] Mahony magnetometer integration
-- [ ] Initial Tilt estimation
+- [X] Unit test Mahony (At least Python visual test)
+- [X] Mahony magnetometer integration
+- [X] Initial Tilt estimation
 
 ### Kalman Filter
-- [ ] KF testing
-- [ ] KF rewrite for accelerometer
+- [X] KF testing
+- [X] KF rewrite for accelerometer
 
 ## Flight Computer Features
 - [ ] Add apogee time and altitude prediction
+- [X] Add drogue deploy detection
+- [X] Add main deploy detection
 - [ ] Add drogue deploy detection
 - [ ] Add main deploy detection
 - [ ] Add pyro charge deployment
@@ -48,7 +50,7 @@
 ## Build & Deployment
 - [X] Auto-increment version based on build/SHA
 - [ ] Reduce init verbosity/double init
-- [ ] Clean up comments in files
+- [X] Clean up comments in files
 
 ## General
 - [ ] Add a scheduler to the update loop to detect hung or crashed tasks
