@@ -43,18 +43,18 @@ namespace astra
 
 #pragma endregion
 
-    bool State::begin()
+    int State::begin()
     {
         if (!filter)
         {
             LOGE("No Kalman filter available for State. Required!");
-            return false;
+            return -1;
         }
 
         if (!orientationFilter)
         {
             LOGE("No orientation filter available for State. Required!");
-            return false;
+            return -2;
         }
 
         // Initialize Kalman filter
@@ -62,7 +62,7 @@ namespace astra
 
         LOGI("State initialized. Ready for data.");
         initialized = true;
-        return true;
+        return 0;
     }
 
     void State::setGPSOrigin(double lat, double lon, double alt)
@@ -137,40 +137,45 @@ namespace astra
             setGPSOrigin(gpsPos.x(), gpsPos.y(), gpsPos.z());
         }
 
-        // Prepare measurements: [px, py, pz]
-        double measurementData[3];
-
+        // Convert GPS lat/lon to local NED coordinates (meters from origin)
+        double px = 0, py = 0;
         if (hasGPS)
         {
             // Calculate displacement from origin in meters
-            // This is a simplified calculation - proper implementation would use haversine
             double latDiff = gpsPos.x() - origin.x();
             double lonDiff = gpsPos.y() - origin.y();
 
             // Approximate conversion (works for small distances)
             const double EARTH_RADIUS = 6371000.0; // meters
-            const double DEG_TO_RAD = 3.14159265358979323846 / 180.0;
-            measurementData[0] = latDiff * DEG_TO_RAD * EARTH_RADIUS; // North
-            measurementData[1] = lonDiff * DEG_TO_RAD * EARTH_RADIUS * cos(origin.x() * DEG_TO_RAD); // East
-        }
-        else
-        {
-            measurementData[0] = 0;
-            measurementData[1] = 0;
+            const double DEG2RAD = 3.14159265358979323846 / 180.0;
+            px = latDiff * DEG2RAD * EARTH_RADIUS; // North
+            py = lonDiff * DEG2RAD * EARTH_RADIUS * cos(origin.x() * DEG2RAD); // East
         }
 
+        // Convert baro altitude to position relative to origin
+        double pz = 0;
         if (hasBaro && baroOriginSet)
         {
-            measurementData[2] = baroAlt - origin.z();
-        }
-        else
-        {
-            measurementData[2] = 0;
+            pz = baroAlt - origin.z();
         }
 
-        // Create measurement matrix and run KF update
-        Matrix measurements(3, 1, measurementData);
-        filter->update(measurements);
+        // Use LinearKalmanFilter's built-in GPS/baro update methods
+        // These handle partial measurements correctly
+        if (hasGPS && hasBaro)
+        {
+            // Both sensors available - combined update
+            filter->updateGPSBaro(px, py, pz);
+        }
+        else if (hasGPS)
+        {
+            // GPS only - horizontal position update
+            filter->updateGPS(px, py);
+        }
+        else if (hasBaro)
+        {
+            // Baro only - vertical position update
+            filter->updateBaro(pz);
+        }
 
         // Extract updated state: [px, py, pz, vx, vy, vz]
         Matrix state = filter->getState();
@@ -186,14 +191,14 @@ namespace astra
 
 #pragma region Update Functions
 
-    bool State::update(double newTime)
+    int State::update(double newTime)
     {
         // DEPRECATED: Use the new vector-based API instead:
         // - updateOrientation(gyro, accel, dt)
         // - predict(dt)
         // - updateMeasurements(gpsPos, gpsVel, baroAlt, hasGPS, hasBaro)
         LOGE("State::update() is deprecated. Use the new vector-based API.");
-        return false;
+        return -1;
     }
 
     void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)
@@ -201,49 +206,31 @@ namespace astra
         if (!orientationFilter)
             return;
 
-        MahonyMode currentMode = orientationFilter->getMode();
+        // High-G switching logic:
+        // Check if accelerometer is measuring close to 1g (stationary or coasting)
+        // If so, trust it for orientation correction. Otherwise, use gyro-only.
+        double accelMag = accel.magnitude();
+        double accelError = abs(accelMag - 9.81);
 
-        // High-G Logic:
-        // Only perform automatic switching if we are NOT in CALIBRATING mode.
-        // If we are CALIBRATING (on pad), we trust the specific pad logic (snapping to gravity)
-        // and ignore the magnitude checks.
-        if (orientationFilter->isReady() && currentMode != MahonyMode::CALIBRATING)
+        if (accelError < 1.0)
         {
-            double accelMag = accel.magnitude();
-            double accelError = abs(accelMag - 9.81);
-
-            // Threshold: if accel error < 1 m/s^2, trust the accelerometer
-            // This switches between normal flight (CORRECTING) and motor burn (GYRO_ONLY)
-            if (accelError < 1.0)
-            {
-                if (currentMode != MahonyMode::CORRECTING)
-                {
-                    orientationFilter->setMode(MahonyMode::CORRECTING);
-                }
-            }
-            else
-            {
-                if (currentMode != MahonyMode::GYRO_ONLY)
-                {
-                    orientationFilter->setMode(MahonyMode::GYRO_ONLY);
-                }
-            }
+            // Low acceleration - trust accelerometer for tilt correction
+            orientationFilter->update(accel, gyro, dt);
         }
-
-        // Update the orientation filter
-        orientationFilter->update(accel, gyro, dt);
+        else
+        {
+            // High-G or freefall - gyro-only mode
+            orientationFilter->update(gyro, dt);
+        }
 
         // Update orientation quaternion from filter
-        if (orientationFilter->isReady())
-        {
-            orientation = orientationFilter->getQuaternion();
+        orientation = orientationFilter->getQuaternion();
 
-            // Transform body-frame acceleration to earth-frame
-            Vector<3> earthAccel = orientationFilter->getEarthAcceleration(accel);
-            acceleration.x() = earthAccel.x();
-            acceleration.y() = earthAccel.y();
-            acceleration.z() = earthAccel.z();
-        }
+        // Transform body-frame acceleration to earth-frame
+        Vector<3> earthAccel = orientationFilter->getEarthAcceleration(accel);
+        acceleration.x() = earthAccel.x();
+        acceleration.y() = earthAccel.y();
+        acceleration.z() = earthAccel.z();
     }
 
     void State::predictState(double newTime)

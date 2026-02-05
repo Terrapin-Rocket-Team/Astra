@@ -14,8 +14,8 @@ namespace astra
     public:
         MS5611(const char *name = "MS5611", uint8_t addr = 0x76, TwoWire *bus = &Wire);
         MS5611(uint8_t addr, TwoWire *bus = &Wire);
-        virtual bool init() override;
-        virtual bool read() override;
+        virtual int init() override;
+        virtual int read() override;
     };
 
 }

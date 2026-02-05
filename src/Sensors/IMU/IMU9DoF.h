@@ -27,8 +27,8 @@ namespace astra
         Vector<3> getAccel() const override { return orient.transform(*accRef); }
 
     protected:
-        bool init() override { return true; }
-        bool read() override { return true; }
+        int init() override { return 0; }
+        int read() override { return 0; }
 
     private:
         Vector<3> *accRef;
@@ -52,8 +52,8 @@ namespace astra
         Vector<3> getAngVel() const override { return orient.transform(*angVelRef); }
 
     protected:
-        bool init() override { return true; }
-        bool read() override { return true; }
+        int init() override { return 0; }
+        int read() override { return 0; }
 
     private:
         Vector<3> *angVelRef;
@@ -80,8 +80,8 @@ namespace astra
         Vector<3> getMag() const override { return orient.transform(*magRef); }
 
     protected:
-        bool init() override { return true; }
-        bool read() override { return true; }
+        int init() override { return 0; }
+        int read() override { return 0; }
 
     private:
         Vector<3> *magRef;
@@ -130,10 +130,10 @@ namespace astra
         }
 
         // Override begin to also mark components as initialized
-        bool begin() override
+        int begin() override
         {
-            bool result = Sensor::begin();
-            if (result)
+            int result = Sensor::begin();
+            if (result == 0)
             {
                 accelComponent.initialized = true;
                 gyroComponent.initialized = true;
@@ -162,8 +162,8 @@ namespace astra
         }
 
         // Derived classes implement init() and read() to update acc, angVel, and mag
-        virtual bool init() = 0;
-        virtual bool read() = 0;
+        virtual int init() = 0;
+        virtual int read() = 0;
 
         Vector<3> acc = Vector<3>(0, 0, 0);
         Vector<3> angVel = Vector<3>(0, 0, 0);

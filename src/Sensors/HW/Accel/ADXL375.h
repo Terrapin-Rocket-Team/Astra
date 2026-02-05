@@ -11,8 +11,8 @@ namespace astra
     public:
         ADXL375(const char *name = "ADXL375", TwoWire &bus = Wire, uint8_t address = 0x1D);
 
-        bool init() override;
-        bool read() override;
+        int init() override;
+        int read() override;
 
     private:
         Adafruit_ADXL375 accel;

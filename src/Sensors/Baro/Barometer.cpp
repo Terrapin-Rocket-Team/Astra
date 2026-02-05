@@ -38,24 +38,71 @@ namespace astra
 
 #pragma region Sensor Virtual Function Implementations
 
-    bool Barometer::update(double currentTime)
+    int Barometer::update(double currentTime)
     {
-        if (!read())
-            return false;
+        if (!initialized)
+            return -1;
+
+        int err = read();
+
+        if (err != 0)
+        {
+            healthy = false;
+            consecutiveGoodReads = 0;
+            return err;
+        }
+
         altitudeASL = calcAltitude(pressure);
-        return true;
+
+        // Health tracking - check for stuck pressure readings
+        lastReadings[readingIndex] = pressure;
+        readingIndex = (readingIndex + 1) % HEALTH_BUFFER_SIZE;
+
+        if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)
+        {
+            consecutiveGoodReads++;
+            return 0;
+        }
+
+        bool allIdentical = true;
+        for (uint8_t i = 1; i < HEALTH_BUFFER_SIZE; i++)
+        {
+            if (lastReadings[i] != lastReadings[0])
+            {
+                allIdentical = false;
+                break;
+            }
+        }
+
+        if (allIdentical)
+        {
+            if (healthy)
+                LOGW("Baro '%s' became unhealthy: stuck readings detected", getName());
+            healthy = false;
+            consecutiveGoodReads = 0;
+        }
+        else
+        {
+            if (!healthy)
+                LOGI("Baro '%s' recovered: readings varying normally", getName());
+            healthy = true;
+        }
+
+        return 0;
     }
 
-    bool Barometer::begin()
+    int Barometer::begin()
     {
         pressure = 0;
         temp = 0;
         altitudeASL = 0;
-        if ((initialized = init()))
+        int err = init();
+        initialized = (err == 0);
+        if (initialized)
         {
             read();
             altitudeASL = calcAltitude(pressure);
         }
-        return initialized;
+        return err;
     }
 }

@@ -8,26 +8,26 @@ namespace astra
     H3LIS331DL::H3LIS331DL(uint8_t address) : Accel("H3LIS331DL"), address(address)
     {
     }
-    bool H3LIS331DL::init()
+    int H3LIS331DL::init()
     {
         if (!lis.begin_I2C(address, bus))
         {
-            return false;
+            return -1;
         }
         lis.setRange(H3LIS331_RANGE_100_G);
         lis.setDataRate(LIS331_DATARATE_1000_HZ);
-        return true;
+        return 0;
     }
-    bool H3LIS331DL::read()
+    int H3LIS331DL::read()
     {
         sensors_event_t event;
         if (!lis.getEvent(&event))
         {
-            return false;
+            return -1;
         }
         acc = {event.acceleration.x,
                event.acceleration.y,
                event.acceleration.z};
-        return true;
+        return 0;
     }
 }

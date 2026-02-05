@@ -18,16 +18,16 @@ namespace astra
     {
     }
 
-    bool BNO055::init()
+    int BNO055::init()
     {
         if (!bno.begin())
-            return false;
+            return -1;
 
         bno.setExtCrystalUse(true);
-        return true;
+        return 0;
     }
 
-    bool BNO055::read()
+    int BNO055::read()
     {
         imu::Vector<3> accelData = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         imu::Vector<3> gyroData = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
@@ -47,6 +47,6 @@ namespace astra
             LOGE("BNO055 I2C Error");
         }
 
-        return true;
+        return 0;
     }
 } // namespace astra

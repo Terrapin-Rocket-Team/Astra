@@ -15,8 +15,8 @@ namespace astra
         virtual int getFixQual() const;
         virtual double getHeading() const;
         virtual bool getHasFix() const;
-        virtual bool update(double currentTime = -1) override;
-        virtual bool begin() override;
+        virtual int update(double currentTime = -1) override;
+        virtual int begin() override;
         virtual Vector<3> getDisplacement(Vector<3> origin) const;
 
         virtual const char *getTimeOfDay() const;

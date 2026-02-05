@@ -17,10 +17,10 @@ namespace astra
         virtual double getASLAltM() const;     // meters
 
         static double calcAltitude(double pressure);
-        
-        // Sensor virtual functions
-        virtual bool update(double currentTime = -1) override;
-        virtual bool begin() override;
+
+        // Sensor virtual functions - return 0 on success, error code on failure
+        virtual int update(double currentTime = -1) override;
+        virtual int begin() override;
 
     protected:
         Barometer(const char *name = "Barometer");
@@ -30,6 +30,11 @@ namespace astra
         // Altitude-related data
         double altitudeASL = 0; // m
 
+        // Health tracking for stuck-reading detection
+        static constexpr uint8_t HEALTH_BUFFER_SIZE = 3;
+        double lastReadings[HEALTH_BUFFER_SIZE] = {0};
+        uint8_t readingIndex = 0;
+        uint8_t consecutiveGoodReads = 0;
     };
 }
 #endif // BAROMETER_H

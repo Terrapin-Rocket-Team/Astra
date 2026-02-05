@@ -50,7 +50,7 @@ void Astra::handleCommandMessage(const char *message, const char *prefix, Stream
     }
 }
 
-void Astra::init()
+int Astra::init()
 {
     LOGI("Initializing Astra version %s", ASTRA_VERSION);
 #ifdef ENV_STM
@@ -68,23 +68,45 @@ void Astra::init()
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
-    // Loggign next
+    // Logging next
     DataLogger::configure(config->logs, config->numLogs);
     // setup for HITL
     if (config->hitlMode)
     {
-        LOGI("HITL mode enabled - configuring for simulation.");
-        // Set all intervals to 0 for maximum simulation speed
-        // User must pass simulation time to update()
-        config->sensorUpdateInterval = 0;
-        config->loggingInterval = 0;
-        config->measurementUpdateInterval = 0;
-        config->predictInterval = 0;
+        LOGI("HITL mode enabled - sensors and state updates run event-driven. User must pass simulation time to update().");
     }
 
     // Populate and initialize SensorManager from config
     config->populateSensorManager();
-    config->sensorManager.begin();
+    int sensorErrors = config->sensorManager.begin();
+
+    // Determine error code for status indicators
+    // Error codes: 0=success, 1=accel, 2=gyro, 3=mag, 4=baro, 5=gps, 6=misc, 7+=multiple
+    if (sensorErrors == 0)
+    {
+        initErrorCode = 0;  // Success
+    }
+    else if (sensorErrors == 1)
+    {
+        // Single sensor failure - determine which one
+        if (config->sensorManager.didAccelInitFail())
+            initErrorCode = 1;
+        else if (config->sensorManager.didGyroInitFail())
+            initErrorCode = 2;
+        else if (config->sensorManager.didMagInitFail())
+            initErrorCode = 3;
+        else if (config->sensorManager.didBaroInitFail())
+            initErrorCode = 4;
+        else if (config->sensorManager.didGPSInitFail())
+            initErrorCode = 5;
+        else if (config->sensorManager.didMiscInitFail())
+            initErrorCode = 6;
+    }
+    else
+    {
+        // Multiple failures
+        initErrorCode = 7;
+    }
 
     // Setup SerialMessageRouter for command handling
     messageRouter = new SerialMessageRouter(4, 8, 256);
@@ -108,7 +130,16 @@ void Astra::init()
     }
 
     ready = true;
-    LOGI("Astra initialized.");
+
+    // Play init feedback on status indicators
+    playInitFeedback(initErrorCode);
+
+    if (sensorErrors == 0)
+        LOGI("Astra initialized successfully.");
+    else
+        LOGW("Astra initialized with %d sensor error(s).", sensorErrors);
+
+    return sensorErrors;
 }
 bool Astra::update(double timeSeconds)
 {
@@ -146,72 +177,88 @@ bool Astra::update(double timeSeconds)
     }
 
     // =================== Sensor Update ===================
-    // Update sensors at configured rate
-    if (timeSeconds - lastSensorUpdate >= config->sensorUpdateInterval)
-    {
-        lastSensorUpdate = timeSeconds;
-        config->sensorManager.update(timeSeconds);
-        _didUpdateSensors = true;
+    // Update sensors every loop - each sensor's shouldUpdate() decides when to read
+    config->sensorManager.update(timeSeconds);
+    _didUpdateSensors = true;
 
-        // Update orientation immediately after sensor update
-        // This should run at high rate (gyro rate)
+    // =================== Orientation & Prediction ===================
+    // Only update orientation and predict when new IMU data is available AND sensors are healthy
+    bool hasAccel = config->sensorManager.hasAccelUpdate();
+    bool hasGyro = config->sensorManager.hasGyroUpdate();
+
+    // Check sensor health before using data
+    bool accelHealthy = !config->sensorManager.getAccelSource() || config->sensorManager.getAccelSource()->isHealthy();
+    bool gyroHealthy = !config->sensorManager.getGyroSource() || config->sensorManager.getGyroSource()->isHealthy();
+
+    if ((hasAccel || hasGyro) && accelHealthy && gyroHealthy)
+    {
+        // Update orientation with new IMU data
         Vector<3> gyro = config->sensorManager.getAngularVelocity();
         Vector<3> accel = config->sensorManager.getAcceleration();
         double dt = timeSeconds - lastTime;
+
         if (dt > 0 && config->state)
         {
             config->state->updateOrientation(gyro, accel, dt);
+
+            // Run KF prediction immediately after orientation update
+            // Prediction uses the updated earth-frame acceleration
+            double predictDt = timeSeconds - lastPredictUpdate;
+            if (predictDt > 0)
+            {
+                config->state->predict(predictDt);
+                _didPredictState = true;
+                lastPredictUpdate = timeSeconds;
+            }
         }
         lastTime = timeSeconds;
+
+        // Clear IMU flags after consuming
+        if (hasAccel)
+            config->sensorManager.clearAccelUpdate();
+        if (hasGyro)
+            config->sensorManager.clearGyroUpdate();
     }
-
-    // =================== Prediction Step ===================
-    // Run KF prediction at configured rate
-    if (timeSeconds - lastPredictUpdate >= config->predictInterval)
+    else if ((hasAccel || hasGyro) && (!accelHealthy || !gyroHealthy))
     {
-        double predictDt = timeSeconds - lastPredictUpdate;
-        lastPredictUpdate = timeSeconds;
-
-        if (config->state && predictDt > 0)
-        {
-            config->state->predict(predictDt);
-        }
-        _didPredictState = true;
+        // Clear flags even if unhealthy to prevent stale data from being used later
+        if (hasAccel)
+            config->sensorManager.clearAccelUpdate();
+        if (hasGyro)
+            config->sensorManager.clearGyroUpdate();
     }
 
     // =================== Measurement Update ===================
-    // Update KF with GPS/baro measurements at configured rate
-    if (timeSeconds - lastMeasurementUpdate >= config->measurementUpdateInterval)
-    {
-        lastMeasurementUpdate = timeSeconds;
+    // Event-driven: Update KF only when new GPS or baro data is available AND healthy
+    GPS* gps = config->sensorManager.getGPSSource();
+    Barometer* baro = config->sensorManager.getBaroSource();
 
+    bool hasGPS = config->sensorManager.hasGPSUpdate() &&
+                  gps &&
+                  gps->getHasFix() &&
+                  gps->isHealthy();
+
+    bool hasBaro = config->sensorManager.hasBaroUpdate() &&
+                   baro &&
+                   baro->isHealthy();
+
+    // Only update measurements when new healthy data is available
+    if (config->state && (hasGPS || hasBaro))
+    {
         // Fetch sensor data
         Vector<3> gpsPos = config->sensorManager.getGPSPosition();
         Vector<3> gpsVel = config->sensorManager.getGPSVelocity();
         double baroAlt = config->sensorManager.getBarometricAltitude();
 
-        bool hasGPS = config->sensorManager.hasGPSUpdate() &&
-                     config->sensorManager.getGPSSource() &&
-                     config->sensorManager.getGPSSource()->getHasFix();
-
-        bool hasBaro = config->sensorManager.hasBaroUpdate() &&
-                      config->sensorManager.getBaroSource() &&
-                      config->sensorManager.getBaroSource()->isInitialized();
-
-        // Update state with measurements
-        if (config->state && (hasGPS || hasBaro))
-        {
-            config->state->updateMeasurements(gpsPos, gpsVel, baroAlt, hasGPS, hasBaro);
-        }
-
-        // Clear update flags after consuming
-        if (hasGPS)
-            config->sensorManager.clearGPSUpdate();
-        if (hasBaro)
-            config->sensorManager.clearBaroUpdate();
-
+        config->state->updateMeasurements(gpsPos, gpsVel, baroAlt, hasGPS, hasBaro);
         _didUpdateState = true;
     }
+
+    // Clear update flags after consuming (even if unhealthy)
+    if (config->sensorManager.hasGPSUpdate())
+        config->sensorManager.clearGPSUpdate();
+    if (config->sensorManager.hasBaroUpdate())
+        config->sensorManager.clearBaroUpdate();
 
     // Logging update
 
@@ -239,6 +286,96 @@ bool Astra::update(double timeSeconds)
         _didLog = true;
         
     }
-    
+    // Update GPS fix LED
+    updateStatusLEDs();
+
     return true; // bool here is deprecated
+}
+
+void Astra::playInitFeedback(int errorCode)
+{
+    // Pattern definitions
+    const int BEEP_DURATION = 100;   // Short beep duration
+    const int BEEP_PAUSE = 150;      // Pause between beeps
+    const int PATTERN_PAUSE = 800;   // Pause before repeating pattern
+    const int EMERGENCY_BLINK = 100; // Fast blink for multiple failures
+
+    // Success pattern: 2 quick beeps, solid LED
+    if (errorCode == 0)
+    {
+        if (config->statusBuzzer != -1)
+        {
+            // 2 quick cheerful beeps (synchronous)
+            bb.onoff(config->statusBuzzer, BEEP_DURATION, 2, BEEP_PAUSE);
+        }
+        if (config->statusLED != -1)
+        {
+            // Solid ON
+            bb.on(config->statusLED);
+        }
+        return;
+    }
+
+    // Multiple failures: fast continuous pattern (emergency indicator)
+    if (errorCode >= 7)
+    {
+        if (config->statusBuzzer != -1)
+        {
+            // Rapid alternating beep pattern (async, continuous)
+            bb.aonoff(config->statusBuzzer, EMERGENCY_BLINK, 0, EMERGENCY_BLINK);
+        }
+        if (config->statusLED != -1)
+        {
+            // Fast continuous blink (async)
+            bb.aonoff(config->statusLED, EMERGENCY_BLINK, 0, EMERGENCY_BLINK);
+        }
+        return;
+    }
+
+    // Single sensor failure: N blinks/beeps pattern
+    // errorCode 1-6 indicates which sensor failed
+    if (errorCode >= 1 && errorCode <= 6)
+    {
+        if (config->statusBuzzer != -1)
+        {
+            // Play N beeps (synchronous, once)
+            bb.onoff(config->statusBuzzer, BEEP_DURATION, errorCode, BEEP_PAUSE);
+        }
+        if (config->statusLED != -1)
+        {
+            // N blinks, repeating pattern (async, continuous)
+            BBPattern pattern(BEEP_DURATION, errorCode, BEEP_PAUSE);
+            pattern.r(PATTERN_PAUSE);  // Add pause before repeating
+            bb.aonoff(config->statusLED, pattern, true);  // Indefinite repeat
+        }
+    }
+}
+
+void Astra::updateStatusLEDs()
+{
+    // GPS fix indicator LED
+    if (config->gpsFixLED != -1)
+    {
+        GPS *gps = config->sensorManager.getGPSSource();
+
+        if (!gps)
+        {
+            // No GPS configured - LED off
+            bb.off(config->gpsFixLED);
+        }
+        else if (gps->getHasFix())
+        {
+            // Has fix - solid ON
+            bb.on(config->gpsFixLED);
+        }
+        else
+        {
+            // No fix - slow blink (async, continuous)
+            // Only start the pattern if not already blinking
+            if (!bb.isOn(config->gpsFixLED))
+            {
+                bb.aonoff(config->gpsFixLED, 500, 0, 500);  // 500ms on/off, indefinite
+            }
+        }
+    }
 }

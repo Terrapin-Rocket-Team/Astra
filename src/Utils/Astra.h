@@ -18,7 +18,8 @@ namespace astra
         Astra(AstraConfig *config);
         ~Astra();
 
-        void init();
+        // Returns 0 on success, non-zero error count on failure
+        int init();
         bool update(double timeSeconds = -1); // Pass simulation time in seconds, or -1 to use millis()
         SerialMessageRouter* getMessageRouter() { return messageRouter; }
 
@@ -31,10 +32,17 @@ namespace astra
         bool ready = false;
         AstraConfig *config = nullptr;
         double lastLoggingUpdate = 0;
-        double lastSensorUpdate = 0, lastPredictUpdate = 0, lastMeasurementUpdate = 0;
+        double lastPredictUpdate = 0;  // Still needed for computing prediction dt
         double lastTime = 0;  // For computing dt in orientation updates
         bool _didLog = false, _didUpdateSensors = false, _didUpdateState = false, _didPredictState = false;
         SerialMessageRouter *messageRouter = nullptr;
+
+        // Status indicator state
+        int initErrorCode = 0;  // 0=success, 1-6=specific sensor, 7+=multiple failures
+
+        // Internal methods for status feedback
+        void playInitFeedback(int errorCode);
+        void updateStatusLEDs();
 
         static void handleCommandMessage(const char* message, const char* prefix, Stream* source);
     };

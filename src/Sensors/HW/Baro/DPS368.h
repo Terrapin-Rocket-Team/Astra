@@ -16,8 +16,8 @@ namespace astra
     public:
         DPS368(const char *name = "DPS368", uint8_t addr = 0x77, TwoWire *bus = &Wire); // alternative is 0x76
         DPS368(uint8_t addr, TwoWire *bus = &Wire);
-        virtual bool init() override;
-        virtual bool read() override;
+        virtual int init() override;
+        virtual int read() override;
 
     private:
         uint8_t addr;

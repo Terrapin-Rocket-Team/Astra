@@ -12,8 +12,8 @@ namespace astra
         BNO055(const char *name = "BNO055", uint8_t address = BNO055_ADDRESS_A, TwoWire *theWire = &Wire);
         BNO055(uint8_t address, TwoWire *theWire = &Wire);
 
-        bool init() override;
-        bool read() override;
+        int init() override;
+        int read() override;
 
     protected:
         Adafruit_BNO055 bno;
