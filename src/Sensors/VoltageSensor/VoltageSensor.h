@@ -30,8 +30,8 @@ namespace astra
         int getRawValue() const;
 
     protected:
-        bool init() override;
-        bool read() override;
+        int init() override;
+        int read() override;
 
     private:
         int pin;

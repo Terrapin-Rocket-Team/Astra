@@ -38,6 +38,13 @@ public:
     // Allows sensor-specific updates (e.g., GPS-only, baro-only)
     virtual void update(Matrix z, Matrix H, Matrix R);
 
+    // Sensor-specific measurement updates for standard flight sensors
+    // These work with any 6-state [px, py, pz, vx, vy, vz] LKF
+    // Override in subclass if using different state representation
+    virtual void updateGPS(double px, double py, double gpsNoise = 5.0);
+    virtual void updateBaro(double pz, double baroNoise = 2.0);
+    virtual void updateGPSBaro(double px, double py, double pz, double gpsNoise = 5.0, double baroNoise = 2.0);
+
     // Get current state estimate
     virtual Matrix getState() const { return X; }
 

@@ -28,13 +28,13 @@ namespace astra
         addColumn("%0.3f", &voltage, "Voltage (V)");
     }
 
-    bool VoltageSensor::init()
+    int VoltageSensor::init()
     {
         pinMode(pin, INPUT);
-        return true;
+        return 0;
     }
 
-    bool VoltageSensor::read()
+    int VoltageSensor::read()
     {
         rawValue = analogRead(pin);
 
@@ -50,7 +50,7 @@ namespace astra
             voltage = voltage * (r1 + r2) / (double)r2;
         }
 
-        return true;
+        return 0;
     }
 
     double VoltageSensor::getVoltage() const

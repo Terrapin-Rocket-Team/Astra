@@ -31,13 +31,13 @@ namespace astra
         virtual ~HITLGyro() {}
 
     protected:
-        bool init() override
+        int init() override
         {
             // No hardware initialization needed
-            return true;
+            return 0;
         }
 
-        bool read() override
+        int read() override
         {
             // Read from HITL sensor buffer
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
@@ -45,7 +45,7 @@ namespace astra
             // Update angular velocity vector
             angVel = buffer.data.gyro;
 
-            return true;
+            return 0;
         }
     };
 

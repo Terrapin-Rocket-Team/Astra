@@ -5,21 +5,21 @@ astra::MS5611::MS5611(const char *name, uint8_t addr, TwoWire *bus) : Barometer(
 
 astra::MS5611::MS5611(uint8_t addr, TwoWire *bus) : Barometer("MS5611"), ms(addr, bus) {}
 
-bool astra::MS5611::init()
+int astra::MS5611::init()
 {
     if (!ms.begin())
     {
         printf("Failed to initialize MS5611 sensor\n");
-        return false;
+        return -1;
     }
     ms.setOversampling(OSR_ULTRA_HIGH);
 
-    return true;
+    return 0;
 }
-bool astra::MS5611::read()
+int astra::MS5611::read()
 {
     ms.read();
     temp = ms.getTemperature();
     pressure = ms.getPressure();
-    return true;
+    return 0;
 }

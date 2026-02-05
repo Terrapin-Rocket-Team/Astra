@@ -9,7 +9,6 @@
 #endif
 
 using astra::MahonyAHRS;
-using astra::MahonyMode;
 using astra::Quaternion;
 using astra::Vector;
 

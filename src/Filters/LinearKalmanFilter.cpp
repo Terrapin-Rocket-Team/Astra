@@ -80,4 +80,78 @@ namespace astra
         P = I_KH * P * I_KH.transpose() + K_custom * R * K_custom.transpose();
     }
 
+    // =================== Standard Flight Sensor Updates ===================
+    // These work with any 6-state [px, py, pz, vx, vy, vz] LKF
+
+    void LinearKalmanFilter::updateGPS(double px, double py, double gpsNoise)
+    {
+        // GPS measures horizontal position [px, py]
+        // H = [1 0 0 0 0 0]
+        //     [0 1 0 0 0 0]
+        double h_data[12] = {
+            1, 0, 0, 0, 0, 0,  // px measurement
+            0, 1, 0, 0, 0, 0   // py measurement
+        };
+        Matrix H(2, 6, h_data);
+
+        double gpsVar = gpsNoise * gpsNoise;
+        double r_data[4] = {
+            gpsVar, 0,
+            0, gpsVar
+        };
+        Matrix R(2, 2, r_data);
+
+        double z_data[2] = {px, py};
+        Matrix z(2, 1, z_data);
+
+        update(z, H, R);
+    }
+
+    void LinearKalmanFilter::updateBaro(double pz, double baroNoise)
+    {
+        // Barometer measures vertical position [pz]
+        // H = [0 0 1 0 0 0]
+        double h_data[6] = {
+            0, 0, 1, 0, 0, 0  // pz measurement
+        };
+        Matrix H(1, 6, h_data);
+
+        double baroVar = baroNoise * baroNoise;
+        double r_data[1] = {baroVar};
+        Matrix R(1, 1, r_data);
+
+        double z_data[1] = {pz};
+        Matrix z(1, 1, z_data);
+
+        update(z, H, R);
+    }
+
+    void LinearKalmanFilter::updateGPSBaro(double px, double py, double pz, double gpsNoise, double baroNoise)
+    {
+        // Combined GPS + Baro measurement [px, py, pz]
+        // H = [1 0 0 0 0 0]
+        //     [0 1 0 0 0 0]
+        //     [0 0 1 0 0 0]
+        double h_data[18] = {
+            1, 0, 0, 0, 0, 0,  // px measurement
+            0, 1, 0, 0, 0, 0,  // py measurement
+            0, 0, 1, 0, 0, 0   // pz measurement
+        };
+        Matrix H(3, 6, h_data);
+
+        double gpsVar = gpsNoise * gpsNoise;
+        double baroVar = baroNoise * baroNoise;
+        double r_data[9] = {
+            gpsVar, 0, 0,
+            0, gpsVar, 0,
+            0, 0, baroVar
+        };
+        Matrix R(3, 3, r_data);
+
+        double z_data[3] = {px, py, pz};
+        Matrix z(3, 1, z_data);
+
+        update(z, H, R);
+    }
+
 } // namespace astra

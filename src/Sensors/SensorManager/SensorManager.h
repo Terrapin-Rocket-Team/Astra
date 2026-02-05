@@ -27,6 +27,14 @@ namespace astra
         bool baroUpdated = false;
         bool gpsUpdated = false;
 
+        // Init error flags for status feedback
+        bool accelInitFailed = false;
+        bool gyroInitFailed = false;
+        bool magInitFailed = false;
+        bool baroInitFailed = false;
+        bool gpsInitFailed = false;
+        bool miscInitFailed = false;
+
         // Misc sensors that need updating but aren't used in state
         static constexpr uint8_t MAX_MISC_SENSORS = 16;
         Sensor *miscSensors[MAX_MISC_SENSORS] = {nullptr};
@@ -62,6 +70,14 @@ namespace astra
         void clearBaroUpdate() { baroUpdated = false; }
         void clearGPSUpdate() { gpsUpdated = false; }
 
+        // Check init status for status indicators
+        bool didAccelInitFail() const { return accelInitFailed; }
+        bool didGyroInitFail() const { return gyroInitFailed; }
+        bool didMagInitFail() const { return magInitFailed; }
+        bool didBaroInitFail() const { return baroInitFailed; }
+        bool didGPSInitFail() const { return gpsInitFailed; }
+        bool didMiscInitFail() const { return miscInitFailed; }
+
         bool addMiscSensor(Sensor *s)
         {
             if (!s)
@@ -81,32 +97,43 @@ namespace astra
         }
 
         // Operations
-        bool begin()
+        // Returns 0 on success, non-zero error count on failure
+        int begin()
         {
-            bool success = true;
+            int errorCount = 0;
+            // Reset error flags
+            accelInitFailed = false;
+            gyroInitFailed = false;
+            magInitFailed = false;
+            baroInitFailed = false;
+            gpsInitFailed = false;
+            miscInitFailed = false;
+
             // --- Primary Sensors (Critical) ---
             // Helper lambda to reduce boilerplate for primary sensors
-            auto initPrimary = [&](Sensor *sensor, const char *label)
+            auto initPrimary = [&](Sensor *sensor, const char *label, bool &failFlag)
             {
                 if (sensor)
                 {
-                    if (sensor->begin())
+                    int err = sensor->begin();
+                    if (err == 0)
                         LOGI("%s (%s) initialized successfully.", label, sensor->getName());
                     else
                     {
-                        LOGE("%s (%s) FAILED to initialize!", label, sensor->getName());
-                        success = false;
+                        LOGE("%s (%s) FAILED to initialize with error code: %d", label, sensor->getName(), err);
+                        errorCount++;
+                        failFlag = true;
                     }
                 }
                 else
                     LOGW("No %s sensor defined.", label);
             };
 
-            initPrimary(accel, "Accelerometer");
-            initPrimary(gyro, "Gyroscope");
-            initPrimary(mag, "Magnetometer");
-            initPrimary(baro, "Barometer");
-            initPrimary(gps, "GPS");
+            initPrimary(accel, "Accelerometer", accelInitFailed);
+            initPrimary(gyro, "Gyroscope", gyroInitFailed);
+            initPrimary(mag, "Magnetometer", magInitFailed);
+            initPrimary(baro, "Barometer", baroInitFailed);
+            initPrimary(gps, "GPS", gpsInitFailed);
 
             // --- Miscellaneous Sensors (Iterative) ---
 
@@ -115,20 +142,24 @@ namespace astra
             {
                 if (miscSensors[i])
                 {
-                    if (miscSensors[i]->begin())
+                    int err = miscSensors[i]->begin();
+                    if (err == 0)
                         LOGI("Misc sensor [%d] (%s) initialized.", i, miscSensors[i]->getName());
                     else
                     {
-                        LOGE("Misc sensor [%d] (%s) FAILED!", i, miscSensors[i]->getName());
-                        success = false;
+                        LOGE("Misc sensor [%d] (%s) FAILED with error code: %d", i, miscSensors[i]->getName(), err);
+                        errorCount++;
+                        miscInitFailed = true;
                     }
                 }
             }
-            if (success)
+            if (errorCount == 0)
                 LOGI("All sensors initialized successfully.");
             else
-                LOGE("Sensor initialization completed with ERRORS.");
-            return ok = success;
+                LOGE("Sensor initialization completed with %d ERROR(S).", errorCount);
+
+            ok = (errorCount == 0);
+            return errorCount;
         }
 
         void update(double currentTime)

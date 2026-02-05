@@ -29,13 +29,22 @@ namespace astra
             }
             return false;
         }
-        
-        virtual bool begin() override
+
+        // Check if sensor is healthy and data can be trusted
+        // Returns false if init failed, read errors occurred, or stuck readings detected
+        virtual bool isHealthy() const { return healthy; }
+
+        // Returns 0 on success, library-specific error code on failure
+        virtual int begin() override
         {
-            return initialized = init();
+            int err = init();
+            initialized = (err == 0);
+            healthy = initialized;  // Healthy if init succeeded
+            return err;
         }
 
-        virtual bool update(double currentTime = -1) override
+        // Returns 0 on success, library-specific error code on failure
+        virtual int update(double currentTime = -1) override
         {
             return read();
         }
@@ -47,16 +56,17 @@ namespace astra
             autoUpdate = false; //stop the logging system from automatically udpating sensors before logging data
         }
 
-
-
-        // Sets up the sensor and stores any critical parameters. Needs to reset the sensor if it is already initialized. Called by begin()
-        virtual bool init() = 0;
+        // Sets up the sensor and stores any critical parameters. Needs to reset the sensor if it is already initialized.
+        // Called by begin(). Returns 0 on success, library-specific error code on failure.
+        virtual int init() = 0;
 
         // Physically reads the outputs from the sensor hardware. Called by update()
-        virtual bool read() = 0;
+        // Returns 0 on success, library-specific error code on failure.
+        virtual int read() = 0;
 
-
-
+        // Health tracking state
+        bool initialized = false;  // Did begin() succeed? (internal, never changes)
+        bool healthy = false;      // Can we trust the data? (dynamic, updated by read())
 
         double updateInterval = 0.1; // default to 10 hz
         double lastUpdateTime = 0;

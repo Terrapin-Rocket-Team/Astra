@@ -143,10 +143,18 @@ void GPS::findTimeZone()
 
 #pragma region Sensor Virtual Function Implementations
 
-bool GPS::update(double currentTime)
+int GPS::update(double currentTime)
 {
-    if (!read())
-        return false;
+    if (!initialized)
+        return -1;
+
+    int err = read();
+
+    if (err != 0)
+    {
+        healthy = false;
+        return err;
+    }
 
     if (!hasFix && fixQual >= 4)
     {
@@ -172,10 +180,16 @@ bool GPS::update(double currentTime)
         sec = sec % 60;                                    // just in case
         snprintf(tod, 12, "%02d:%02d:%02d", hr, min, sec); // size is really 9 but 12 ignores warnings about truncation. IRL it will never truncate
     }
-    return true;
+
+    // GPS health is simply based on fix status
+    // No fix is expected behavior (not a hardware failure), so we keep healthy=true
+    // Health only becomes false on read() errors
+    healthy = true;
+
+    return 0;
 }
 
-bool GPS::begin()
+int GPS::begin()
 {
     position = Vector<3>(0, 0, 0);
     velocity = Vector<3>(0, 0, 0);
@@ -183,7 +197,9 @@ bool GPS::begin()
     hasFix = false;
     hasFirstFix = false;
     heading = 0;
-    return initialized = init();
+    int err = init();
+    initialized = (err == 0);
+    return err;
 }
 
 #pragma endregion // Sensor Virtual Function Implementations

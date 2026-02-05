@@ -45,21 +45,14 @@ namespace astra
         virtual Matrix getR() override;          // Measurement noise covariance (full)
         virtual Matrix getQ(double dt) override; // Process noise covariance
 
-        // Sensor-specific update methods (asynchronous)
-        void updateGPS(double px, double py);      // Update with GPS horizontal position
-        void updateBaro(double pz);                // Update with barometer altitude
-        void updateFull(double px, double py, double pz); // Update with all measurements
+        // Get default noise parameters (used by base class methods)
+        double getGPSNoise() const { return gpsNoise; }
+        double getBaroNoise() const { return baroNoise; }
 
     private:
         double processNoise;
         double gpsNoise;
         double baroNoise;
-
-        // Matrices for partial measurements (initialized in constructor)
-        Matrix H_gps;   // 2x6 measurement matrix for GPS horizontal
-        Matrix R_gps;   // 2x2 noise covariance for GPS
-        Matrix H_baro;  // 1x6 measurement matrix for baro vertical
-        Matrix R_baro;  // 1x1 noise covariance for baro
     };
 
 } // namespace astra

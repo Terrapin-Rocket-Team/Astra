@@ -2,7 +2,7 @@
 
 ## ✅ JUST COMPLETED (2026-02-04)
 
-**Major architectural refactoring complete!**
+**Task #1: Major architectural refactoring complete!**
 - State is now pure math - takes vectors as parameters, no hardware dependencies
 - AstraConfig owns SensorManager - user never creates it manually
 - Astra orchestrates data flow - fetches from sensors, passes to State
@@ -11,10 +11,30 @@
 - Example code updated to new API
 - **Result:** Clean separation of concerns, code compiles successfully
 
+**Task #2: Event-driven sensor updates complete!**
+- Removed fixed interval checks from Astra - sensors update at their own rates
+- Orientation and prediction now trigger when IMU data is available (not on fixed schedule)
+- Measurements update when GPS or baro flags indicate new data (event-driven)
+- Moved GPS/baro update methods into base LinearKalmanFilter class (not just DefaultKF)
+- State now uses LKF's built-in updateGPS()/updateBaro()/updateGPSBaro() methods
+- Removed withSensorUpdateRate/withPredictRate/withMeasurementUpdateRate config methods entirely
+- **Result:** True event-driven architecture - updates happen when data is ready, not on schedule
+
+**Task #3: Error handling overhaul complete!**
+- Changed all sensor `init()` and `read()` methods from `bool` to `int` (0 = success)
+- Updated DataReporter base class to use `int` return codes
+- Updated SensorManager::begin() to return error count and log individual error codes
+- Updated Astra::init() to return int error count
+- Updated all sensor implementations: HW sensors, HITL sensors, voltage sensor
+- Updated sensor type base classes: Barometer, GPS, Accel, Gyro, Mag
+- Updated IMU composite classes: IMU6DoF, IMU9DoF
+- Updated State and DefaultState
+- Updated example code to check and log init errors
+- **Result:** Library-agnostic error handling - raw error codes from underlying libraries passed through, no translation needed
+
 **What's Next:**
-- Remove Mahony rocket-specific logic (MahonyMode enum, lockFrame, high-G switching)
-- Event-driven sensor updates (remove fixed intervals)
-- Error handling overhaul (status enums instead of bools)
+- Config System Polish (persistence, validation)
+- SITL/HITL improvements
 
 ---
 
@@ -78,26 +98,37 @@
     // User OWNS: Sensors, State, Filters
     ```
 
-- [ ] **Remove Mahony Rocket-Specific Logic**
+- [X] **Remove Mahony Rocket-Specific Logic**
   - Remove `lockFrame()` - user/RocketState calls it
   - Remove `MahonyMode` enum (CALIBRATING/CORRECTING/GYRO_ONLY)
   - Make Mahony pure AHRS with tunable params
   - Push high-G switching logic to State or RocketState
   - User controls mode transitions explicitly
 
-### 2. New Sensor API - Event-Driven Updates
+### 2. New Sensor API - Event-Driven Updates ✅ COMPLETE
 **Problem:** Fixed update rates don't match sensor capabilities
 **Goal:** Sensors update when data is ready, not on a schedule
 
-- [ ] **Remove fixed update intervals** from Astra
-  - Sensor updates: Run every loop iteration, let `shouldUpdate()` decide
-  - Prediction: Run every loop iteration at max speed
-  - Measurement: Run when new sensor data available (flag-based)
-  - Logging: Keep at configurable rate (storage constraint)
+- [X] **Remove fixed update intervals** from Astra
+  - Sensor updates: Run every loop iteration, let `shouldUpdate()` decide ✅
+  - Prediction: Run when new IMU data available (accel/gyro flags) ✅
+  - Measurement: Run when new sensor data available (GPS/baro flags) ✅
+  - Logging: Keep at configurable rate (storage constraint) ✅
 
-- [ ] **Fix update ordering** in Astra::update()
-  - Enforce: Sensors → Prediction → Measurement → Logging
-  - No race conditions between updates in same iteration
+- [X] **Fix update ordering** in Astra::update()
+  - Enforce: Sensors → Orientation+Prediction → Measurement → Logging ✅
+  - No race conditions between updates in same iteration ✅
+
+- [X] **Move GPS/baro updates into base LinearKalmanFilter**
+  - Added updateGPS(), updateBaro(), updateGPSBaro() to base LKF class ✅
+  - Any LKF can now use these methods, not just DefaultKF ✅
+  - State refactored to use LKF methods directly ✅
+
+- [X] **Remove all deprecated config methods**
+  - Removed withSensorUpdateRate() and withSensorUpdateInterval() ✅
+  - Removed withPredictRate() and withPredictInterval() ✅
+  - Removed withMeasurementUpdateRate() and withMeasurementUpdateInterval() ✅
+  - Users now configure sensor rates directly via sensor->setUpdateRate() ✅
 
 ### 3. Error Handling Overhaul
 - [ ] **Change `bool` returns to status enums**
@@ -129,15 +160,14 @@
   std::vector<String> warnings = config.validate();
   ```
 
-### 5. SITL/HITL Polish
-- [ ] **Abstract HITL logic** out of Astra::update()
-  - Create HITLController class
-  - Handles time injection, sensor mocking
-  - Cleaner separation
-
-- [ ] **Better SITL connection** handling
-  - Auto-reconnect on socket drop
-  - Cleaner handshake protocol
+### 5. SITL/HITL Polish - SKIPPED
+- [X] **HITL architecture is already clean**
+  - HITLSensorBuffer singleton handles shared data
+  - HITLParser handles message parsing
+  - SerialMessageRouter handles protocol routing
+  - HITL sensors read from buffer independently
+  - No HITL logic in Astra::update() to abstract
+  - Decision: Current implementation is solid, no changes needed
 
 ### 6. Calibration System
 - [ ] **Guided calibration workflow**
@@ -155,49 +185,68 @@
 
 ## 🔧 MEDIUM PRIORITY - Quality of Life
 
-### 7. LED/Buzzer Framework Decision
-- [ ] **Decide:** Base Astra or AstraRocket?
-  - Recommendation: Keep simple LED/buzzer in base (status feedback)
-  - Move complex patterns to AstraRocket (flight-specific)
+### 7. LED/Buzzer Status Indicators - COMPLETE ✅
+- [X] **Smart status feedback patterns in base Astra**
+  - Init status LED shows sensor health at startup:
+    - Solid ON = All sensors initialized successfully
+    - N blinks (repeating) = Specific sensor failed (1=Accel, 2=Gyro, 3=Mag, 4=Baro, 5=GPS, 6=Misc)
+    - Fast continuous blink = Multiple critical failures (emergency indicator)
+  - Status buzzer plays beep codes at init matching LED pattern
+  - GPS fix LED indicator:
+    - OFF = No GPS configured
+    - Slow blink (500ms) = GPS configured but no fix
+    - Solid ON = GPS has valid fix
+  - Uses BlinkBuzz async patterns for non-blocking feedback
+  - Config methods: `withStatusLED()`, `withStatusBuzzer()`, `withGPSFixLED()`
+  - Extensible architecture - AstraRocket can add flight-specific patterns
+  - Example updated to demonstrate usage
 
-### 8. AstraRocket Improvements
-- [X] **Sensor manager convenience methods**
+### 8. AstraRocket Improvements - PARTIALLY COMPLETE
+- [X] **Sensor manager convenience methods** (Done - part of Task #1)
   ```cpp
   config.withAccel(&accel)
         .withGyro(&gyro)
         .withBaro(&baro)
         .withGPS(&gps);
   ```
-  - AstraRocket creates SensorManager internally
-  - User doesn't touch SensorManager directly
 
-- [X] **Make thresholds configurable**
+- [ ] **Make thresholds configurable** (TODO - check if already done in AstraRocket)
   ```cpp
   config.withLiftoffAccelThreshold(3.0)
         .withDrogueDescentMin(5.0)
         .withMainDeployAltitude(400.0);
   ```
+  - NOTE: Need to verify if AstraRocket exists and if this is implemented
 
-### 9. DataLogger Singleton - Keep But Document
-- [ ] **Add comment explaining singleton choice**
-  - One logger per system is appropriate
-  - LOGI/LOGE/LOGW convenience macros justify it
-  - Document that it's intentional, not oversight
-
-- [X] **Optional:** Allow injecting logger for testing
-  ```cpp
-  EventLogger::setInstance(&mockLogger); // For tests only
-  ```
+### 9. DataLogger Singleton - NO CHANGES NEEDED
+- Singleton pattern is fine and intentional
+- One logger per system is appropriate architecture choice
+- LOGI/LOGE/LOGW macros justify singleton convenience
+- No documentation changes needed
 
 ---
 
 ## 📊 LOW PRIORITY - Future Features
 
-### 10. Health Monitoring
-- [ ] System health checks
-  - `isIMUHealthy()` - detect stuck readings
-  - `isGPSHealthy()` - check fix quality
-  - `isStorageHealthy()` - detect write failures
+### 10. Health Monitoring - COMPLETE ✅
+- [X] **Sensor health tracking system implemented**
+  - Base `Sensor` class has `isHealthy()` method
+  - `initialized` flag (internal) - did begin() succeed?
+  - `healthy` flag (public via isHealthy()) - can we trust the data?
+  - **Accel/Gyro/Mag**: Stuck-reading detection (3-sample buffer)
+    - Immediate invalidation on read() errors
+    - Automatic recovery after 3 varying readings
+    - Logs transitions to event log (LOGW/LOGI)
+  - **Barometer**: Same stuck-reading detection for pressure
+  - **GPS**: Health based on read() success (not fix status)
+    - No fix is expected behavior, not a failure
+    - Only unhealthy on communication errors
+  - **Astra integration**: Checks `isHealthy()` before passing data to State
+    - Orientation updates only with healthy accel/gyro
+    - Measurements only with healthy GPS/baro
+    - Unhealthy data is discarded, flags cleared
+  - **Memory efficient**: 3 samples × sensor type (tiny footprint)
+  - **Extensible**: Easy to add custom health checks per sensor
 
 ### 11. Pyro Control (AstraRocket)
 - [ ] PyroController class
@@ -344,3 +393,9 @@ Start with #1-3 (architecture cleanup). Once the coupling is fixed, the rest wil
   - Step-by-step setup with new API
   - Common patterns (6DoF IMU, GPS+Baro, etc.)
 - **Priority:** Medium - Wait until API stabilizes before documenting
+
+---
+
+## 📥 NEEDS TRIAGE
+
+- [ ] State/Sensors should use dt instead of currentTime?

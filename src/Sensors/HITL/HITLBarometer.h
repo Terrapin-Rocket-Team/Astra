@@ -32,13 +32,13 @@ namespace astra
         virtual ~HITLBarometer() {}
 
     protected:
-        bool init() override
+        int init() override
         {
             // No hardware initialization needed
-            return true;
+            return 0;
         }
 
-        bool read() override
+        int read() override
         {
             // Read from HITL sensor buffer
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
@@ -50,7 +50,7 @@ namespace astra
             // Calculate altitude from pressure
             altitudeASL = calcAltitude(pressure);
 
-            return true;
+            return 0;
         }
     };
 

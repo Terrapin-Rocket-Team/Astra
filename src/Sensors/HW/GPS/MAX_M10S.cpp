@@ -8,27 +8,31 @@ namespace astra
     {
     }
 
-    bool MAX_M10S::init()
+    int MAX_M10S::init()
     {
         // m10s.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
 
         if (!m10s.begin(*wire, address))
-            return initialized = false;
+        {
+            initialized = false;
+            return -1;
+        }
         m10s.setI2COutput(COM_TYPE_UBX);            // Set the I2C port to output UBX only (turn off NMEA noise)
         m10s.setNavigationFrequency(10);            // Set the update rate to 10Hz
         m10s.setDynamicModel(DYN_MODEL_AIRBORNE4g); // Set the dynamic model to airborne with 4g acceleration
         m10s.setAutoPVT(true);                      // Enable automatic PVT reports
         m10s.saveConfiguration();                   // Save the current settings to flash and BBR
-        return initialized = true;
+        initialized = true;
+        return 0;
     }
 
     /*
     used to update all instance variables
     */
-    bool MAX_M10S::read()
+    int MAX_M10S::read()
     {
         if (!initialized || !m10s.getPVT() || m10s.getInvalidLlh())
-            return false; // See if new data is available
+            return -1; // See if new data is available
 
         position.x() = m10s.getLatitude() / 10000000.0;
         position.y() = m10s.getLongitude() / 10000000.0;
@@ -44,6 +48,6 @@ namespace astra
         day = m10s.getDay();
         month = m10s.getMonth();
         year = m10s.getYear();
-        return true;
+        return 0;
     }
 }

@@ -16,8 +16,8 @@ namespace astra
     public:
         BMP390(const char *name = "BMP390", uint8_t address = BMP3XX_DEFAULT_ADDRESS, TwoWire *theWire = &Wire);
         BMP390(uint8_t address, TwoWire *theWire = &Wire);
-        virtual bool init() override;
-        virtual bool read() override;
+        virtual int init() override;
+        virtual int read() override;
     };
 }
 

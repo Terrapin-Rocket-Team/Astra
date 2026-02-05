@@ -6,11 +6,11 @@ DPS368::DPS368(const char *name, uint8_t addr, TwoWire *bus) : Barometer(name), 
 
 DPS368::DPS368(uint8_t addr, TwoWire *bus) : addr(addr), bus(bus) {}
 
-bool DPS368::init()
+int DPS368::init()
 {
     if (!dps.begin_I2C(addr, bus))
     {
-        return false;
+        return -1;
     }
 
     // Set up sampling rate and oversampling
@@ -20,10 +20,10 @@ bool DPS368::init()
     // Operation mode of the sensor. See section 8.5 of the datasheet.
     dps.setMode(DPS310_CONT_PRESTEMP);
 
-    return true;
+    return 0;
 }
 
-bool DPS368::read()
+int DPS368::read()
 {
     sensors_event_t temp_event, pressure_event;
 
@@ -32,11 +32,11 @@ bool DPS368::read()
     {
         this->temp = temp_event.temperature;
         this->pressure = pressure_event.pressure;
-        return true;
+        return 0;
     }
     else
     {
         LOGE("Failed to read data from DPS368 sensor");
-        return false;
+        return -1;
     }
 }

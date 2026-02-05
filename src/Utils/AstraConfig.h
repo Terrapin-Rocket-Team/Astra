@@ -69,33 +69,6 @@ namespace astra
         // The IMU itself is added as a misc sensor for data logging
         AstraConfig &with9DoFIMU(IMU9DoF *imu);
 
-        // Set sensor read rate (in hz). Sensors will be polled at this rate.
-        // Default `30`.
-        AstraConfig &withSensorUpdateRate(double sensorUpdateRate);
-
-        // Set sensor read interval (in ms). Sensors will be polled at this interval.
-        // Mutually exclusive with `withSensorUpdateRate()`. Last one called will take effect.
-        // Default `33` (~30 Hz).
-        AstraConfig &withSensorUpdateInterval(unsigned int sensorUpdateInterval);
-
-        // Set Kalman filter prediction rate (in hz). Filter prediction step runs at this rate.
-        // Default `30`.
-        AstraConfig &withPredictRate(double predictRate);
-
-        // Set Kalman filter prediction interval (in ms). Filter prediction step runs at this interval.
-        // Mutually exclusive with `withPredictRate()`. Last one called will take effect.
-        // Default `33` (~30 Hz).
-        AstraConfig &withPredictInterval(unsigned int predictInterval);
-
-        // Set measurement update rate (in hz). Filter measurement update step runs at this rate.
-        // Default `20`.
-        AstraConfig &withMeasurementUpdateRate(double measurementUpdateRate);
-
-        // Set measurement update interval (in ms). Filter measurement update step runs at this interval.
-        // Mutually exclusive with `withMeasurementUpdateRate()`. Last one called will take effect.
-        // Default `50` (20 Hz).
-        AstraConfig &withMeasurementUpdateInterval(unsigned int measurementUpdateInterval);
-
         // Set the rate at which logs will be written to the SD card (in hz).
         // Mutually exclusive with `withLoggingInterval()`. Last one called will take effect.
         // Default `10`.
@@ -133,6 +106,29 @@ namespace astra
         // Incurs moderate memory overhead based on `queueSize`, which is the number of state changes a pin can queue up at once.
         // Default `true`, `50`.
         AstraConfig &withBBAsync(bool bbAsync, unsigned int queueSize = 50);
+
+        // ===== Status Indicator Configuration =====
+
+        // Set the status LED pin for init diagnostics
+        // LED will show init status via blink patterns:
+        //   Solid ON = All sensors initialized successfully
+        //   N blinks = Specific sensor failed (1=Accel, 2=Gyro, 3=Mag, 4=Baro, 5=GPS, 6=Misc)
+        //   Fast continuous = Multiple critical failures
+        // Default: not configured
+        AstraConfig &withStatusLED(int pin);
+
+        // Set the status buzzer pin for init diagnostics
+        // Buzzer will play beep codes at init matching the LED pattern
+        // Default: not configured
+        AstraConfig &withStatusBuzzer(int pin);
+
+        // Set the GPS fix indicator LED
+        // LED states:
+        //   OFF = No GPS configured
+        //   Slow blink = GPS configured but no fix
+        //   Solid ON = GPS has fix
+        // Default: not configured
+        AstraConfig &withGPSFixLED(int pin);
 
         // Setup which telemetry logs will be written to on update
         // No default
@@ -175,14 +171,12 @@ namespace astra
         double loggingInterval = 0.100; // in seconds (100ms = 10Hz)
         double loggingRate = 10;        // in hz
 
-        double sensorUpdateInterval = 0.033;      // in seconds (~30 Hz)
-        double predictInterval = 0.033;           // in seconds (~30 Hz)
-        double measurementUpdateInterval = 0.050; // in seconds (20 Hz)
-        double sensorUpdateRate = 30;             // in hz
-        double predictRate = 30;                  // in hz
-        double measurementUpdateRate = 20;        // in hz
+        bool hitlMode = false;          // HITL mode enabled
 
-        bool hitlMode = false;                    // HITL mode enabled
+        // Status indicator pins
+        int statusLED = -1;      // Main status LED for init diagnostics
+        int statusBuzzer = -1;   // Buzzer for init feedback
+        int gpsFixLED = -1;      // GPS fix indicator LED
 
         uint8_t numReporters = 0;
     };

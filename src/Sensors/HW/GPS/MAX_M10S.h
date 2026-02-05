@@ -18,8 +18,8 @@ namespace astra
     public:
         MAX_M10S(const char *name = "MAX-M10S", TwoWire &wire = Wire, uint8_t address = 0x42); // 0x42 is the default address
         virtual ~MAX_M10S() {}
-        bool init() override;
-        bool read() override;
+        int init() override;
+        int read() override;
     };
 }
 #endif // MAX_M10S_H
