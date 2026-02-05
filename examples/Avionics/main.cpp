@@ -1,3 +1,4 @@
+#ifndef PIO_UNIT_TESTING
 #include <Arduino.h>
 #include "AvionicsKF.h"
 #include "Sensors/HW/GPS/SAM_M10Q.h"
@@ -96,3 +97,5 @@ void loop()
         }
     sys.update();
 }
+
+#endif  // PIO_UNIT_TESTING

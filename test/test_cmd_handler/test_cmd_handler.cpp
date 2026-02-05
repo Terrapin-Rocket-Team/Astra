@@ -72,15 +72,15 @@ public:
         count = c;
     }
 
-    bool begin() override
+    int begin() override
     {
         initialized = true;
-        return true;
+        return 0;
     }
 
-    bool update(double currentTime = -1) override
+    int update(double currentTime = -1) override
     {
-        return true;
+        return 0;
     }
 };
 

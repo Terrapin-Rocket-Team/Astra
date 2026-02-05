@@ -399,3 +399,4 @@ Start with #1-3 (architecture cleanup). Once the coupling is fixed, the rest wil
 ## 📥 NEEDS TRIAGE
 
 - [ ] State/Sensors should use dt instead of currentTime?
+- [ ] PWM Buzzer/LED support in BlinkBuzz

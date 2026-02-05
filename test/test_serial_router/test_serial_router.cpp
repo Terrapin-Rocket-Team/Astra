@@ -435,21 +435,181 @@ void test_hitl_scenario() {
 }
 
 //------------------------------------------------------------------------------
+// Test: Max interfaces limit
+//------------------------------------------------------------------------------
+void test_max_interfaces_limit() {
+    SerialMessageRouter router(2, 8, 256); // Only 2 interfaces allowed
+
+    Stream s1, s2, s3;
+
+    router.withInterface(&s1)
+          .withInterface(&s2)
+          .withInterface(&s3); // This should be ignored
+
+    TEST_ASSERT_EQUAL(2, router.getInterfaceCount());
+}
+
+//------------------------------------------------------------------------------
+// Test: Max prefixes limit
+//------------------------------------------------------------------------------
+void test_max_prefixes_limit() {
+    SerialMessageRouter router(4, 2, 256); // Only 2 prefixes allowed
+
+    router.withListener("A/", handleHITL)
+          .withListener("B/", handleRadio)
+          .withListener("C/", handleCommand); // This should be ignored
+
+    TEST_ASSERT_EQUAL(2, router.getListenerCount());
+}
+
+//------------------------------------------------------------------------------
+// Test: Message with carriage return and newline
+//------------------------------------------------------------------------------
+void test_message_with_crlf() {
+    SerialMessageRouter router;
+
+    router.withInterface(&serialUSB)
+          .withListener("CMD/", handleCommand);
+
+    // Message with \r before \n (common in serial comms)
+    serialUSB.simulateInput("CMD/TEST\r\n");
+    router.update();
+
+    // Should match on \n, message will contain \r
+    TEST_ASSERT_EQUAL(1, cmdData.callCount);
+    TEST_ASSERT_EQUAL_STRING("TEST\r", cmdData.lastMessage);
+}
+
+//------------------------------------------------------------------------------
+// Test: Consecutive delimiters
+//------------------------------------------------------------------------------
+void test_consecutive_delimiters() {
+    SerialMessageRouter router;
+
+    router.withInterface(&serialUSB)
+          .withListener("CMD/", handleCommand);
+
+    serialUSB.simulateInput("CMD/TEST\n\n\n");
+    router.update();
+
+    // Should process first message, then see empty messages
+    TEST_ASSERT_EQUAL(1, cmdData.callCount);
+    TEST_ASSERT_EQUAL_STRING("TEST", cmdData.lastMessage);
+}
+
+//------------------------------------------------------------------------------
+// Test: Message exactly at buffer size
+//------------------------------------------------------------------------------
+void test_message_at_buffer_boundary() {
+    SerialMessageRouter router(4, 8, 32); // 32 byte buffer
+
+    router.withInterface(&serialUSB)
+          .withListener("T/", handleCommand);
+
+    // Create message exactly 30 chars (T/ + 28 chars + \n)
+    char msg[35];
+    strcpy(msg, "T/");
+    for (int i = 2; i < 30; i++) {
+        msg[i] = 'A';
+    }
+    msg[30] = '\n';
+    msg[31] = '\0';
+
+    serialUSB.simulateInput(msg);
+    router.update();
+
+    // Should work since we have space for 31 chars + null terminator
+    TEST_ASSERT_EQUAL(1, cmdData.callCount);
+}
+
+//------------------------------------------------------------------------------
+// Test: Empty prefix handling
+//------------------------------------------------------------------------------
+void test_empty_prefix() {
+    SerialMessageRouter router;
+
+    router.withInterface(&serialUSB)
+          .withListener("", handleCommand);
+
+    // Note: The implementation adds empty prefix listeners (no validation)
+    // This might be a bug - empty prefixes will never match in matchesPrefix()
+    // because it checks prefixLen == 0 and returns false
+    TEST_ASSERT_EQUAL(1, router.getListenerCount()); // Currently allows empty prefix
+
+    // Empty prefix won't actually match anything
+    serialUSB.simulateInput("test\n");
+    router.update();
+    TEST_ASSERT_EQUAL(0, cmdData.callCount); // Won't match
+}
+
+//------------------------------------------------------------------------------
+// Test: Destructor with multiple interfaces
+//------------------------------------------------------------------------------
+void test_destructor_cleanup() {
+    {
+        SerialMessageRouter* router = new SerialMessageRouter();
+        router->withInterface(&serialUSB)
+               .withInterface(&serial8)
+               .withListener("TEST/", handleCommand);
+
+        delete router; // Should clean up all buffers
+    }
+    // If we get here without crashing, destructor worked
+    TEST_ASSERT_TRUE(true);
+}
+
+//------------------------------------------------------------------------------
+// Test: Interface that becomes unavailable
+//------------------------------------------------------------------------------
+void test_interface_no_data_available() {
+    SerialMessageRouter router;
+
+    router.withInterface(&serialUSB)
+          .withListener("CMD/", handleCommand);
+
+    // No data available
+    router.update();
+
+    TEST_ASSERT_EQUAL(0, cmdData.callCount);
+}
+
+//------------------------------------------------------------------------------
+// Test: Prefix with special characters
+//------------------------------------------------------------------------------
+void test_prefix_with_special_chars() {
+    SerialMessageRouter router;
+
+    router.withInterface(&serialUSB)
+          .withListener("@#$/", handleCommand);
+
+    serialUSB.simulateInput("@#$/data\n");
+    router.update();
+
+    TEST_ASSERT_EQUAL(1, cmdData.callCount);
+    TEST_ASSERT_EQUAL_STRING("data", cmdData.lastMessage);
+}
+
+//------------------------------------------------------------------------------
 // Main test runner
 //------------------------------------------------------------------------------
 void runAllTests() {
+    // Basic construction and registration tests
     RUN_TEST(test_router_construction);
     RUN_TEST(test_register_interface);
     RUN_TEST(test_register_multiple_interfaces);
     RUN_TEST(test_register_duplicate_interface);
     RUN_TEST(test_register_listener);
     RUN_TEST(test_register_multiple_listeners);
+
+    // Message routing tests
     RUN_TEST(test_simple_message_routing);
     RUN_TEST(test_multiple_messages_same_interface);
     RUN_TEST(test_same_prefix_different_interfaces);
     RUN_TEST(test_different_prefixes_different_interfaces);
     RUN_TEST(test_unmatched_message_no_default);
     RUN_TEST(test_unmatched_message_with_default);
+
+    // Configuration tests
     RUN_TEST(test_custom_delimiter);
     RUN_TEST(test_empty_message);
     RUN_TEST(test_partial_message);
@@ -457,7 +617,20 @@ void runAllTests() {
     RUN_TEST(test_no_delimiter_no_callback);
     RUN_TEST(test_multiple_updates_no_data);
     RUN_TEST(test_prefix_priority);
+
+    // Edge case and safety tests
     RUN_TEST(test_null_pointer_safety);
+    RUN_TEST(test_max_interfaces_limit);
+    RUN_TEST(test_max_prefixes_limit);
+    RUN_TEST(test_message_with_crlf);
+    RUN_TEST(test_consecutive_delimiters);
+    RUN_TEST(test_message_at_buffer_boundary);
+    RUN_TEST(test_empty_prefix);
+    RUN_TEST(test_destructor_cleanup);
+    RUN_TEST(test_interface_no_data_available);
+    RUN_TEST(test_prefix_with_special_chars);
+
+    // Real-world scenario tests
     RUN_TEST(test_hitl_scenario);
 }
 
