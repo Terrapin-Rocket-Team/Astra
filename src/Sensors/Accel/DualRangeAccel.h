@@ -17,7 +17,7 @@ namespace astra
         }
         virtual ~DualRangeAccel() {}
 
-        //Because this class deals with two separate sensors, setting one orientation for both of them does not make sense.
+        // Because this class deals with two separate sensors, setting one orientation for both of them does not make sense.
         void setMountingOrientation(MountingOrientation orientation) override
         {
             (void)orientation;
@@ -30,12 +30,18 @@ namespace astra
         }
 
     protected:
-        bool init() override
+        int init() override
         {
-            return lowGAccel->begin() && highGAccel->begin();
+            int low = lowGAccel->begin();
+            int high = highGAccel->begin();
+            if (low == 0 && high == 0)
+                return 0;
+            if (low != 0)
+                return low;
+            return high;
         }
 
-        bool read() override
+        int read() override
         {
             if (lowGAccel->update() && highGAccel->update())
             {
