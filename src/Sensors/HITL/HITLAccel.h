@@ -31,13 +31,13 @@ namespace astra
         virtual ~HITLAccel() {}
 
     protected:
-        bool init() override
+        int init() override
         {
             // No hardware initialization needed
-            return true;
+            return 0;
         }
 
-        bool read() override
+        int read() override
         {
             // Read from HITL sensor buffer
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
@@ -45,7 +45,7 @@ namespace astra
             // Update acceleration vector
             acc = buffer.data.accel;
 
-            return true;
+            return 0;
         }
     };
 

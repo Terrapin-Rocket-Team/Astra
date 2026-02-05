@@ -120,8 +120,12 @@ void setup() {
     LOGI("");
 
     // Initialize Astra system
-    sys.init();
-    LOGI("Astra system initialized");
+    int err = sys.init();
+    if (err != 0) {
+        LOGE("Astra init failed with %d error(s)", err);
+    } else {
+        LOGI("Astra system initialized");
+    }
 
     // Configure SerialMessageRouter
     router.withInterface(&Serial)

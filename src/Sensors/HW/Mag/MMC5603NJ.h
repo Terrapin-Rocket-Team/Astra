@@ -10,8 +10,8 @@ namespace astra
     class MMC5603NJ : public astra::Mag
     {
     public:
-        bool read() override;
-        bool init() override;
+        int read() override;
+        int init() override;
         MMC5603NJ(const char *name = "MMC5603NJ", TwoWire &bus = Wire, uint8_t addr = MMC56X3_DEFAULT_ADDRESS);
         MMC5603NJ(TwoWire &bus, uint8_t addr = MMC56X3_DEFAULT_ADDRESS);
 

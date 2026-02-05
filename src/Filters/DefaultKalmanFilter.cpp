@@ -9,28 +9,7 @@ namespace astra
           gpsNoise(gpsNoise),
           baroNoise(baroNoise)
     {
-        // Initialize partial measurement matrices (these are constant)
-        // GPS measures [px, py]
-        double h_gps_data[12] = {
-            1, 0, 0, 0, 0, 0,  // px measurement
-            0, 1, 0, 0, 0, 0   // py measurement
-        };
-        H_gps = Matrix(2, 6, h_gps_data);
-
-        double r_gps_data[4] = {
-            gpsNoise * gpsNoise, 0,
-            0, gpsNoise * gpsNoise
-        };
-        R_gps = Matrix(2, 2, r_gps_data);
-
-        // Baro measures [pz]
-        double h_baro_data[6] = {
-            0, 0, 1, 0, 0, 0  // pz measurement
-        };
-        H_baro = Matrix(1, 6, h_baro_data);
-
-        double r_baro_data[1] = {baroNoise * baroNoise};
-        R_baro = Matrix(1, 1, r_baro_data);
+        // GPS/Baro update methods are now in base LinearKalmanFilter class
     }
 
     void DefaultKalmanFilter::initialize()
@@ -128,36 +107,6 @@ namespace astra
             0, 0, dt3 * q, 0, 0, dt2 * q
         };
         return Matrix(6, 6, data);
-    }
-
-    void DefaultKalmanFilter::updateGPS(double px, double py)
-    {
-        // GPS horizontal position update
-        double z_data[2] = {px, py};
-        Matrix z(2, 1, z_data);
-
-        // Use flexible update method
-        LinearKalmanFilter::update(z, H_gps, R_gps);
-    }
-
-    void DefaultKalmanFilter::updateBaro(double pz)
-    {
-        // Barometer altitude update
-        double z_data[1] = {pz};
-        Matrix z(1, 1, z_data);
-
-        // Use flexible update method
-        LinearKalmanFilter::update(z, H_baro, R_baro);
-    }
-
-    void DefaultKalmanFilter::updateFull(double px, double py, double pz)
-    {
-        // Full position update (if all sensors available simultaneously)
-        double z_data[3] = {px, py, pz};
-        Matrix z(3, 1, z_data);
-
-        // Use standard update method with full H and R
-        LinearKalmanFilter::update(z);
     }
 
 } // namespace astra

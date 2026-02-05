@@ -12,26 +12,26 @@ namespace astra
     {
     }
 
-    bool BMI088::init()
+    int BMI088::init()
     {
         int accelErr = accel.begin();
         if (accelErr <= 0)
         {
             LOGE("BMI088 Accel ERROR: %d", accelErr);
-            return false;
+            return accelErr;
         }
 
         int gyroErr = gyro.begin();
         if (gyroErr <= 0)
         {
             LOGE("BMI088 Gyro ERROR: %d", gyroErr);
-            return false;
+            return gyroErr;
         }
 
-        return true;
+        return 0;
     }
 
-    bool BMI088::read()
+    int BMI088::read()
     {
         accel.readSensor();
         gyro.readSensor();
@@ -39,6 +39,6 @@ namespace astra
         acc = Vector<3>(accel.getAccelX_mss(), accel.getAccelY_mss(), accel.getAccelZ_mss());
         angVel = Vector<3>(gyro.getGyroX_rads(), gyro.getGyroY_rads(), gyro.getGyroZ_rads());
 
-        return true;
+        return 0;
     }
 } // namespace astra

@@ -13,6 +13,8 @@
 
 using namespace astra;
 const int BUZZER_PIN = 33;
+const int STATUS_LED = 25;       // Status LED for init diagnostics
+const int GPS_FIX_LED = 26;      // GPS fix indicator LED
 
 #ifdef STM32
 HardwareSerial Serial1(PA10, PA9);
@@ -29,6 +31,9 @@ State avionicsState(&kfilter, &orientationFilter);
 AstraConfig config = AstraConfig()
                          .withBBPin(LED_BUILTIN)
                          .withBuzzerPin(BUZZER_PIN)
+                         .withStatusLED(STATUS_LED)          // Init diagnostics LED
+                         .withStatusBuzzer(BUZZER_PIN)       // Init beep codes
+                         .withGPSFixLED(GPS_FIX_LED)        // GPS fix indicator
                          .with6DoFIMU(&imu)
                          .withGPS(&gps)
                          .withBaro(&baro)
@@ -52,7 +57,12 @@ void setup()
 
     EventLogger::configure(bufLogs, 1);
 
-    sys.init();
+    int err = sys.init();
+    if (err != 0) {
+        Serial.print("Astra init failed with ");
+        Serial.print(err);
+        Serial.println(" error(s). Check logs.");
+    }
     // Serial.println(); // getLogger().isReady());
 }
 bool handshake = false;

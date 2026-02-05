@@ -10,11 +10,11 @@ BMP390::BMP390(uint8_t address, TwoWire *theWire) : Barometer("BMP390"), wire(th
 {
 }
 
-bool BMP390::init()
+int BMP390::init()
 {
     if (!bmp.begin_I2C(addr, wire))
     {
-        return false;
+        return -1;
     }
 
     // delay(1000);
@@ -27,14 +27,14 @@ bool BMP390::init()
     good += bmp.setOutputDataRate(BMP3_ODR_50_HZ);
 
     if (good != 4) // If any of the above failed
-        return false;
+        return -1;
 
-    return true;
+    return 0;
 }
 
-bool BMP390::read()
+int BMP390::read()
 {
     pressure = bmp.readPressure() / 100.0; // hPa
     temp = bmp.readTemperature();          // C
-    return true;
+    return 0;
 }

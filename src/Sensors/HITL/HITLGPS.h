@@ -31,17 +31,17 @@ namespace astra
         virtual ~HITLGPS() {}
 
     protected:
-        bool init() override
+        int init() override
         {
             // No hardware initialization needed
             // Initialize GPS base class parameters
             hasFirstFix = false;
             hasFix = false;
             fixQual = 0;
-            return true;
+            return 0;
         }
 
-        bool read() override
+        int read() override
         {
             // Read from HITL sensor buffer
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
@@ -63,7 +63,7 @@ namespace astra
                 calcInitialValuesForDistance();
             }
 
-            return true;
+            return 0;
         }
     };
 

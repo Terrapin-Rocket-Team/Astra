@@ -38,8 +38,9 @@ namespace astra
 
         /**
          * Initialize state estimation
+         * Returns 0 on success, error code on failure
          */
-        virtual bool begin();
+        virtual int begin();
 
         // ========================= Pure Vector-Based Interface =========================
         // State receives data as vectors, no hardware knowledge
@@ -88,7 +89,7 @@ namespace astra
         // ========================= Legacy Methods (deprecated) =========================
         // These will be removed in v0.3
 
-        virtual bool update(double currentTime = -1) override;  // Deprecated
+        virtual int update(double currentTime = -1) override;  // Deprecated
         virtual void predictState(double currentTime = -1);     // Deprecated - use predict(dt)
         // ========================= State Getters =========================
 
@@ -102,11 +103,6 @@ namespace astra
         // ========================= Filter Control =========================
 
         MahonyAHRS *getOrientationFilter() const { return orientationFilter; }
-        void setOrientationFilterMode(MahonyMode mode)
-        {
-            if (orientationFilter)
-                orientationFilter->setMode(mode);
-        }
 
     protected:
         double currentTime; // in s since uC turned on
