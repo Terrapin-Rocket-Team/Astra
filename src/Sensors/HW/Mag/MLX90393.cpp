@@ -5,11 +5,11 @@ namespace astra
 
     MLX90393::MLX90393(const char *name, TwoWire &bus, uint8_t addr) : Mag(name), bus(&bus), addr(addr) {}
     MLX90393::MLX90393(TwoWire &bus, uint8_t addr) : Mag("MLX90393"), bus(&bus), addr(addr) {}
-    bool MLX90393::init()
+    int MLX90393::init()
     {
         if (!magmtr.begin_I2C(addr, bus))
         {
-            return false;
+            return -1;
         }
         magmtr.enableAutoRange(true);
         magmtr.setOversampling(MLX90393_OSR_3);
@@ -21,7 +21,7 @@ namespace astra
         magmtr.setFilter(MLX90393_FILTER_5);
         return true;
     }
-    bool MLX90393::read()
+    int MLX90393::read()
     {
         sensors_event_t event;
         bool status = magmtr.getEvent(&event);
@@ -30,6 +30,6 @@ namespace astra
             event.magnetic.y,
             event.magnetic.z,
         };
-        return status;
+        return status ? 0 : -1;
     }
 }

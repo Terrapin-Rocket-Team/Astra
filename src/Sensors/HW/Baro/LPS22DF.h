@@ -12,8 +12,8 @@ namespace astra
     public:
       LPS22DF(const char *name = "LPS22DF", uint8_t addr = 0x5D);
       LPS22DF(uint8_t addr);
-      virtual bool init() override;
-      virtual bool read() override;
+      virtual int init() override;
+      virtual int read() override;
 
     private:
       LPS lps22;

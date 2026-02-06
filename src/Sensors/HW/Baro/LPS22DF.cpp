@@ -8,19 +8,19 @@ astra::LPS22DF::LPS22DF(uint8_t addr) : Barometer("LPS22DF"), addr(addr)
 {
 }
 
-bool astra::LPS22DF::init()
+int astra::LPS22DF::init()
 {
     if (!lps22.init(LPS::deviceType::device_22DF, addr))
     {
-        return false;
+        return -1;
     }
     lps22.enableDefault();
-    return true;
+    return 0;
 }
 
-bool astra::LPS22DF::read()
+int astra::LPS22DF::read()
 {
     pressure = lps22.readPressureMillibars();
     temp = lps22.readTemperatureC();
-    return true;
+    return 0;
 }
