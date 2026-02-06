@@ -137,7 +137,7 @@ namespace astra
             setGPSOrigin(gpsPos.x(), gpsPos.y(), gpsPos.z());
         }
 
-        // Convert GPS lat/lon to local NED coordinates (meters from origin)
+        // Convert GPS lat/lon to local ENU coordinates (meters from origin)
         double px = 0, py = 0;
         if (hasGPS)
         {
@@ -148,8 +148,12 @@ namespace astra
             // Approximate conversion (works for small distances)
             const double EARTH_RADIUS = 6371000.0; // meters
             const double DEG2RAD = 3.14159265358979323846 / 180.0;
-            px = latDiff * DEG2RAD * EARTH_RADIUS; // North
-            py = lonDiff * DEG2RAD * EARTH_RADIUS * cos(origin.x() * DEG2RAD); // East
+            double north = latDiff * DEG2RAD * EARTH_RADIUS;
+            double east = lonDiff * DEG2RAD * EARTH_RADIUS * cos(origin.x() * DEG2RAD);
+
+            // ENU: X=East, Y=North
+            px = east;
+            py = north;
         }
 
         // Convert baro altitude to position relative to origin

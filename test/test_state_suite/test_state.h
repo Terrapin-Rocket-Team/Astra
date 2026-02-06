@@ -170,8 +170,9 @@ void test_gps_origin_auto_set_on_first_measurement() {
     state->updateMeasurements(gpsPos2, gpsVel, 0.0, true, false);
 
     TEST_ASSERT_TRUE(kalmanFilter->update_gps_called);
-    TEST_ASSERT_FLOAT_WITHIN(10.0, 111.0, kalmanFilter->last_gps_px); // ~111m north
-    TEST_ASSERT_FLOAT_WITHIN(0.1, 0.0, kalmanFilter->last_gps_py);
+    // ENU: north should affect +Y
+    TEST_ASSERT_FLOAT_WITHIN(0.1, 0.0, kalmanFilter->last_gps_px);
+    TEST_ASSERT_FLOAT_WITHIN(10.0, 111.0, kalmanFilter->last_gps_py); // ~111m north
     local_tearDown();
 }
 
@@ -341,7 +342,7 @@ void test_update_measurements_gps_only() {
     TEST_ASSERT_FALSE(kalmanFilter->update_baro_called);
     TEST_ASSERT_FALSE(kalmanFilter->update_gps_baro_called);
 
-    // Should have converted lat/lon to local NED
+    // Should have converted lat/lon to local ENU
     TEST_ASSERT_NOT_EQUAL(0.0, kalmanFilter->last_gps_px);
     TEST_ASSERT_NOT_EQUAL(0.0, kalmanFilter->last_gps_py);
     local_tearDown();

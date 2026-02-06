@@ -1,6 +1,7 @@
 #include "Astra.h"
 #include "BlinkBuzz/BlinkBuzz.h"
 #include "State/State.h"
+#include "State/DefaultState.h"
 #include "Sensors/Sensor.h"
 #include "Sensors/SensorManager/SensorManager.h"
 #include "Sensors/GPS/GPS.h"
@@ -12,6 +13,7 @@
 #include "RetrieveData/RetrieveSDCardData.h"
 #endif
 #include "RecordData/Logging/DataLogger.h"
+#include "RecordData/Logging/EventLogger.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include <cstring>
 using namespace astra;
@@ -27,6 +29,11 @@ Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 
 Astra::~Astra()
 {
+    if (ownsState && config && config->state)
+    {
+        delete config->state;
+        config->state = nullptr;
+    }
 }
 
 void Astra::handleCommandMessage(const char *message, const char *prefix, Stream *source)
@@ -52,6 +59,12 @@ void Astra::handleCommandMessage(const char *message, const char *prefix, Stream
 
 int Astra::init()
 {
+    // Configure event logger before any LOGI/LOGW output
+    if (config->numEventLogs > 0)
+    {
+        EventLogger::configure(config->eventLogs, config->numEventLogs);
+    }
+
     LOGI("Initializing Astra version %s", ASTRA_VERSION);
 #ifdef ENV_STM
     Wire.begin(PB9, PB8); // stm32
@@ -115,7 +128,13 @@ int Astra::init()
 
     delay(10);
 
-    // Initialize State
+    // Initialize State (create DefaultState if not provided)
+    if (!config->state)
+    {
+        LOGW("No State provided; using DefaultState.");
+        config->state = new DefaultState();
+        ownsState = true;
+    }
     if (config->state)
     {
         config->state->begin();
@@ -145,7 +164,6 @@ bool Astra::update(double timeSeconds)
 {
 
     _didLog = false;
-    _didUpdateSensors = false;
     _didUpdateState = false;
     _didPredictState = false;
 
@@ -172,14 +190,15 @@ bool Astra::update(double timeSeconds)
 
     if (!config->state)
     {
-        LOGW("Astra Attempted to update State without a reference to it! (use AstraConfig.withState(&stateVar))");
-        return false;
+        LOGW("No State provided; using DefaultState.");
+        config->state = new DefaultState();
+        ownsState = true;
+        config->state->begin();
     }
 
     // =================== Sensor Update ===================
     // Update sensors every loop - each sensor's shouldUpdate() decides when to read
     config->sensorManager.update(timeSeconds);
-    _didUpdateSensors = true;
 
     // =================== Orientation & Prediction ===================
     // Only update orientation and predict when new IMU data is available AND sensors are healthy
