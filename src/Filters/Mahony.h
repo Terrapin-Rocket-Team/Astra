@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <ArduinoEigen.h> // Required for Mag Calibration
 #include <vector>
+#include <math.h>
 #include "../Math/Quaternion.h"
 #include "Math/Vector.h"
 
@@ -84,7 +85,18 @@ namespace astra
             a.normalize();
 
             Vector<3> calMag = calibrateMag(mag);
+            if (!isFiniteVec(calMag))
+            {
+                update(accel, gyro, dt);
+                return;
+            }
             Vector<3> m = calMag;
+            double mMag = m.magnitude();
+            if (!isfinite(mMag) || mMag <= 1e-9)
+            {
+                update(accel, gyro, dt);
+                return;
+            }
             m.normalize();
 
             // Estimated specific force (opposite of gravity) direction in body frame
@@ -100,9 +112,21 @@ namespace astra
             // Mag error (yaw correction)
             // Project onto horizontal plane to handle magnetic dip
             Vector<3> m_horiz = m - (vAcc * m.dot(vAcc));
+            double mhMag = m_horiz.magnitude();
+            if (!isfinite(mhMag) || mhMag <= 1e-9)
+            {
+                update(accel, gyro, dt);
+                return;
+            }
             m_horiz.normalize();
 
             Vector<3> vMag_horiz = vMag - (vAcc * vMag.dot(vAcc));
+            double vmhMag = vMag_horiz.magnitude();
+            if (!isfinite(vmhMag) || vmhMag <= 1e-9)
+            {
+                update(accel, gyro, dt);
+                return;
+            }
             vMag_horiz.normalize();
 
             Vector<3> eMag = m_horiz.cross(vMag_horiz);
@@ -245,9 +269,9 @@ namespace astra
          */
         void integrateQuaternion(const Vector<3>& gCorr, double dt)
         {
-            // Quaternion derivative: q_dot = 0.5 * omega * q
+            // Quaternion derivative for Body -> Inertial: q_dot = 0.5 * q * omega
             Quaternion omega(0.0, gCorr.x(), gCorr.y(), gCorr.z());
-            Quaternion qDot = omega * _q;
+            Quaternion qDot = _q * omega;
             qDot = qDot * 0.5;
 
             // Euler integration
@@ -276,7 +300,7 @@ namespace astra
             corrected.y() = _softIron[1][0] * temp.x() + _softIron[1][1] * temp.y() + _softIron[1][2] * temp.z();
             corrected.z() = _softIron[2][0] * temp.x() + _softIron[2][1] * temp.y() + _softIron[2][2] * temp.z();
 
-            return corrected;
+            return isFiniteVec(corrected) ? corrected : raw;
         }
 
         /**
@@ -308,6 +332,11 @@ namespace astra
             Eigen::MatrixXd A_v = D.transpose() * D;
             Eigen::MatrixXd b_v = (D.transpose()) * Eigen::MatrixXd::Ones(n, 1);
             Eigen::VectorXd x_v = A_v.ldlt().solve(b_v);
+            for (int i = 0; i < x_v.size(); i++)
+            {
+                if (!isfinite(x_v(i)))
+                    return;
+            }
 
             // Extract ellipsoid center (hard iron offset)
             Eigen::Matrix4d A_mat;
@@ -320,6 +349,8 @@ namespace astra
             Eigen::Vector3d b_center;
             b_center << x_v(6), x_v(7), x_v(8);
             Eigen::Vector3d center = A_center.ldlt().solve(b_center);
+            if (!isfinite(center(0)) || !isfinite(center(1)) || !isfinite(center(2)))
+                return;
 
             _hardIron = Vector<3>(center(0), center(1), center(2));
 
@@ -332,7 +363,18 @@ namespace astra
             Eigen::Matrix3d evecs = eig.eigenvectors();
             Eigen::Vector3d evals = eig.eigenvalues();
 
+            for (int i = 0; i < 3; i++)
+            {
+                if (!isfinite(evals(i)) || evals(i) <= 0.0)
+                    return;
+            }
+
             Eigen::Vector3d radii = (1.0 / evals.array()).sqrt();
+            for (int i = 0; i < 3; i++)
+            {
+                if (!isfinite(radii(i)) || radii(i) <= 0.0)
+                    return;
+            }
 
             Eigen::Matrix3d scale = Eigen::Matrix3d::Identity();
             scale(0, 0) = radii(0);
@@ -344,11 +386,18 @@ namespace astra
 
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
+                    if (!isfinite(softCorr(i, j)))
+                        return;
                     _softIron[i][j] = softCorr(i, j);
                 }
             }
 
             _magCalibrated = true;
+        }
+
+        static bool isFiniteVec(const Vector<3> &v)
+        {
+            return isfinite(v.x()) && isfinite(v.y()) && isfinite(v.z());
         }
 
         // ========================= Member Variables =========================
