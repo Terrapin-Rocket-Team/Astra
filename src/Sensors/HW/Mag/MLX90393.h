@@ -11,8 +11,8 @@ namespace astra
     public:
         MLX90393(const char *name = "MLX90393", TwoWire &bus = Wire, uint8_t addr = MLX90393_DEFAULT_ADDR);
         MLX90393(TwoWire &bus = Wire, uint8_t addr = MLX90393_DEFAULT_ADDR);
-        bool read() override;
-        bool init() override;
+        int read() override;
+        int init() override;
 
     private:
         TwoWire *bus = &Wire;
