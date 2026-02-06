@@ -181,4 +181,16 @@ namespace astra
     {
         return _global._ok;
     }
+
+    void DataLogger::reset()
+    {
+        _global._sinks = nullptr;
+        _global._countSinks = 0;
+        _global._countReporters = 0;
+        for (uint8_t i = 0; i < MAX_REPORTERS; i++)
+        {
+            _global._reporterRegistry[i] = nullptr;
+        }
+        _global._ok = false;
+    }
 }

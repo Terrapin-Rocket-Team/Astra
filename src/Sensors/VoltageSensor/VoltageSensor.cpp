@@ -39,6 +39,12 @@ namespace astra
         rawValue = analogRead(pin);
 
         // Calculate ADC resolution
+        if (PLATFORM_ADC_BITS <= 0)
+        {
+            voltage = 0.0;
+            return 0;
+        }
+
         int maxAdcValue = (1 << PLATFORM_ADC_BITS) - 1;
 
         // Convert raw ADC value to voltage

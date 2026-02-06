@@ -41,12 +41,18 @@ public:
     // Sensor-specific measurement updates for standard flight sensors
     // These work with any 6-state [px, py, pz, vx, vy, vz] LKF
     // Override in subclass if using different state representation
-    virtual void updateGPS(double px, double py, double gpsNoise = 5.0);
-    virtual void updateBaro(double pz, double baroNoise = 2.0);
-    virtual void updateGPSBaro(double px, double py, double pz, double gpsNoise = 5.0, double baroNoise = 2.0);
+    // If noise parameter is -1, uses the value set in constructor (via getGPSNoise()/getBaroNoise())
+    virtual void updateGPS(double px, double py, double gpsNoise = -1.0);
+    virtual void updateBaro(double pz, double baroNoise = -1.0);
+    virtual void updateGPSBaro(double px, double py, double pz, double gpsNoise = -1.0, double baroNoise = -1.0);
 
     // Get current state estimate
     virtual Matrix getState() const { return X; }
+
+    // Get noise parameters (used as defaults when updateGPS/updateBaro called with -1)
+    // Subclasses should override these if they store noise parameters
+    virtual double getGPSNoise() const { return 5.0; }   // Default GPS noise
+    virtual double getBaroNoise() const { return 2.0; }  // Default baro noise
 
 protected:
     // Instance variables to store matrices

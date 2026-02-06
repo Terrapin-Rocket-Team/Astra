@@ -43,7 +43,10 @@ namespace astra
 
         int read() override
         {
-            if (lowGAccel->update() && highGAccel->update())
+            int lowResult = lowGAccel->update();
+            int highResult = highGAccel->update();
+
+            if (lowResult == 0 && highResult == 0)
             {
                 Vector<3> lowVal = lowGAccel->getAccel();
                 Vector<3> highVal = highGAccel->getAccel();
@@ -70,9 +73,9 @@ namespace astra
                     alpha = (magHigh - maxLowG) / (minHighG - maxLowG);
                 }
                 acc = lowVal * (1.0 - alpha) + highVal * alpha;
-                return true;
+                return 0;
             }
-            return false;
+            return -1;
         }
 
     private:

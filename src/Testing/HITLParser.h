@@ -130,6 +130,12 @@ namespace astra
          */
         static bool parseAndInject(const char *line, double &timestamp)
         {
+            if (!line)
+            {
+                LOGE("HITL: Null line");
+                return false;
+            }
+
             // Verify prefix
             if (strncmp(line, "HITL/", 5) != 0)
             {
