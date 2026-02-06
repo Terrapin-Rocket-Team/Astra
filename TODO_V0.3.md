@@ -235,9 +235,23 @@ Version 0.3 focuses on making the system more usable in the field:
 
 ---
 
+### 7. Native/Unix Build Parity
+
+**Goal:** Keep `unix` and `native` builds in lockstep with the same compiled sources.
+
+**Tasks:**
+- [ ] Remove special `build_src_filter` include/exclude differences between `native` and `unix`
+- [ ] Ensure both environments build the same examples/src set by default
+- [ ] Allow per-env mocks only (no platform-only source exclusions)
+
+**Priority:** MEDIUM - Reduces maintenance and CI surprises
+**Estimated Effort:** 1-2 days
+
+---
+
 ## 📊 LOW PRIORITY (Defer if Time-Constrained)
 
-### 7. STM32 eMMC Support
+### 8. STM32 eMMC Support
 
 **Goal:** Full eMMC support on STM32 platform
 
@@ -258,7 +272,7 @@ Version 0.3 focuses on making the system more usable in the field:
 
 ---
 
-### 8. Teensy CrashReport Integration
+### 9. Teensy CrashReport Integration
 
 **Goal:** Automatic crash capture and reporting
 
