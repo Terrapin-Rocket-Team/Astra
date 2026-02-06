@@ -62,15 +62,17 @@ namespace astra
         virtual void predict(double dt);
 
         /**
-         * Update state with GPS and/or barometer measurements
-         * @param gpsPos GPS position (lat, lon, alt) or zero vector if no GPS
-         * @param gpsVel GPS velocity (NED frame) or zero vector if no GPS
-         * @param baroAlt Barometric altitude ASL in meters, or 0 if no baro
-         * @param hasGPS True if GPS data is valid
-         * @param hasBaro True if barometer data is valid
+         * Update state with a GPS measurement
+         * @param gpsPos GPS position (lat, lon, alt)
+         * @param gpsVel GPS velocity (NED frame)
          */
-        virtual void updateMeasurements(const Vector<3> &gpsPos, const Vector<3> &gpsVel,
-                                       double baroAlt, bool hasGPS, bool hasBaro);
+        virtual void updateGPSMeasurement(const Vector<3> &gpsPos, const Vector<3> &gpsVel);
+
+        /**
+         * Update state with a barometer measurement
+         * @param baroAlt Barometric altitude ASL in meters
+         */
+        virtual void updateBaroMeasurement(double baroAlt);
 
         /**
          * Set GPS origin (call once when GPS gets first fix)
@@ -86,11 +88,10 @@ namespace astra
          */
         virtual void setBaroOrigin(double altASL);
 
-        // ========================= Legacy Methods (deprecated) =========================
-        // These will be removed in v0.3
+        // ========================= DataReporter Hook =========================
+        // Does not drive estimation. Keeps logging time in sync.
+        virtual int update(double currentTime = -1) override;
 
-        virtual int update(double currentTime = -1) override;  // Deprecated
-        virtual void predictState(double currentTime = -1);     // Deprecated - use predict(dt)
         // ========================= State Getters =========================
 
         virtual Vector<3> getPosition() const { return position; }         // in m away from point of launch (inertial frame)

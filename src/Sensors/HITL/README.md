@@ -97,7 +97,7 @@ using namespace astra;
 #### 2. Create HITL Sensors
 ```cpp
 // Instead of hardware sensors:
-// DPS368* baro = new DPS368(0x77);
+// DPS368* baro = new DPS368(&Wire, 0x77);
 
 // Use HITL sensors:
 HITLBarometer* baro = new HITLBarometer();

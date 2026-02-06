@@ -45,7 +45,7 @@ Provide a `State` (or `DefaultState`). Astra uses it for orientation and positio
 
 ### Sensor Configuration
 
-Astra uses `SensorManager` internally. Provide sensors directly:
+Provide sensors directly:
 
 - `withAccel(Accel*)`
 - `withGyro(Gyro*)`
@@ -118,6 +118,16 @@ Flags the system as HITL. Use this when you pass simulation time into `update(si
 
 ---
 
+### Ownership Model
+
+- `Astra` stores a pointer to `AstraConfig`. Ensure the config outlives the `Astra` instance.
+- `Astra` does **not** own sensors or log sinks. You are responsible for their lifetime.
+- If you call `withState()`, you own that `State`.
+- If you do **not** call `withState()`, `Astra` creates a `DefaultState` and owns it.
+- `SerialMessageRouter` is created and owned by `Astra`.
+
+---
+
 ## Astra API
 
 ### `int init()`
@@ -171,9 +181,4 @@ Because Astra updates the router internally, you do not need to call `router->up
 - `didPredictState()`
 
 These are updated each cycle by `update()`.  
-For sensor update events, query `SensorManager`:
-
-```cpp
-auto* sm = &config.sensorManager;
-if (sm->hasBaroUpdate()) { /* ... */ }
-```
+For per-sensor update events in custom loops or tests, see the Maintainer Guide.

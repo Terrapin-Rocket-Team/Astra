@@ -261,15 +261,18 @@ bool Astra::update(double timeSeconds)
                    baro &&
                    baro->isHealthy();
 
-    // Only update measurements when new healthy data is available
-    if (config->state && (hasGPS || hasBaro))
+    // Update only the sensor that has new data
+    if (config->state && hasGPS)
     {
-        // Fetch sensor data
         Vector<3> gpsPos = config->sensorManager.getGPSPosition();
         Vector<3> gpsVel = config->sensorManager.getGPSVelocity();
+        config->state->updateGPSMeasurement(gpsPos, gpsVel);
+        _didUpdateState = true;
+    }
+    if (config->state && hasBaro)
+    {
         double baroAlt = config->sensorManager.getBarometricAltitude();
-
-        config->state->updateMeasurements(gpsPos, gpsVel, baroAlt, hasGPS, hasBaro);
+        config->state->updateBaroMeasurement(baroAlt);
         _didUpdateState = true;
     }
 
@@ -308,7 +311,7 @@ bool Astra::update(double timeSeconds)
     // Update GPS fix LED
     updateStatusLEDs();
 
-    return true; // bool here is deprecated
+    return true;
 }
 
 void Astra::playInitFeedback(int errorCode)

@@ -135,14 +135,14 @@ void test_set_gps_origin() {
     // Origin should be set - verify by checking that second call doesn't change it
     state->setGPSOrigin(35.0, -119.0, 200.0);
 
-    // We can't directly access origin, but we can test behavior via updateMeasurements
+    // We can't directly access origin, but we can test behavior via GPS measurements
     state->begin();
 
     // First GPS measurement should be relative to first origin
     Vector<3> gpsPos(34.0522, -118.2437, 100.0);
     Vector<3> gpsVel(0, 0, 0);
     kalmanFilter->resetMockState();
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
 
     // Position relative to origin should be 0,0
     TEST_ASSERT_TRUE(kalmanFilter->update_gps_called);
@@ -157,7 +157,7 @@ void test_gps_origin_auto_set_on_first_measurement() {
 
     Vector<3> gpsPos(34.0522, -118.2437, 100.0);
     Vector<3> gpsVel(10.0, 5.0, -2.0);
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
 
     // First measurement should set origin and read 0,0
     TEST_ASSERT_TRUE(kalmanFilter->update_gps_called);
@@ -167,7 +167,7 @@ void test_gps_origin_auto_set_on_first_measurement() {
     // Second measurement should be relative to origin
     kalmanFilter->resetMockState();
     Vector<3> gpsPos2(34.0532, -118.2437, 100.0); // 0.001 deg north ~ 111 m
-    state->updateMeasurements(gpsPos2, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos2, gpsVel);
 
     TEST_ASSERT_TRUE(kalmanFilter->update_gps_called);
     // ENU: north should affect +Y
@@ -189,7 +189,7 @@ void test_set_baro_origin() {
     Vector<3> gpsPos(0, 0, 0);
     Vector<3> gpsVel(0, 0, 0);
     kalmanFilter->resetMockState();
-    state->updateMeasurements(gpsPos, gpsVel, 100.0, false, true);
+    state->updateBaroMeasurement(100.0);
 
     // Altitude relative to origin should be 0
     TEST_ASSERT_TRUE(kalmanFilter->update_baro_called);
@@ -206,7 +206,7 @@ void test_baro_relative_to_origin() {
     Vector<3> gpsVel(0, 0, 0);
 
     // Measure at 150m ASL -> 50m above origin
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, false, true);
+    state->updateBaroMeasurement(150.0);
 
     TEST_ASSERT_TRUE(kalmanFilter->update_baro_called);
     TEST_ASSERT_FLOAT_WITHIN(0.1, 50.0, kalmanFilter->last_baro_pz);
@@ -336,7 +336,7 @@ void test_update_measurements_gps_only() {
     Vector<3> gpsVel(10.0, 5.0, -2.0);
 
     kalmanFilter->resetMockState();
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
 
     TEST_ASSERT_TRUE(kalmanFilter->update_gps_called);
     TEST_ASSERT_FALSE(kalmanFilter->update_baro_called);
@@ -357,7 +357,7 @@ void test_update_measurements_baro_only() {
     Vector<3> gpsVel(0, 0, 0);
 
     kalmanFilter->resetMockState();
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, false, true);
+    state->updateBaroMeasurement(150.0);
 
     TEST_ASSERT_FALSE(kalmanFilter->update_gps_called);
     TEST_ASSERT_TRUE(kalmanFilter->update_baro_called);
@@ -377,16 +377,17 @@ void test_update_measurements_gps_and_baro() {
     Vector<3> gpsVel(10.0, 5.0, -2.0);
 
     kalmanFilter->resetMockState();
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, true, true);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
+    state->updateBaroMeasurement(150.0);
 
-    TEST_ASSERT_FALSE(kalmanFilter->update_gps_called);
-    TEST_ASSERT_FALSE(kalmanFilter->update_baro_called);
-    TEST_ASSERT_TRUE(kalmanFilter->update_gps_baro_called);
+    TEST_ASSERT_TRUE(kalmanFilter->update_gps_called);
+    TEST_ASSERT_TRUE(kalmanFilter->update_baro_called);
+    TEST_ASSERT_FALSE(kalmanFilter->update_gps_baro_called);
 
     // Should have both GPS horizontal and baro vertical
-    TEST_ASSERT_NOT_EQUAL(0.0, kalmanFilter->last_gps_baro_px);
-    TEST_ASSERT_NOT_EQUAL(0.0, kalmanFilter->last_gps_baro_py);
-    TEST_ASSERT_FLOAT_WITHIN(0.1, 50.0, kalmanFilter->last_gps_baro_pz);
+    TEST_ASSERT_NOT_EQUAL(0.0, kalmanFilter->last_gps_px);
+    TEST_ASSERT_NOT_EQUAL(0.0, kalmanFilter->last_gps_py);
+    TEST_ASSERT_FLOAT_WITHIN(0.1, 50.0, kalmanFilter->last_baro_pz);
     local_tearDown();
 }
 
@@ -398,7 +399,7 @@ void test_update_measurements_no_sensors() {
     Vector<3> gpsVel(0, 0, 0);
 
     kalmanFilter->resetMockState();
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, false, false);
+    // No measurement updates
 
     // No updates should be called
     TEST_ASSERT_FALSE(kalmanFilter->update_gps_called);
@@ -421,7 +422,7 @@ void test_update_measurements_updates_state_from_filter() {
 
     Vector<3> gpsPos(34.001, -118.001, 105.0);
     Vector<3> gpsVel(10.0, 5.0, -2.0);
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
 
     Vector<3> pos = state->getPosition();
     Vector<3> vel = state->getVelocity();
@@ -443,7 +444,8 @@ void test_update_measurements_null_filter() {
     Vector<3> gpsVel(0, 0, 0);
 
     // Should not crash
-    s.updateMeasurements(gpsPos, gpsVel, 100.0, true, true);
+    s.updateGPSMeasurement(gpsPos, gpsVel);
+    s.updateBaroMeasurement(100.0);
     local_tearDown();
 }
 
@@ -518,26 +520,6 @@ void test_get_orientation_filter() {
     local_tearDown();
 }
 
-void test_deprecated_update_returns_error() {
-    local_setUp();
-    state->begin();
-    int result = state->update(1.0);
-    TEST_ASSERT_EQUAL(-1, result);
-    local_tearDown();
-}
-
-void test_deprecated_predict_state_does_nothing() {
-    local_setUp();
-    state->begin();
-
-    // Should not crash, but should log error
-    state->predictState(1.0);
-
-    // Kalman filter should not be called
-    TEST_ASSERT_FALSE(kalmanFilter->predict_called);
-    local_tearDown();
-}
-
 void test_full_update_cycle() {
     local_setUp();
     // Complete update cycle: orientation -> predict -> measurements
@@ -566,8 +548,11 @@ void test_full_update_cycle() {
     Vector<3> gpsPos(34.001, -118.001, 105.0);
     Vector<3> gpsVel(10.0, 5.0, -2.0);
     kalmanFilter->resetMockState();
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, true, true);
-    TEST_ASSERT_TRUE(kalmanFilter->update_gps_baro_called);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
+    state->updateBaroMeasurement(150.0);
+    TEST_ASSERT_TRUE(kalmanFilter->update_gps_called);
+    TEST_ASSERT_TRUE(kalmanFilter->update_baro_called);
+    TEST_ASSERT_FALSE(kalmanFilter->update_gps_baro_called);
     local_tearDown();
 }
 
@@ -620,8 +605,6 @@ void run_test_state_tests()
     RUN_TEST(test_get_orientation);
     RUN_TEST(test_get_acceleration);
     RUN_TEST(test_get_orientation_filter);
-    RUN_TEST(test_deprecated_update_returns_error);
-    RUN_TEST(test_deprecated_predict_state_does_nothing);
     RUN_TEST(test_full_update_cycle);
     RUN_TEST(test_multiple_orientation_updates);
 }

@@ -9,8 +9,8 @@ namespace astra
     class BNO055 : public IMU9DoF
     {
     public:
-        BNO055(const char *name = "BNO055", uint8_t address = BNO055_ADDRESS_A, TwoWire *theWire = &Wire);
-        BNO055(uint8_t address, TwoWire *theWire = &Wire);
+        BNO055(const char *name = "BNO055", TwoWire *theWire = &Wire, uint8_t address = BNO055_ADDRESS_A);
+        BNO055(TwoWire *theWire, uint8_t address = BNO055_ADDRESS_A);
 
         int init() override;
         int read() override;

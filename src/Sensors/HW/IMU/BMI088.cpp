@@ -2,13 +2,13 @@
 
 namespace astra
 {
-    BMI088::BMI088(const char *name, TwoWire &bus, uint8_t accelAddr, uint8_t gyroAddr)
-        : IMU6DoF(name), accel(bus, accelAddr), gyro(bus, gyroAddr)
+    BMI088::BMI088(const char *name, TwoWire *bus, uint8_t accelAddr, uint8_t gyroAddr)
+        : IMU6DoF(name), accel(*bus, accelAddr), gyro(*bus, gyroAddr)
     {
     }
 
-    BMI088::BMI088(TwoWire &bus, uint8_t accelAddr, uint8_t gyroAddr)
-        : IMU6DoF("BMI088"), accel(bus, accelAddr), gyro(bus, gyroAddr)
+    BMI088::BMI088(TwoWire *bus, uint8_t accelAddr, uint8_t gyroAddr)
+        : BMI088("BMI088", bus, accelAddr, gyroAddr)
     {
     }
 

@@ -43,7 +43,7 @@ DefaultState state;
 
 ## Update API (Vector‑Based)
 
-`State::update()` is deprecated. Use the vector API:
+Use the vector API:
 
 ```cpp
 void updateOrientation(const Vector<3>& gyro,
@@ -52,11 +52,10 @@ void updateOrientation(const Vector<3>& gyro,
 
 void predict(double dt);
 
-void updateMeasurements(const Vector<3>& gpsPos,
-                        const Vector<3>& gpsVel,
-                        double baroAlt,
-                        bool hasGPS,
-                        bool hasBaro);
+void updateGPSMeasurement(const Vector<3>& gpsPos,
+                          const Vector<3>& gpsVel);
+
+void updateBaroMeasurement(double baroAlt);
 ```
 
 `Astra` calls these for you. You generally don’t call them directly.
@@ -109,13 +108,3 @@ public:
 ```
 
 ---
-
-## Deprecated Methods
-
-These remain for backward compatibility but return errors:
-
-- `int update(double currentTime = -1)`
-- `void predictState(double currentTime = -1)`
-
-Use the vector-based API instead.
-

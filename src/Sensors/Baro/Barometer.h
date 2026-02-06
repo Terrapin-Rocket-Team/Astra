@@ -32,8 +32,7 @@ namespace astra
 
         // Health tracking for stuck-reading detection
         static constexpr uint8_t HEALTH_BUFFER_SIZE = 3;
-        double lastReadings[HEALTH_BUFFER_SIZE] = {0};
-        uint8_t readingIndex = 0;
+        CircBuffer<double> lastReadings;
         uint8_t consecutiveGoodReads = 0;
     };
 }

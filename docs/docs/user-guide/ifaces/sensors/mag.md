@@ -23,7 +23,7 @@ Example:
 ```cpp
 #include <Sensors/HW/Mag/MMC5603NJ.h>
 
-MMC5603NJ mag("Mag", Wire);
+MMC5603NJ mag("Mag", &Wire);
 ```
 
 ---
@@ -36,4 +36,3 @@ If your IMU provides magnetometer data:
 IMU9DoF* imu = ...;
 Mag* mag = imu->getMagSensor();
 ```
-

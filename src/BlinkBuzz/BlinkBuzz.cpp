@@ -83,7 +83,7 @@ namespace astra
     {
         if (!ready)
             LOGE("Attempted to use BlinkBuzz before it was initialized!");
-        return ready;
+        return enableAsync;
     }
 
     bool BlinkBuzz::isAllowed(int pin)

@@ -122,8 +122,53 @@ namespace astra
         velocity.z() = state(5, 0);
     }
 
-    void State::updateMeasurements(const Vector<3> &gpsPos, const Vector<3> &gpsVel,
-                                   double baroAlt, bool hasGPS, bool hasBaro)
+    void State::updateGPSMeasurement(const Vector<3> &gpsPos, const Vector<3> &gpsVel)
+    {
+        if (!filter)
+        {
+            LOGE("Cannot update measurements - filter not available");
+            return;
+        }
+        (void)gpsVel;
+
+        // Set GPS origin on first valid GPS reading
+        if (!gpsOriginSet)
+        {
+            setGPSOrigin(gpsPos.x(), gpsPos.y(), gpsPos.z());
+        }
+
+        // Convert GPS lat/lon to local ENU coordinates (meters from origin)
+        double px = 0, py = 0;
+        // Calculate displacement from origin in meters
+        double latDiff = gpsPos.x() - origin.x();
+        double lonDiff = gpsPos.y() - origin.y();
+
+        // Approximate conversion (works for small distances)
+        const double EARTH_RADIUS = 6371000.0; // meters
+        const double DEG2RAD = 3.14159265358979323846 / 180.0;
+        double north = latDiff * DEG2RAD * EARTH_RADIUS;
+        double east = lonDiff * DEG2RAD * EARTH_RADIUS * cos(origin.x() * DEG2RAD);
+
+        // ENU: X=East, Y=North
+        px = east;
+        py = north;
+
+        // GPS update - horizontal position
+        filter->updateGPS(px, py);
+
+        // Extract updated state: [px, py, pz, vx, vy, vz]
+        Matrix state = filter->getState();
+
+        // Update state variables from measurement update
+        position.x() = state(0, 0);
+        position.y() = state(1, 0);
+        position.z() = state(2, 0);
+        velocity.x() = state(3, 0);
+        velocity.y() = state(4, 0);
+        velocity.z() = state(5, 0);
+    }
+
+    void State::updateBaroMeasurement(double baroAlt)
     {
         if (!filter)
         {
@@ -131,55 +176,15 @@ namespace astra
             return;
         }
 
-        // Set GPS origin on first valid GPS reading
-        if (hasGPS && !gpsOriginSet)
-        {
-            setGPSOrigin(gpsPos.x(), gpsPos.y(), gpsPos.z());
-        }
-
-        // Convert GPS lat/lon to local ENU coordinates (meters from origin)
-        double px = 0, py = 0;
-        if (hasGPS)
-        {
-            // Calculate displacement from origin in meters
-            double latDiff = gpsPos.x() - origin.x();
-            double lonDiff = gpsPos.y() - origin.y();
-
-            // Approximate conversion (works for small distances)
-            const double EARTH_RADIUS = 6371000.0; // meters
-            const double DEG2RAD = 3.14159265358979323846 / 180.0;
-            double north = latDiff * DEG2RAD * EARTH_RADIUS;
-            double east = lonDiff * DEG2RAD * EARTH_RADIUS * cos(origin.x() * DEG2RAD);
-
-            // ENU: X=East, Y=North
-            px = east;
-            py = north;
-        }
-
         // Convert baro altitude to position relative to origin
         double pz = 0;
-        if (hasBaro && baroOriginSet)
+        if (baroOriginSet)
         {
             pz = baroAlt - origin.z();
         }
 
-        // Use LinearKalmanFilter's built-in GPS/baro update methods
-        // These handle partial measurements correctly
-        if (hasGPS && hasBaro)
-        {
-            // Both sensors available - combined update
-            filter->updateGPSBaro(px, py, pz);
-        }
-        else if (hasGPS)
-        {
-            // GPS only - horizontal position update
-            filter->updateGPS(px, py);
-        }
-        else if (hasBaro)
-        {
-            // Baro only - vertical position update
-            filter->updateBaro(pz);
-        }
+        // Baro update - vertical position
+        filter->updateBaro(pz);
 
         // Extract updated state: [px, py, pz, vx, vy, vz]
         Matrix state = filter->getState();
@@ -197,12 +202,11 @@ namespace astra
 
     int State::update(double newTime)
     {
-        // DEPRECATED: Use the new vector-based API instead:
-        // - updateOrientation(gyro, accel, dt)
-        // - predict(dt)
-        // - updateMeasurements(gpsPos, gpsVel, baroAlt, hasGPS, hasBaro)
-        LOGE("State::update() is deprecated. Use the new vector-based API.");
-        return -1;
+        if (newTime == -1)
+            newTime = millis() / 1000.0;
+
+        currentTime = newTime;
+        return 0;
     }
 
     void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)
@@ -235,12 +239,6 @@ namespace astra
         acceleration.x() = earthAccel.x();
         acceleration.y() = earthAccel.y();
         acceleration.z() = earthAccel.z();
-    }
-
-    void State::predictState(double newTime)
-    {
-        // DEPRECATED: Use predict(dt) instead
-        LOGE("State::predictState() is deprecated. Use predict(dt) instead.");
     }
 
 #pragma endregion Update Functions

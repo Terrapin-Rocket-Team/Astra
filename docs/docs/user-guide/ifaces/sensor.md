@@ -30,7 +30,7 @@ bool isInitialized() const;
 ## Update Rate
 
 Sensors decide when to update based on `setUpdateRate()` and `shouldUpdate(currentTime)`.  
-`SensorManager` calls `update()` only when the interval has elapsed.
+`Astra` calls `update()` only when the interval has elapsed.
 
 ```cpp
 imu.setUpdateRate(100);  // 100 Hz
@@ -104,4 +104,3 @@ See the specific sensor pages:
 - [GPS](sensors/gps.md)
 - [Voltage Sensor](sensors/voltage.md)
 - [HITL Sensors](sensors/hitl.md)
-

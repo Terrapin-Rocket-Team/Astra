@@ -33,10 +33,7 @@ namespace astra
 
     int DefaultState::update(double newTime)
     {
-        // DEPRECATED: DefaultState now uses the same vector-based API as State.
-        // Use updateOrientation(), predict(), and updateMeasurements() instead.
-        LOGE("DefaultState::update() is deprecated. Use the new vector-based API.");
-        return -1;
+        return State::update(newTime);
     }
 
 } // namespace astra

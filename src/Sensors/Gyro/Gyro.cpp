@@ -2,7 +2,7 @@
 
 namespace astra
 {
-    Gyro::Gyro(const char *name) : RotatableSensor(name)
+    Gyro::Gyro(const char *name) : RotatableSensor(name), lastReadings(HEALTH_BUFFER_SIZE)
     {
         addColumn("%0.3f", &angVel.x(), "Gyro X (rad/s)");
         addColumn("%0.3f", &angVel.y(), "Gyro Y (rad/s)");
