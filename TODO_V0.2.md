@@ -13,8 +13,6 @@ None (completed).
 ### Examples
 - Add data-logger-only example (no state estimation).
 - Add minimal sensor setup example (accel + gyro).
-- Add drone/quadcopter example if relevant.
-- Add weather balloon example if relevant.
 - Update existing examples to the v0.2 API and add comments.
 - Test examples on all platforms.
 

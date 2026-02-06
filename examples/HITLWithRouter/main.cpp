@@ -2,9 +2,9 @@
 #include "Sensors/HITL/HITL.h"
 #include "Communication/SerialMessageRouter.h"
 #include "Utils/Astra.h"
-#include "State/State.h"
+#include "State/DefaultState.h"
+#include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "RecordData/Logging/EventLogger.h"
-#include "RecordData/Logging/DataLogger.h"
 
 using namespace astra;
 
@@ -20,7 +20,7 @@ using namespace astra;
  * - Allows easy addition of other message types (CMD/, RAD/, etc.)
  *
  * Desktop simulation sends: HITL/timestamp,ax,ay,az,...\n
- * Flight computer responds: TELEM/stage,altitude,...\n
+ * Flight computer responds: TELEM/<csv>\n (DataLogger)
  */
 
 // Create HITL sensors (drop-in replacements for hardware sensors)
@@ -30,14 +30,26 @@ HITLGyro gyro;
 HITLMag mag;
 HITLGPS gps;
 
-Sensor *sensors[] = {&baro, &accel, &gyro, &mag, &gps};
+// Default state estimation (uses built-in filters)
+DefaultState hitlState;
 
-// Simple state estimation (replace with your own Kalman filter)
-State hitlState(sensors, 5, nullptr);
+// Telemetry + event logs go to Serial
+PrintLog telemLog(Serial, true);
+ILogSink *telemSinks[] = {&telemLog};
+PrintLog eventLog(Serial, true);
+ILogSink *eventSinks[] = {&eventLog};
 
 // Astra system configuration
 AstraConfig config = AstraConfig()
+                         .withHITL(true)
                          .withState(&hitlState)
+                         .withAccel(&accel)
+                         .withGyro(&gyro)
+                         .withMag(&mag)
+                         .withBaro(&baro)
+                         .withGPS(&gps)
+                         .withDataLogs(telemSinks, 1)
+                         .withEventLogs(eventSinks, 1)
                          .withBBPin(LED_BUILTIN);
 
 Astra sys(&config);
@@ -53,17 +65,18 @@ SerialMessageRouter router;
  * Handle incoming HITL simulation data
  * Called automatically by router when "HITL/" message arrives
  */
-void handleHITL(const char* message, const char* prefix, Stream* source) {
+void handleHITL(const char *message, const char *prefix, Stream *source)
+{
     double simTime;
 
     // Parse the CSV data (prefix already stripped by router)
-    if (HITLParser::parse(message, simTime)) {
+    if (HITLParser::parse(message, simTime))
+    {
         // Update system with simulation time (NOT millis()!)
         sys.update(simTime);
-
-        // DataLogger automatically outputs TELEM/ data
-        LOGI("HITL: Processed timestep %.3f", simTime);
-    } else {
+    }
+    else
+    {
         LOGE("HITL: Failed to parse packet");
     }
 }
@@ -72,21 +85,26 @@ void handleHITL(const char* message, const char* prefix, Stream* source) {
  * Handle ground station commands
  * Called when "CMD/" message arrives
  */
-void handleCommand(const char* message, const char* prefix, Stream* source) {
+void handleCommand(const char *message, const char *prefix, Stream *source)
+{
     LOGI("CMD: %s", message);
 
-    if (strcmp(message, "STATUS") == 0) {
+    if (strcmp(message, "STATUS") == 0)
+    {
         // Send status back on the same interface
-        source->printf("STATUS: Sim running, alt=%.2fm\n", hitlState.getAltitude());
+        source->printf("STATUS: Sim running, alt=%.2fm\n", hitlState.getPosition().z());
     }
-    else if (strcmp(message, "PING") == 0) {
+    else if (strcmp(message, "PING") == 0)
+    {
         source->println("PONG");
     }
-    else if (strcmp(message, "RESET") == 0) {
+    else if (strcmp(message, "RESET") == 0)
+    {
         LOGW("Reset command received - resetting HITL buffer");
         HITLSensorBuffer::instance().dataReady = false;
     }
-    else {
+    else
+    {
         LOGW("Unknown command: %s", message);
     }
 }
@@ -94,7 +112,8 @@ void handleCommand(const char* message, const char* prefix, Stream* source) {
 /**
  * Default handler for unrecognized messages
  */
-void handleUnknown(const char* message, const char* prefix, Stream* source) {
+void handleUnknown(const char *message, const char *prefix, Stream *source)
+{
     LOGW("Unknown message type: %s", message);
 }
 
@@ -102,7 +121,8 @@ void handleUnknown(const char* message, const char* prefix, Stream* source) {
 // Setup & Loop
 //------------------------------------------------------------------------------
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
 
     // Wait for serial connection (helpful for USB serial)
@@ -121,17 +141,20 @@ void setup() {
 
     // Initialize Astra system
     int err = sys.init();
-    if (err != 0) {
+    if (err != 0)
+    {
         LOGE("Astra init failed with %d error(s)", err);
-    } else {
+    }
+    else
+    {
         LOGI("Astra system initialized");
     }
 
     // Configure SerialMessageRouter
     router.withInterface(&Serial)
-          .withListener("HITL/", handleHITL)
-          .withListener("CMD/", handleCommand)
-          .withDefaultHandler(handleUnknown);
+        .withListener("HITL/", handleHITL)
+        .withListener("CMD/", handleCommand)
+        .withDefaultHandler(handleUnknown);
 
     LOGI("Router configured with %d interfaces and %d listeners",
          router.getInterfaceCount(), router.getListenerCount());
@@ -139,17 +162,12 @@ void setup() {
     LOGI("Ready! Waiting for HITL data...");
 }
 
-void loop() {
+void loop()
+{
     // Update the router - handles all serial message routing
     router.update();
 
-    // That's it! The router automatically:
-    // - Polls Serial for new data
-    // - Buffers until newline
-    // - Matches prefixes
-    // - Calls appropriate handlers
-    //
-    // No manual Serial.available() checks needed!
+    // DataLogger automatically outputs TELEM/ CSV at the configured logging rate
 }
 
 /*

@@ -45,11 +45,7 @@ Astra sys(&config);
 
 CircBufferLog buf(5000, true);
 ILogSink *bufLogs[] = {&buf};
-#ifdef ENV_STM
-UARTLog uLog(Serial, 115200, true);
-#else
 UARTLog uLog(Serial1, 115200, true);
-#endif
 ILogSink *logs[] = {&uLog};
 void setup()
 {
