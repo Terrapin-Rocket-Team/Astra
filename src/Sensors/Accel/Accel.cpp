@@ -1,12 +1,13 @@
 #include "Accel.h"
 
-namespace mmfs
+namespace astra
 {
-    Accel::Accel(const char *name) : Sensor("Accelerometer", name)
+    Accel::Accel(const char *name) : RotatableSensor(name), lastReadings(HEALTH_BUFFER_SIZE)
     {
-        addColumn(DOUBLE, &acc.x(), "Acc X (m/s^2)");
-        addColumn(DOUBLE, &acc.y(), "Acc Y (m/s^2)");
-        addColumn(DOUBLE, &acc.z(), "Acc Z (m/s^2)");
+        addColumn("%0.3f", &acc.x(), "Acc X (m/s^2)");
+        addColumn("%0.3f", &acc.y(), "Acc Y (m/s^2)");
+        addColumn("%0.3f", &acc.z(), "Acc Z (m/s^2)");
+        setUpdateRate(100);
     }
 
     Accel::~Accel()
@@ -15,6 +16,7 @@ namespace mmfs
 
     Vector<3> Accel::getAccel() const
     {
-        return acc;
+        return orient.transform(acc);
     }
-} // namespace mmfs
+
+} // namespace astra

@@ -1,142 +1,106 @@
 # Sensor Interface
 
-The `Sensor` interface in MMFS defines a standard structure for hardware sensor modules such as barometers, GPS units, IMUs, and more. It provides a unified API for initialization, updates, and data reporting. All sensors inherit from the `Sensor` base class, which itself inherits from `DataReporter`, enabling each sensor to automatically expose its data in a standardized way for logging or telemetry.
+`Sensor` is the base class for all hardware sensors in Astra. It inherits from `DataReporter`, so every sensor can publish telemetry automatically.
 
 ---
 
-## **Purpose**
+## Core Concepts
 
-This interface ensures that all sensor types in MMFS can be:
+- **`begin()`** initializes hardware
+- **`update()`** reads fresh data
+- **`setUpdateRate(hz)`** controls how often the sensor should update
+- **`isHealthy()`** indicates whether the sensor’s data can be trusted
 
-* Queried consistently (via `update()`)
-* Initialized uniformly (via `begin()`)
-* Identified programmatically by type
-* Hooked into telemetry/logging systems via inherited `DataReporter`
-
----
-
-## **Core Methods**
-
-### **Initialization**
-
-```cpp
-virtual bool begin(bool useBiasCorrection = true) = 0;
-```
-
-Prepares the sensor for use. May involve hardware initialization, I2C/SPI setup, and calibration. Some sensors support optional bias correction at startup.
-
-### **Update**
-
-```cpp
-virtual bool update() = 0;
-```
-
-Fetches new data from the sensor. This function is called periodically (e.g., once per loop) and internally handles reading from the sensor and updating internal data buffers.
-
-### **Type Identification**
-
-```cpp
-virtual const SensorType getType() const = 0;
-virtual const char *getTypeString() const = 0;
-```
-
-Returns the enum or string identifier for the sensor type. Useful for dynamic system configuration, debug messages, or logging.
+Sensors implement **`init()`** and **`read()`** internally. `begin()` and `update()` call these for you.
 
 ---
 
-## **DataReporter Integration**
-
-Because `Sensor` inherits from `DataReporter`, it can expose internal sensor values to the logging and telemetry system.
-
-To expose a new value:
+## Key Methods
 
 ```cpp
-addColumn(FLOAT, &temperature, "Temp");
+int begin();
+int update(double currentTime = -1);
+void setUpdateRate(double hz);
+bool isHealthy() const;
+bool isInitialized() const;
 ```
-
-To remove a value:
-
-```cpp
-removeColumn("Temp");
-```
-
-The `DataReporter` base handles linked list management of these columns, automatic formatting of values, and integration with the Logger.
 
 ---
 
-## **Bias Correction Controls**
+## Update Rate
 
-### **Bias Mode Toggle**
-
-```cpp
-void setBiasCorrectionMode(bool mode);
-```
-
-Determines whether the sensor should continuously zero itself using incoming data (Used before liftoff to prevent long-term drift).
-
-### **Liftoff Lock-in**
+Sensors decide when to update based on `setUpdateRate()` and `shouldUpdate(currentTime)`.  
+`Astra` calls `update()` only when the interval has elapsed.
 
 ```cpp
-void markLiftoff();
+imu.setUpdateRate(100);  // 100 Hz
+baro.setUpdateRate(20);  // 20 Hz
+gps.setUpdateRate(5);    // 5 Hz
 ```
-
-Disables any ongoing bias correction. Typically called once the rocket leaves the pad.
 
 ---
 
-## **Implementing Your Own Sensor**
+## Health Tracking
 
-To implement your own sensor, inherit from `Sensor` and define the following:
+Base sensor types (Accel/Gyro/Mag/Baro) detect:
+
+- Read failures
+- Stuck readings (values not changing)
+
+`isHealthy()` will return `false` if the sensor is unreliable.
+
+---
+
+## Rotatable Sensors
+
+`Accel`, `Gyro`, `Mag`, and `IMU` inherit from `RotatableSensor`, which allows you to set board mounting orientation:
 
 ```cpp
-class MySensor : public Sensor {
+imu.setMountingOrientation(MountingOrientation::ROTATE_90_Z);
+```
+
+---
+
+## Implementing a Custom Sensor
+
+```cpp
+#include <Sensors/Sensor.h>
+
+class MySensor : public astra::Sensor {
 public:
-    bool begin(bool useBiasCorrection = true) override;
-    bool update() override;
-    SensorType getType() const override { return OTHER_; }
-    const char* getTypeString() const override { return "MY_SENSOR"; }
+    MySensor() : Sensor("MySensor") {
+        addColumn("%.2f", &value, "value");
+    }
+
+    int begin() override { return init(); }
+    int update(double currentTime = -1) override { return read(); }
+
+protected:
+    int init() override {
+        // Hardware init
+        return 0;
+    }
+
+    int read() override {
+        value = 42.0f;
+        return 0;
+    }
+
+private:
+    float value = 0.0f;
 };
 ```
 
-In the constructor, register your output values using the inherited `addColumn()` methods.
-
-### **Example Constructor**
-
-```cpp
-MySensor::MySensor() {
-    addColumn(FLOAT, &someValue, "Some Value");
-    addColumn(BOOL, &statusFlag, "Status");
-}
-```
-
 ---
 
-## **SensorType Enum**
+## Available Built‑In Sensors
 
-```cpp
-enum SensorType {
-    BAROMETER_,
-    GPS_,
-    IMU_,
-    LIGHT_SENSOR_,
-    RADIO_,
-    RTC_,
-    ENCODER_,
-    OTHER_
-};
-```
+See the specific sensor pages:
 
-Use these types to categorize your sensor. If none fit, use `OTHER_`.
-
----
-
-## **Summary**
-
-* All sensors inherit from `Sensor`, which requires `begin()`, `update()`, and type reporting methods.
-* Sensors automatically plug into the telemetry/logging system via `DataReporter`.
-* Bias correction and liftoff control allow for zeroing and stabilization of certain sensors.
-* Extending the system with new sensors is easy—just inherit and override.
-
----
-
-Written by ChatGPT. May not be fully accurate; verify before flight.
+- [Accelerometer](sensors/accel.md)
+- [Gyroscope](sensors/gyro.md)
+- [Magnetometer](sensors/mag.md)
+- [Barometer](sensors/baro.md)
+- [GPS](sensors/gps.md)
+- [Voltage Sensor](sensors/voltage.md)
+- [HITL Sensors](sensors/hitl.md)

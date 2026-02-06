@@ -4,3 +4,8 @@
 
 .pio
 .idea
+
+.claude/
+
+# Version build tracking
+.version_build_track.json

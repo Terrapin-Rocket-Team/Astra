@@ -1,15 +1,14 @@
 #ifndef SENSOR_H
 #define SENSOR_H
 
-#include "../Constants.h"
 #include "../Utils/CircBuffer.h"
 #include "../BlinkBuzz/BlinkBuzz.h"
-#include "../RecordData/Logging/Logger.h"
 #include <algorithm>
 #include "../RecordData/DataReporter/DataReporter.h"
 #include "Utils/Hash.h"
+#include "RecordData/Logging/EventLogger.h"
 
-namespace mmfs
+namespace astra
 {
     using SensorType = uint32_t;
 
@@ -17,54 +16,61 @@ namespace mmfs
     {
     public:
         virtual ~Sensor() {};
-        // ------------------------------- SENSOR TYPE IMPLEMENTATION ---------------------------------------------
 
-        // Child classes can override these classes with specifics for that type of sensor.
-        // For instance, a barometer might read pressure but use the rest of update() to convert that to altitude.
+        void setUpdateRate(double hz) { updateInterval = 1.0 / hz; }
 
-        // Updates the sensor's fields by querying the sensor for new data (calls read() internally)
-        virtual bool update()
+        // currentTime in S. returns if enough time has passed that more data should be ready.
+        bool shouldUpdate(double currentTime)
+        {
+            if (currentTime - lastUpdateTime >= updateInterval)
+            {
+                lastUpdateTime = currentTime;
+                return true;
+            }
+            return false;
+        }
+
+        // Check if sensor is healthy and data can be trusted
+        // Returns false if init failed, read errors occurred, or stuck readings detected
+        virtual bool isHealthy() const { return healthy; }
+
+        // Returns 0 on success, library-specific error code on failure
+        virtual int begin() override
+        {
+            int err = init();
+            initialized = (err == 0);
+            healthy = initialized;  // Healthy if init succeeded
+            return err;
+        }
+
+        // Returns 0 on success, library-specific error code on failure
+        virtual int update(double currentTime = -1) override
         {
             return read();
         }
-        // Initializes the sensor and sets up any necessary parameters (calls init() internally)
-        virtual bool begin()
-        {
-            return initialized = init();
-        }
-
-        virtual const SensorType getType() const { return type; }        // Returns the type of the sensor
-        virtual const char *getTypeString() const { return typeString; } // Returns the type of the sensor as a string
-
-        // ------------------------------- BASE SENSOR CLASS IMPLEMENTATION ----------------------------------------
-    public:
-        virtual bool isInitialized() const { return initialized; } // Returns whether the sensor has been initialized or not
-
-        virtual explicit operator bool() const { return initialized; } // Returns whether the sensor has been initialized or not
-
-        // ----------------------------------------------------------------------------------------------------------
-
     protected:
         // --------------------------------- HARDWARE IMPLEMENTATION -----------------------------------------------
 
-        Sensor(const char *type, const char *name = nullptr) : DataReporter(name)
+        Sensor(const char *name = nullptr) : DataReporter(name)
         {
-            this->type = fnv1a_32(type, strlen(type));
-            typeString = type;
+            autoUpdate = false; //stop the logging system from automatically udpating sensors before logging data
         }
-        // Sets up the sensor and stores any critical parameters. Needs to reset the sensor if it is already initialized. Called by begin()
-        virtual bool init() = 0;
+
+        // Sets up the sensor and stores any critical parameters. Needs to reset the sensor if it is already initialized.
+        // Called by begin(). Returns 0 on success, library-specific error code on failure.
+        virtual int init() = 0;
+
         // Physically reads the outputs from the sensor hardware. Called by update()
-        virtual bool read() = 0;
+        // Returns 0 on success, library-specific error code on failure.
+        virtual int read() = 0;
 
-        // ----------------------------------------------------------------------------------------------------------
-        bool initialized = false;
+        // Health tracking state
+        // NOTE: initialized is inherited from DataReporter - do not redefine it here!
+        bool healthy = false;      // Can we trust the data? (dynamic, updated by read())
 
-        SensorType type;
-        const char *typeString;
-
-        // ----------------------------------------------------------------------------------------------------------
+        double updateInterval = 0.1; // default to 10 hz
+        double lastUpdateTime = -0.1;
     };
-}; // namespace mmfs
+}; // namespace astra
 
 #endif // SENSOR_H

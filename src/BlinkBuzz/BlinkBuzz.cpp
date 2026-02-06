@@ -1,14 +1,8 @@
 #include "BlinkBuzz.h"
-#include "../RecordData/Logging/Logger.h"
-
-#ifndef ARDUINO
-#include "NativeTestHelper.h"
-#else
+#include "RecordData/Logging/EventLogger.h"
 
 #include <Arduino.h>
-
-#endif // !ARDUINO
-namespace mmfs
+namespace astra
 {
     BlinkBuzz::BlinkBuzz() {}
 
@@ -60,16 +54,17 @@ namespace mmfs
         {
             this->allowedPins[i] = allowedPins[i];
             pinState[i] = false;
-#ifdef ARDUINO
+#ifndef NATIVE
             pinMode(allowedPins[i], OUTPUT); // INPUT is otherwise defined on windows, so can't make a stub for it
 #endif
-            ready = true;
+
         }
+        ready = true;
     }
     bool BlinkBuzz::isRdy()
     {
         if (!ready)
-            getLogger().recordLogData(ERROR_, "Attempted to use BlinkBuzz before it was initialized!");
+            LOGE("Attempted to use BlinkBuzz before it was initialized!");
         return ready;
     }
 #pragma region Synchronous and Helper functions
@@ -80,15 +75,15 @@ namespace mmfs
             return false;
         if (isAllowed(pin))
             return pinState[getPinIndex(pin)];
-        getLogger().recordLogData(WARNING_, 100, "BlinkBuzz: Attempted to check state of an unallowed pin: %d", pin);
+        LOGW("BlinkBuzz: Attempted to check state of an unallowed pin: %d", pin);
         return false;
     }
 
     bool BlinkBuzz::isUsingAsync()
     {
         if (!ready)
-            getLogger().recordLogData(ERROR_, "Attempted to use BlinkBuzz before it was initialized!");
-        return ready;
+            LOGE("Attempted to use BlinkBuzz before it was initialized!");
+        return enableAsync;
     }
 
     bool BlinkBuzz::isAllowed(int pin)
@@ -99,7 +94,7 @@ namespace mmfs
             for (int i = 0; i < numPins; i++)
                 if (allowedPins[i] == pin)
                     return true;
-        getLogger().recordLogData(WARNING_, 100, "BlinkBuzz: Attempted to use an unallowed pin: %d", pin);
+        LOGW("BlinkBuzz: Attempted to use an unallowed pin: %d", pin);
         return false;
     }
     int BlinkBuzz::getPinIndex(int pin)
@@ -206,8 +201,6 @@ namespace mmfs
             return;
         if (!enableAsync)
         {
-
-            getLogger().recordLogData(ERROR_, "BlinkBuzz: Attempted to use an asynchronous function without enabling asynchronous mode.");
             return;
         }
 
@@ -250,7 +243,7 @@ namespace mmfs
     {
         if (pinQEnd[idx] == maxQueueSize - 1)
         { // if the queue is full, don't add anything
-            getLogger().recordLogData(WARNING_, 100, "BlinkBuzz: pin %d's queue has overflown.", allowedPins[idx]);
+            LOGW("BlinkBuzz: pin %d's queue has overflown.", allowedPins[idx]);
             return;
         }
         pinQ[idx][pinQEnd[idx]] = timeStamp;

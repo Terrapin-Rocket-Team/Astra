@@ -1,12 +1,13 @@
 #include "Mag.h"
 
-namespace mmfs
+namespace astra
 {
-    Mag::Mag(const char *name) : Sensor("Magnetometer", name)
+    Mag::Mag(const char *name) : RotatableSensor(name), lastReadings(HEALTH_BUFFER_SIZE)
     {
-        addColumn(DOUBLE, &mag.x(), "Mag X (uT)");
-        addColumn(DOUBLE, &mag.y(), "Mag Y (uT)");
-        addColumn(DOUBLE, &mag.z(), "Mag Z (uT)");
+        addColumn("%0.3f", &mag.x(), "Mag X (uT)");
+        addColumn("%0.3f", &mag.y(), "Mag Y (uT)");
+        addColumn("%0.3f", &mag.z(), "Mag Z (uT)");
+        setUpdateRate(100);
     }
 
     Mag::~Mag()
@@ -15,6 +16,6 @@ namespace mmfs
 
     Vector<3> Mag::getMag() const
     {
-        return mag;
+        return orient.transform(mag);
     }
-} // namespace mmfs
+} // namespace astra

@@ -1,165 +1,73 @@
-# IMU
+# IMU (6‑DoF and 9‑DoF)
 
-The `IMU` class in MMFS represents an advanced inertial sensor interface designed to support both raw sensor reporting and fused orientation estimation. It processes data from gyroscopes, accelerometers, and optionally magnetometers, and internally runs a quaternion-based complementary filter to estimate device orientation.
+Astra models IMUs as composite sensors:
 
-Unlike basic sensors, IMUs operate in a multi-frame context — reporting both local-frame measurements and global-frame acceleration — and may expose both raw and filtered signals. Orientation is represented using quaternions but is often interpreted in Euler angles for ease of telemetry.
+- `IMU6DoF` → accelerometer + gyroscope
+- `IMU9DoF` → accelerometer + gyroscope + magnetometer
 
----
-
-## **Overview**
-
-An IMU in MMFS provides:
-
-* Angular velocity (from gyroscope)
-* Linear acceleration (from accelerometer)
-* Magnetic field strength (from magnetometer)
-* Quaternion orientation (internally computed)
-* Gravity-compensated acceleration (global frame)
+Each IMU exposes *component sensors* so Astra can use them for state estimation.
 
 ---
 
-## **Inheritance Structure**
-
-`IMU` inherits from [`Sensor`](sensor.md) and expects the user to override two core methods:
+## Component Access
 
 ```cpp
-bool init() override;
-bool read() override;
+IMU6DoF* imu = ...;
+Accel* accel = imu->getAccelSensor();
+Gyro* gyro = imu->getGyroSensor();
 ```
-
-* `init()` sets up the hardware driver(s), configures sensors, and prepares communication.
-* `read()` must populate the following fields with current measurements:
-
-  * `measuredAcc` — linear acceleration in body frame
-  * `measuredGyro` — angular velocity in deg/s
-  * `measuredMag` — magnetic field vector (optional)
-
-The class handles filtering and fusion internally during `update()`.
-
----
-
-## **Orientation Fusion**
-
-The `IMU` class performs sensor fusion using a quaternion-based complementary filter. This combines fast-but-drifting gyro data with stable-but-noisy accelerometer estimates of gravity direction. Magnetometers can further improve yaw stability.
-
-The computed orientation is stored in:
 
 ```cpp
-Quaternion orientation;
+IMU9DoF* imu = ...;
+Accel* accel = imu->getAccelSensor();
+Gyro* gyro = imu->getGyroSensor();
+Mag* mag = imu->getMagSensor();
 ```
 
-Global-frame acceleration (i.e. gravity-compensated) is computed using:
+---
+
+## Using with AstraConfig
 
 ```cpp
-Vector<3> getAccelerationGlobal();
+AstraConfig config = AstraConfig()
+    .with6DoFIMU(&imu)  // or with9DoFIMU(&imu)
+    .withState(&state);
 ```
 
-and is derived by rotating the measured acceleration vector into the world frame.
+This automatically extracts the component sensors for `Astra`, and logs the IMU as a misc sensor.
 
 ---
 
-## **Exposed Data Columns**
+## Implementations
 
-The IMU automatically exposes the following:
+| Class | Type |
+|------|------|
+| `BMI088` | 6‑DoF |
+| `BNO055` | 9‑DoF |
 
-* `accX`, `accY`, `accZ` — linear acceleration (m/s²)
-* `gyroX`, `gyroY`, `gyroZ` — angular velocity (deg/s)
-* `magX`, `magY`, `magZ` — magnetic field (μT)
-* `oriX`, `oriY`, `oriZ`, `oriW` — quaternion orientation
-
-These are registered for logging and telemetry via `DataReporter` and packed for transmission.
-
----
-
-## **Bias Correction Mode**
-
-Bias correction enables zeroing gyro and acceleration offsets over time. If enabled before flight, the IMU will average recent values to zero-out drift while stationary.
+Example:
 
 ```cpp
-imu.setBiasCorrectionMode(true);
-imu.markLiftoff(); // Locks in calibration at launch
-```
+#include <Sensors/HW/IMU/BMI088.h>
 
-Avoid enabling this while the vehicle is moving.
+BMI088 imu("BMI088", &Wire);
+```
 
 ---
 
-## **Usage Flow**
+## Mounting Orientation
 
-/// tab | Using an IMU
+IMUs are `RotatableSensor`s. If the sensor is rotated on the board:
 
 ```cpp
-MyIMU imu;
-imu.begin();
-
-loop() {
-    imu.update();
-    Quaternion q = imu.getOrientation();
-    Vector<3> a_global = imu.getAccelerationGlobal();
-}
+imu.setMountingOrientation(MountingOrientation::ROTATE_90_Z);
 ```
 
-///
-
-/// tab | Implementing a Custom IMU
-
-```cpp
-class MyIMU : public IMU {
-    MyIMULib hw;
-
-    bool init() override {
-        return hw.begin();
-    }
-
-    bool read() override {
-        measuredAcc = { hw.ax(), hw.ay(), hw.az() };
-        measuredGyro = { hw.gx(), hw.gy(), hw.gz() };
-        measuredMag = { hw.mx(), hw.my(), hw.mz() }; // optional
-    }
-};
-```
-
-///
+This orientation is propagated to the component sensors.
 
 ---
 
-## **Built-in Implementations**
+## Orientation Note
 
-### **[BMI088 + LIS3MDL](bmi088_lis3mdl.md)**
-
-* Combines separate accelerometer, gyro, and magnetometer
-* Uses MMFS’s internal filter and fusion logic
-* Best for flexible, high-performance inertial applications
-
-### **[BNO055](bno055.md)**
-
-* Integrated 9DOF sensor with onboard fusion
-* MMFS defers to the sensor’s internal orientation logic
-* Returns pre-filtered quaternion and acceleration data
-
----
-
-## **Advanced Controls**
-
-The following parameters can be adjusted to control noise filtering sensitivity during static startup:
-
-```cpp
-imu.setAccelBestFilteringAtStatic(val); // threshold for accel stability
-imu.setMagBestFilteringAtStatic(val);   // threshold for mag stability
-```
-
-Use these to tune how long the IMU waits before accepting a bias-corrected origin.
-
----
-
-## **Summary**
-
-* Implements `Sensor` with IMU-specific orientation logic
-* Expects raw accel, gyro, and optional mag readings
-* Computes quaternion orientation using a complementary filter
-* Supports packed telemetry and gravity-compensated acceleration
-* Used directly or as a base class for sensor-specific drivers
-
----
-
-Written by ChatGPT. May not be fully accurate; verify against source.
+IMU classes only report **raw sensor data**.  
+Orientation is estimated in `State` via `MahonyAHRS`.

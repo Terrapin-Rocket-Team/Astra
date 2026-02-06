@@ -2,50 +2,58 @@
 title: Home
 hide: footer
 ---
-This page written by ChatGPT. May not be accurate or helpful.
 
-# Welcome to the Terrapin Rocket Team's Multi-Mission Flight Software (MMFS) Documentation
+# Astra Documentation
 
-Welcome to the (maybe) official documentation site for TRT's **Multi-Mission Flight Software (MMFS)**—the versatile and robust flight code framework developed by the Terrapin Rocket Team (TRT). Whether you're looking to integrate MMFS into your next mission, contribute to its ongoing development, or explore its unique capabilities, you've come to the right place!
-
----
-
-## 🚀 What is MMFS?
-MMFS is a modular and scalable flight software framework designed to meet the diverse needs of rocketry missions. Built with adaptability and reliability in mind, it provides a solid foundation for developing and deploying mission-critical systems. 
+Astra is the Terrapin Rocket Team's modular flight software library for embedded systems. It provides sensor abstraction, state estimation, logging, and testing utilities so you can focus on mission logic instead of plumbing.
 
 ---
 
-## 📚 Explore the Docs
+## What Astra Gives You
 
-This documentation is organized into three main sections to help you navigate the MMFS ecosystem:
-
-### 1. **Getting Started**
-   - Learn how to install MMFS and set it up as your base flight code framework.
-   - Step-by-step guides for configuring MMFS to meet your mission's requirements.
-   - Code snippets and examples to help you hit the ground running.
-
-### 2. **Maintaining MMFS**
-   - Dive into the internals of MMFS to understand its architecture and core principles.
-   - Learn best practices for maintaining and updating the library.
-   - Contribution guidelines for those looking to improve MMFS.
-
-### 3. **Miscellaneous Resources**
-   - Additional tools and utilities to enhance your development experience.
-   - Tips, tricks, and advanced usage scenarios.
-   - Frequently asked questions and troubleshooting.
+- **Drop-in sensor stack**: IMU, GPS, barometer, magnetometer, voltage, and HITL sensors
+- **State estimation**: Orientation (Mahony AHRS) + position/velocity (Kalman filter)
+- **Unified logging**: CSV telemetry (`DataLogger`) and event logs (`EventLogger`)
+- **Multi-platform**: STM32, Teensy, ESP32, plus native SITL builds
+- **Testing & simulation**: HITL parser, SerialMessageRouter, SITL example
 
 ---
 
-## ✨ Features at a Glance
-- **Modularity:** Pick and choose components to fit your mission's needs.
-- **Scalability:** From single-stage to multi-stage rockets, MMFS grows with your ambitions.
-- **Open Source:** Join a community of rocketry enthusiasts and contribute to the future of MMFS.
+## Quick Start
+
+1. Read [Installation](user-guide/installation.md)
+2. Follow [Basic Usage](user-guide/basic-use.md)
+3. Dive deeper via the User Guide and Interfaces sections
 
 ---
 
-## 🌟 Ready to Start?
-Head over to the [Getting Started](#) section to begin your journey with MMFS. If you're a seasoned developer or contributor, check out the [Maintaining MMFS](#) section to dive deeper into the framework.
+## Core Architecture
 
-Together, let's push the boundaries of rocketry innovation!
+**Astra System**
+- `Astra` orchestrates sensors, state updates, and telemetry logging
+- `AstraConfig` wires sensors, log sinks, status LEDs, and HITL mode
+
+**Sensors**
+- Sensors are `DataReporter`s (auto-registered for logging)
+- `Astra` updates sensors on their own rates and uses the latest healthy data
+
+**State Estimation**
+- `State` is math-only: it consumes vectors and outputs position/velocity/orientation
+- `DefaultState` provides a ready-to-use filter stack
+
+**Logging**
+- `DataLogger` emits CSV telemetry (`TELEM/` prefix when enabled)
+- `EventLogger` emits human-readable logs (`LOG/` prefix when enabled)
+
+**Serial & Simulation**
+- `SerialMessageRouter` routes prefixed messages (e.g., `HITL/`, `CMD/`)
+- HITL/SITL sensors allow full-system testing without hardware
 
 ---
+
+## Where To Go Next
+
+- [Installation](user-guide/installation.md)
+- [Basic Usage](user-guide/basic-use.md)
+- [Astra System](user-guide/utils/mmfssys.md)
+- [Sensors & Interfaces](user-guide/ifaces/sensor.md)

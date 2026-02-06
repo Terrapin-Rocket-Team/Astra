@@ -1,144 +1,383 @@
 # BlinkBuzz
 
-This utility is designed to be used as-is, without the end user (you) having to overload or otherwise modify it. It is an asynchronous utility for outputting patterned buzzes and LED blinks. It can be used to create simple patterns, such as beeping a certain number of times, or more complex patterns, such as SOS in morse code. It can also be used to create patterns that repeat indefinitely or patterns that repeat a specific number of times. It is designed to be easy to use and flexible enough to handle a wide variety of use cases.
-
-## Setup
-
-We strongly recommend that you use the `MMFSSystem` and `MMFSConfig` objects whenever you use MMFS. That said, all utilities have the ability to be used outside of `MMFSSystem`, including BlinkBuzz. The only difference between the two is the setup. All other functions are identical.
-
-/// tab | With MMFSSystem
-
-BlinkBuzz does not have too many configuration options. Here they are, shown with their default values if they have them:
-
-```c++
-#include <MMFS.h>
-
-int GPS_STATUS_PIN = 25;
-
-MMFSConfig config = MMFSConfig()
-                    .withBuzzerPin(int pinNum) // no default
-                    .withBBPin(int pinNum) // add any pin you'd like, no default
-                    .withBBPin(int pinNum) // add as many pins as you want, no default
-                    .withBBAsync(true, 50); // allow async patterns, max queue size of 50.
-
-MMFSSystem system = MMFSSystem(config);
-```
-
-In `setup()` you *must* call `system.init()` to initialize the system. This will also initialize the BlinkBuzz utility.
-
-In order to take advantage of the async features, you must call `system.update()` in your `loop()`. This will also update the BlinkBuzz utility.
-///
-
-/// tab | Without MMFSSystem
-
-If you do not wish to use the MMFSSystem, you can use BlinkBuzz as a standalone utility. You must however set up the object yourself, and remember to call `bb.update()` in your `loop()`. 
-
-```c++
-#include <BlinkBuzz.h>
-
-int *allowedPins[] = { LED_BUILTIN, 33 };
-BlinkBuzz bb; //define a global variable that is declared in the Blinkbuzz.h file for easy access across files
-
-double lastTime = 0; // See loop()
-
-setup() {
-    bb.init(allowedPins, 2, true, 50); // allowed pins, number of pins, allow usage of async patterns, Max queue size per pin (async mode only)
-    //NOTE: Max queue size refers to the number of on and off toggles that are performed, so ON -> OFF is 2 spots in the queue.
-}
-
-loop()
-{
-    bb.update(); // The more frequently this is called, the more accurate the timing will be.
-
-    // We recommend not using a delay() call for loop iterations when using async patterns.
-    // Instead, maybe try something like this:
-    
-    double time = millis();
-    if(time - lastTime < DESIRED_INTERVAL) // however much you would have otherwise delay()ed for
-        return;
-    lastTime = time; // lastTime = global variable
-    
-    // the rest of your loop code here
-}
-```
-///
-
-!!! warning
-    There is a moderate memory overhead associated with using async patterns. Keep queue sizes as small as is reasonable.
+The `BlinkBuzz` utility provides asynchronous LED and buzzer pattern control without blocking your main loop. It handles simple patterns like beeping a fixed number of times, complex patterns like SOS in Morse code, and repeating patterns that run indefinitely. The utility is designed to be used as-is without modification or subclassing.
 
 ---
 
-## Usage
+## Overview
 
-In any file that includes BlinkBuzz, you can use any of the BlinkBuzz functions. 
+BlinkBuzz operates in two modes:
 
-### Synchronous usage
+1. **Synchronous** - Blocking calls that hold execution until the pattern completes
+2. **Asynchronous** - Non-blocking patterns that execute in the background while your code continues
 
-These are the calls you would make while in `setup()` or if you disable async usage.
+The asynchronous mode is the primary use case, allowing status indication (stage changes, GPS lock, errors) without interrupting critical sensor updates or state estimation.
 
-!!! note
-    `BBPattern` arguments are not supported in synchronous function calls, nor are they planned to be in the future.
+---
 
-```c++ title=""
+## Setup
+
+BlinkBuzz can be used standalone or with `AstraConfig`. The only difference is initialization—all other functions work identically.
+
+### With AstraConfig (Recommended)
+
+```cpp
+#include <Astra.h>
+
+int GPS_STATUS_PIN = 25;
+
+AstraConfig config = AstraConfig()
+                    .withBuzzerPin(13)              // Buzzer on pin 13
+                    .withBBPin(LED_BUILTIN)         // LED on built-in pin
+                    .withBBPin(GPS_STATUS_PIN)      // Add as many pins as needed
+                    .withBBAsync(true, 50);         // Enable async, queue size 50
+
+Astra system(&config);
+
+void setup() {
+    system.init();  // Initializes BlinkBuzz automatically
+}
+
+void loop() {
+    system.update();  // Updates async patterns automatically
+}
+```
+
+**Configuration options:**
+
+| Method | Description | Notes |
+|--------|-------------|-------|
+| `withBuzzerPin(int)` | Set buzzer pin | Also registers the pin |
+| `withBBPin(int)` | Add LED/buzzer pin | Call multiple times for multiple pins |
+| `withBBAsync(bool, int)` | Enable async mode with queue size | Set explicitly for clarity |
+
+### Without AstraConfig
+
+If you prefer standalone usage, initialize manually:
+
+```cpp
+#include <BlinkBuzz.h>
+
+int allowedPins[] = {LED_BUILTIN, 33};
+// Note: `bb` is already defined by the library; you do not need to define it.
+
+double lastTime = 0;
+
+void setup() {
+    bb.init(allowedPins, 2, true, 50);
+    // Args: pin array, pin count, enable async, queue size per pin
+}
+
+void loop() {
+    bb.update();  // Call frequently for accurate timing
+
+    // Avoid delay() when using async patterns
+    double time = millis();
+    if (time - lastTime < 100)  // 100ms loop interval
+        return;
+    lastTime = time;
+
+    // Rest of your loop code
+}
+```
+
+!!! warning "Memory Overhead"
+    Async patterns use queues to store ON/OFF toggle events. Each pattern adds to the queue (e.g., 3 beeps = 6 toggles: ON, OFF, ON, OFF, ON, OFF). Keep queue sizes reasonable to avoid excessive memory usage.
+
+---
+
+## Synchronous Usage
+
+Synchronous calls block execution until the pattern completes. Use these in `setup()` for initialization feedback, or when async mode is disabled.
+
+```cpp
 #include <BlinkBuzz.h>
 
 void setup() {
+    // Hold pin on/off
+    bb.on(BUZZER);   // Turn on
+    bb.off(BUZZER);  // Turn off
 
-    // Simply hold the pin on/off:
-    bb.on(BUZZER);  // turn on
-    bb.off(BUZZER); // turn off
-
-    //Patternize
-    bb.onoff(BUZZER, 200, 3, 100); // beep 3 times, 200ms on, 100ms off
-    // OR
-    bb.onoff(BUZZER, 200, 5);      // beep 5x, 200ms on, 200ms off
-    // OR
-    bb.onoff(BUZZER, 200);         // beep 1x, 200ms on
+    // Simple patterns
+    bb.onoff(BUZZER, 200);          // Single 200ms beep
+    bb.onoff(BUZZER, 200, 5);       // 5 beeps: 200ms on, 200ms off
+    bb.onoff(BUZZER, 200, 3, 100);  // 3 beeps: 200ms on, 100ms off
 }
 ```
 
-### Async Usage
+**Parameters:**
 
-Asynchronous use was the reason BlinkBuzz came to be in the first place, and is what makes the utility so valuable and powerful. You can blink lights in custom patterns indefinitely, without blocking the rest of your code. This is invaluable during testing as the buzzer can beep to indicate state changes without stopping the State from updating.
+| Function | Parameters | Description |
+|----------|------------|-------------|
+| `on(pin)` | `pin` | Turn pin on indefinitely |
+| `off(pin)` | `pin` | Turn pin off |
+| `onoff(pin, dur)` | `pin`, `dur` | Single pulse of `dur` ms |
+| `onoff(pin, dur, reps)` | `pin`, `dur`, `reps` | Repeat `reps` times, equal on/off |
+| `onoff(pin, dur, reps, off)` | `pin`, `dur`, `reps`, `off` | Repeat `reps` times, `off` ms between |
 
-#### Old-School
+!!! note "Synchronous Limitations"
+    `BBPattern` objects are **not** supported in synchronous mode. Use async mode for complex patterns.
 
-Here are the most basic examples of how to use the async functions:
-```c++ title=""
+---
 
-    bb.aonoff(BUZZER, 200, 3, 100); // beep 3 times, 200ms on, 100ms off
-    // OR
-    bb.aonoff(BUZZER, 200, 5);      // beep 5x, 200ms on, 200ms off
-    // OR
-    bb.aonoff(BUZZER, 200);         // beep 1x, 200ms on
+## Asynchronous Usage
 
-    // Can clear a pin's queue:
-    bb.clearQueue(BUZZER);
+Async mode is where BlinkBuzz shines. Patterns execute in the background without blocking, making them perfect for status indication during flight.
+
+### Basic Async Patterns
+
+```cpp
+// Single beep
+bb.aonoff(BUZZER, 200);
+
+// 5 beeps, 200ms on/off
+bb.aonoff(BUZZER, 200, 5);
+
+// 3 beeps, 200ms on, 100ms off
+bb.aonoff(BUZZER, 200, 3, 100);
+
+// Clear pending patterns on a pin
+bb.clearQueue(BUZZER);
 ```
 
-#### BBPattern {#bbpattern}
+**Parameters match synchronous `onoff()`, but with `a` prefix for async.**
 
-You can also use the `BBPattern` class to build complex patterns. You define a pattern  with the same arguments as `onoff()`, but you can also append patterns to each other, and add "rests" to the end of a pattern. You may then call the pattern with `aonoff()` with any pin.
+### Complex Patterns with BBPattern
 
-```cpp title=""
-    BBPattern pattern = BBPattern(ON_DURATION, REPEATS, OFF_DURATION);
-    // For example, to build an SOS pattern, build the S and O letters:
-    BBPattern s(50, 3, 200);
-	BBPattern o(500, 3, 200);
-    // Then, append them to each other to build a single SOS pattern using the `a()` function:
+The `BBPattern` class builds complex patterns by combining simpler ones. You can chain patterns together and add "rests" (pauses) between repetitions.
+
+**Basic BBPattern usage:**
+
+```cpp
+BBPattern pattern = BBPattern(ON_DURATION, REPEATS, OFF_DURATION);
+
+// Example: SOS in Morse code
+BBPattern s(50, 3, 200);   // S: 3 short beeps
+BBPattern o(500, 3, 200);  // O: 3 long beeps
+
+// Combine patterns using a() (append)
+BBPattern sos;
+sos.a(s).a(o).a(s);
+
+// Execute the pattern
+bb.aonoff(BUZZER, sos);
+```
+
+**Repeating patterns indefinitely:**
+
+```cpp
+// Repeat SOS pattern forever
+bb.aonoff(BUZZER, sos, true);
+
+// Add 1 second rest between repetitions
+bb.aonoff(BUZZER, sos.r(1000), true);
+```
+
+!!! warning "Pattern Construction"
+    Do **not** use `BBPattern sos = s.a(o).a(s);` — this won't work as expected due to how chaining is implemented. Instead, create an empty pattern and append to it:
+    ```cpp
     BBPattern sos;
-    sos.a(s).a(o).a(s);
-    //NOTE: do not do BBPattern sos = s.a(o).a(s); as this will not work as expected. Minor bug.
-    // Then call it
-    bb.aonoff(BUZZER, sos);
+    sos.a(s).a(o).a(s);  // Correct
+    ```
 
-    // To repeat a pattern indefinitely, use the following:
-    bb.aonoff(BUZZER, sos, true);
+**BBPattern methods:**
 
-    // You can also append a "rest" to the end of a pattern, changing it's final duration.
-    bb.aonoff(BUZZER, sos.r(1000), true); // Rest for 1 second between the SOS patterns
-    //The rest can be added inline like this or to the pattern object itself.
+| Method | Description |
+|--------|-------------|
+| `BBPattern(dur, reps, off)` | Create pattern: `dur` ms on, `reps` times, `off` ms between |
+| `a(pattern)` | Append another pattern |
+| `r(duration)` | Add rest (pause) at the end |
 
-    // Appending patterns and adding rests can be done in any order as many times as you wish (so long as you have the queue space to hold them)
+---
+
+## Practical Examples
+
+### GPS Lock Indicator
+
+```cpp
+int GPS_PIN = 25;
+
+void loop() {
+    system.update();
+
+    if (gps.getHasFix()) {
+        // Solid on when locked
+        bb.on(GPS_PIN);
+    } else {
+        // Slow blink when searching
+        bb.aonoff(GPS_PIN, 500, 1);  // 500ms on, 500ms off, repeats
+    }
 }
 ```
+
+### Stage Change Notifications
+
+```cpp
+class CustomState : public State {
+    void update(double currentTime) override {
+        State::update(currentTime);
+
+        int newStage = determineStage();
+        if (newStage != stage) {
+            stage = newStage;
+
+            // Beep N times for stage N
+            bb.aonoff(BUZZER, 200, stage);
+
+            LOGI("Entered stage %d", stage);
+        }
+    }
+};
+```
+
+### Armed Status Pattern
+
+```cpp
+void setup() {
+    system.init();
+
+    // Armed: rapid beep pattern
+    BBPattern armed(100, 3, 50);  // 3 quick beeps
+    bb.aonoff(BUZZER, armed.r(2000), true);  // Repeat every 2s
+
+    LOGI("System armed");
+}
+```
+
+### Complex Morse Code Patterns
+
+```cpp
+// Morse: -- --- -.- (M O K)
+BBPattern dash(300, 1, 100);
+BBPattern dot(100, 1, 100);
+BBPattern letterGap(0, 1, 300);
+
+BBPattern m;
+m.a(dash).a(dash).a(letterGap);
+
+BBPattern o;
+o.a(dash).a(dash).a(dash).a(letterGap);
+
+BBPattern k;
+k.a(dash).a(dot).a(dash).a(letterGap);
+
+BBPattern mok;
+mok.a(m).a(o).a(k);
+
+bb.aonoff(BUZZER, mok, true);  // Repeat "MOK" indefinitely
+```
+
+---
+
+## Queue Management
+
+Each pin has its own queue of pending toggles (ON/OFF transitions). Queue size is set during initialization.
+
+**Queue considerations:**
+
+- Each `aonoff(pin, dur, reps)` adds `2 * reps` events to the queue (ON + OFF per repetition)
+- Repeating patterns (`aonoff(pin, pattern, true)`) continuously refill the queue
+- Use `clearQueue(pin)` to cancel all pending patterns on a pin
+- If the queue fills, new patterns are rejected (logged as warning)
+
+**Example:**
+
+```cpp
+bb.aonoff(BUZZER, 200, 3);  // Adds 6 events: ON, OFF, ON, OFF, ON, OFF
+
+// Cancel before completion
+bb.clearQueue(BUZZER);  // Remaining events discarded
+```
+
+---
+
+## Best Practices
+
+1. **Call `update()` frequently**: The more often `update()` is called, the more accurate pattern timing will be. Avoid long delays in your loop.
+
+2. **Avoid `delay()` with async mode**: Use time-based loop control instead:
+   ```cpp
+   double lastTime = 0;
+   void loop() {
+       bb.update();
+
+       double time = millis();
+       if (time - lastTime < 100) return;
+       lastTime = time;
+
+       // Your loop code
+   }
+   ```
+
+3. **Size queues appropriately**: Use the minimum queue size needed for your patterns. Typical values: 20-50 per pin.
+
+4. **Clear queues on stage transitions**: Prevent old patterns from interfering with new ones:
+   ```cpp
+   if (stageChanged) {
+       bb.clearQueue(BUZZER);
+       bb.aonoff(BUZZER, 200, newStage);  // Beep for new stage
+   }
+   ```
+
+5. **Test patterns in `setup()`**: Use synchronous patterns during initialization to verify hardware:
+   ```cpp
+   void setup() {
+       system.init();
+       bb.onoff(BUZZER, 100, 2);  // Sync beeps confirm buzzer works
+   }
+   ```
+
+6. **Use multiple pins for different statuses**: Dedicate pins to specific indicators (GPS, stage, errors) for clear status at a glance.
+
+---
+
+## Common Patterns
+
+### Heartbeat
+
+```cpp
+// Continuous heartbeat: quick double beep, long pause
+BBPattern heartbeat(50, 2, 100);
+bb.aonoff(LED_BUILTIN, heartbeat.r(2000), true);
+```
+
+### Error Alarm
+
+```cpp
+// Rapid continuous beeping
+bb.aonoff(BUZZER, 100, -1);  // Infinite repetitions (use clearQueue to stop)
+```
+
+### Count-Up Sequence
+
+```cpp
+// Beep 1, 2, 3, 4 times with pauses
+for (int i = 1; i <= 4; i++) {
+    BBPattern count(200, i, 150);
+    bb.aonoff(BUZZER, count.r(1000));
+}
+```
+
+---
+
+## Limitations
+
+- **No pattern modification**: Once a pattern enters the queue, it cannot be changed. Use `clearQueue()` and resubmit.
+- **Fixed queue sizes**: Queue size is set at initialization and cannot grow dynamically.
+- **Synchronous patterns don't support BBPattern**: Only async mode supports `BBPattern` objects.
+- **No priority system**: Patterns execute in submission order. Use `clearQueue()` for urgent patterns.
+
+---
+
+## Summary
+
+- `BlinkBuzz` provides non-blocking LED and buzzer control
+- Use `aonoff()` for simple async patterns
+- Use `BBPattern` to build complex patterns from simpler components
+- Call `update()` frequently for accurate timing
+- Use `clearQueue()` to cancel pending patterns
+- Integrate with `AstraConfig` for automatic initialization and updates
+
+For integration with the main system, see the [Basic Use](../basic-use.md) guide.
+
+---

@@ -1,102 +1,132 @@
 #ifndef STATE_H
 #define STATE_H
 
-#include "../Filters/Filter.h"
-
-// Include all the sensor classes
-#include "../Sensors/Baro/Barometer.h"
-#include "../Sensors/GPS/GPS.h"
-#include "../Sensors/IMU/IMU.h"
-#include "../RecordData/Logging/Logger.h"
-#include "../Constants.h"
+#include "../Filters/LinearKalmanFilter.h"
+#include "../Filters/Mahony.h"
+#include "../RecordData/DataReporter/DataReporter.h"
 #include "../Math/Vector.h"
 #include "../Math/Quaternion.h"
 
-namespace mmfs
+namespace astra
 {
+    /**
+     * State - Inertial state estimation
+     *
+     * Pure math component - receives sensor data as vectors, no hardware knowledge.
+     *
+     * Responsible for:
+     * 1. Body Frame → Inertial Frame transformation (via Mahony AHRS)
+     * 2. Position/velocity estimation (via Kalman Filter)
+     * 3. GPS/coordinate tracking
+     *
+     * Frame convention:
+     *   - Body frame: X forward, Y right, Z down (airframe convention)
+     *   - Inertial frame: ENU (East, North, Up) relative to launch point
+     *
+     * Architecture:
+     *   - State is pure math - Astra orchestrates data flow
+     *   - Base class (State) provides common functionality and virtual methods
+     *   - DefaultState provides ready-to-use implementation with DefaultKalmanFilter
+     *   - Custom derived classes can implement application-specific dynamics
+     *   - Supports asynchronous sensor updates (sensors update at their own rates)
+     */
     class State : public DataReporter
     {
     public:
-        State(Sensor **sensors, int numSensors, Filter *filter);
+        State(LinearKalmanFilter *filter, MahonyAHRS *orientationFilter);
         virtual ~State();
 
-        // Returns false if any sensor failed to init. Check data log for failed sensor. Disables sensor if failed.
-        // useBiasCorrection: whether or not to use bias correction. If true, the override class must call sensor.useBiasCorrection(false) upon liftoff to disable bias correction.
-        virtual bool init();
+        /**
+         * Initialize state estimation
+         * Returns 0 on success, error code on failure
+         */
+        virtual int begin();
 
-        // Updates the state with the most recent sensor data. CurrentTime is the time in seconds since the uC was turned on. If not provided, the state will use the current time.
-        virtual void updateState(double currentTime = -1);
+        // ========================= Pure Vector-Based Interface =========================
+        // State receives data as vectors, no hardware knowledge
 
-        // sensor functions
-        virtual Sensor *getSensor(SensorType type, int sensorNum = 1) const; // get a sensor of a certain type. 1 indexed. i.e. getSensor(GPS, 1) gets the first GPS sensor.
+        /**
+         * Update orientation estimate from gyro and accel data
+         * Should be called at high rate (100+ Hz)
+         * @param gyro Angular velocity in rad/s (body frame)
+         * @param accel Acceleration in m/s^2 (body frame)
+         * @param dt Time step in seconds
+         */
+        virtual void updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt);
 
-        // State Getters
-        virtual Vector<3> getPosition() const { return position; } // in m away from point of launch
-        virtual Vector<3> getVelocity() const { return velocity; }
-        virtual Vector<3> getAcceleration() const { return acceleration; }
+        /**
+         * Run Kalman filter prediction step
+         * Uses inertial-frame acceleration from orientation filter
+         * @param dt Time step in seconds since last prediction
+         */
+        virtual void predict(double dt);
+
+        /**
+         * Update state with a GPS measurement
+         * @param gpsPos GPS position (lat, lon, alt)
+         * @param gpsVel GPS velocity (NED frame)
+         */
+        virtual void updateGPSMeasurement(const Vector<3> &gpsPos, const Vector<3> &gpsVel);
+
+        /**
+         * Update state with a barometer measurement
+         * @param baroAlt Barometric altitude ASL in meters
+         */
+        virtual void updateBaroMeasurement(double baroAlt);
+
+        /**
+         * Set GPS origin (call once when GPS gets first fix)
+         * @param lat Latitude in degrees
+         * @param lon Longitude in degrees
+         * @param alt Altitude ASL in meters
+         */
+        virtual void setGPSOrigin(double lat, double lon, double alt);
+
+        /**
+         * Set barometric origin (call once at startup)
+         * @param altASL Altitude ASL in meters from barometer
+         */
+        virtual void setBaroOrigin(double altASL);
+
+        // ========================= DataReporter Hook =========================
+        // Does not drive estimation. Keeps logging time in sync.
+        virtual int update(double currentTime = -1) override;
+
+        // ========================= State Getters =========================
+
+        virtual Vector<3> getPosition() const { return position; }         // in m away from point of launch (inertial frame)
+        virtual Vector<3> getVelocity() const { return velocity; }         // m/s (inertial frame)
+        virtual Vector<3> getAcceleration() const { return acceleration; } // m/s/s (inertial frame)
         virtual Quaternion getOrientation() const { return orientation; }
-        virtual Vector<2> getCoordinates() const { return coordinates; } // lat long in decimal degrees
-        virtual double getHeading() const { return heading; }
-        virtual int getNumMaxSensors() const { return maxNumSensors; } // how many sensors were passed in the constructor
-        virtual Sensor **getSensors() const { return sensors; }
-        virtual int getStage() const { return stage; }
+        virtual Vector<2> getCoordinates() const { return coordinates; }   // lat lon in decimal degrees
+        virtual double getHeading() const { return heading; }              // degrees
 
-        bool sensorOK(const Sensor *sensor) const;
+        // ========================= Filter Control =========================
+
+        MahonyAHRS *getOrientationFilter() const { return orientationFilter; }
 
     protected:
         double currentTime; // in s since uC turned on
         double lastTime;
 
-        int maxNumSensors; // how many sensors were passed in the constructor
-        Sensor **sensors;
-        int numSensors; // how many sensors are actually enabled
-
-        // ----
-
-        // Update function layout in the CPP:
-        /*
-        update(){
-            updateSensors();
-            updateVariables(){
-                if (filter)
-                    updateKF();
-                else
-                    updateWithoutKF();
-                // other variables
-            }
-            determineStage();
-        }
-        */
-        virtual void updateSensors();
-        virtual void updateVariables();
-        virtual void updateKF();
-        virtual void updateWithoutKF(); // if no KF is set
-
-        virtual void determineStage() = 0; // MUST BE IMPLEMENTED IN OVERRIDE CLASS
-
-        // ----
-
-        // State variables
+        // State variables (all in inertial frame)
         Vector<3> position;     // in m from launch position
         Vector<3> velocity;     // in m/s
         Vector<3> acceleration; // in m/s^2
-        Quaternion orientation; // in quaternion
+        Quaternion orientation; // body-to-earth rotation
         Vector<2> coordinates;  // in lat, lon
         double heading;         // in degrees
-        Vector<3> origin;      // in lat, lon, alt
+        Vector<3> origin;       // in lat, lon, alt
 
-        // These two only exist because of bugs in the KF. They will be removed when™ the KF is fixed.
-        double baroVelocity;    // in m/s
-        double baroOldAltitude; // in m
+        // Kalman Filter for position/velocity/acceleration estimation
+        LinearKalmanFilter *filter;
 
-        // Kalman Filter settings
-        Filter *filter;
+        // Orientation filter (Mahony AHRS) - body to inertial transformation
+        MahonyAHRS *orientationFilter;
 
         bool initialized = false;
-
-        int stage = 0;
-
-        double *stateVars = nullptr;
+        bool gpsOriginSet = false;
+        bool baroOriginSet = false;
     };
 }
 #endif // STATE_H

@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
-namespace mmfs {
+namespace astra {
 
 template <uint8_t N> class Vector {
 public:

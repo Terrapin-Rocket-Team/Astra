@@ -3,7 +3,7 @@
 
 #include "BBPattern.h"
 
-namespace mmfs
+namespace astra
 {
 	class BlinkBuzz
 	{
@@ -25,15 +25,15 @@ namespace mmfs
 		void off(int pin); // turn off a pin
 
 		void onoff(int pin, int duration);						 // turn on a pin for a ms duration
-		void onoff(int pin, int duration, int times);			 // turn on a pin for a ms duration, repeat times times with ms duration pause
-		void onoff(int pin, int duration, int times, int pause); // turn on a pin for a ms duration, repeat times times with ms pause pause
+		void onoff(int pin, int duration, int times);			 // turn on a pin for a ms duration, repeat `times` times with `duration` ms pause
+		void onoff(int pin, int duration, int times, int pause); // turn on a pin for a ms duration, repeat `times` times with `pause` ms pause
 		void onoff(int pin, BBPattern &pattern);				 // turn on a pin for a pattern duration
 
 		// turn on a pin for a ms duration asynchronously
 		void aonoff(int pin, int duration);
-		// turn on a pin for a ms duration, repeat `times` times with ms `duration` pause asynchronously, 0 to repeat indefinitely
+		// turn on a pin for a ms duration, repeat `times` times with `duration` ms pause asynchronously, 0 to repeat indefinitely
 		void aonoff(int pin, int duration, int times);
-		// turn on a pin for a ms duration, repeat `times` times with ms `pause` pause asynchronously, 0 to repeat indefinitely
+		// turn on a pin for a ms duration, repeat `times` times with `pause` ms pause asynchronously, 0 to repeat indefinitely
 		void aonoff(int pin, int duration, int times, int pause);
 		// turn on a pin for a pattern duration, repeat indefinitely or not asynchronously
 		void aonoff(int pin, const BBPattern &pattern, bool indef = false);
@@ -72,7 +72,7 @@ namespace mmfs
 
 		bool enableAsync = true; // prevents initializing extra memory if you don't need it
 		bool ready = false;
-		bool isRdy();// check if BlinkBuzz is ready to use
+		bool isRdy();			// check if BlinkBuzz is ready to use
 		int queueSpacing = 100; // ms between each new action when you don't specify a # of repeats AND append a new action before the current one completes.
 	};
 
@@ -81,5 +81,5 @@ namespace mmfs
 
 }
 
-extern mmfs::BlinkBuzz bb;
+extern astra::BlinkBuzz bb;
 #endif // !BLINKBUZZ_H

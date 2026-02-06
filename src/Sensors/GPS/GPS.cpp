@@ -1,27 +1,33 @@
 #include "GPS.h"
 
-using namespace mmfs;
+using namespace astra;
 
 #pragma region GPS Specific Functions
 
-GPS::GPS(const char *name) : Sensor("GPS", name)
+GPS::GPS(const char *name) : Sensor(name)
 {
     hr = 0;
     min = 0;
     sec = 0;
-    strcpy(tod, "00:00:00");
-    addColumn(DOUBLE_HP, &position.x(), "Lat (deg)");
-    addColumn(DOUBLE_HP, &position.y(), "Lon (deg)");
-    addColumn(DOUBLE, &position.z(), "Alt (m)");
-    addColumn(INT, &fixQual, "Fix Quality");
-    addColumn(STRING, tod, "Time of Day");
+    snprintf(tod, 9, "%s", "00:00:00");
+    addColumn("%0.7f", &position.x(), "Lat (deg)");
+    addColumn("%0.7f", &position.y(), "Lon (deg)");
+    addColumn("%0.3f", &position.z(), "Alt (m)");
+    addColumn("%0.3f", &velocity.x(), "vN (m/s)");
+    addColumn("%0.3f", &velocity.y(), "vE (m/s)");
+    addColumn("%0.3f", &velocity.z(), "vD (m/s)");
+    addColumn("%d", &fixQual, "Fix Quality");
+    addColumn("%s", &tod, "Time of Day");
     hasFirstFix = false;
     hasFix = false;
+    setUpdateRate(5);
 }
 
 GPS::~GPS() {}
 
 Vector<3> GPS::getPos() const { return position; }
+
+Vector<3> GPS::getVel() const { return velocity; }
 
 double GPS::getHeading() const { return heading; }
 
@@ -34,8 +40,8 @@ int GPS::getFixQual() const { return fixQual; }
 //  https://blog.mapbox.com/fast-geodesic-approximations-with-cheap-ruler-106f229ad016
 void GPS::calcInitialValuesForDistance()
 {
-    constexpr auto EARTH_RAD = 6378.137e3; // meters
-    constexpr auto RAD = 3.14159265358979323846 / 180.0;
+    constexpr auto EARTH_RAD = 6378.137e3;               // meters
+    constexpr auto RAD = 3.14159265358979323846 / 180.0; // lol
 
     constexpr auto EARTH_FLAT = 1.0 / 298.257223563; // flattening of the earth. IDK what this means
 
@@ -88,64 +94,72 @@ void GPS::findTimeZone()
     if (isDST)
     {
         hrOffset = 1;
-        getLogger().recordLogData(INFO_, "DST is in effect.");
+        LOGI("DST is in effect.");
     }
     else
     {
         hrOffset = 0;
-        getLogger().recordLogData(INFO_, "DST is not in effect.");
+        LOGI("DST is not in effect.");
     }
 
     if (getPos().x() > -82.5)
     {
         hrOffset -= 5;
-        getLogger().recordLogData(INFO_, "Timezone: Eastern Standard Time");
+        LOGI("Timezone: Eastern Standard Time");
     }
     else if (getPos().x() > -97.5)
     {
         hrOffset -= 6;
-        getLogger().recordLogData(INFO_, "Timezone: Central Standard Time");
+        LOGI("Timezone: Central Standard Time");
     }
     else if (getPos().x() > -112.5)
     {
         hrOffset -= 7;
-        getLogger().recordLogData(INFO_, "Timezone: Mountain Standard Time");
+        LOGI("Timezone: Mountain Standard Time");
     }
     else if (getPos().x() > -127.5)
     {
         hrOffset -= 8;
-        getLogger().recordLogData(INFO_, "Timezone: Pacific Standard Time");
+        LOGI("Timezone: Pacific Standard Time");
     }
     else if (getPos().x() > -135)
     {
         hrOffset -= 9;
-        getLogger().recordLogData(INFO_, "Timezone: Alaska Standard Time");
+        LOGI("Timezone: Alaska Standard Time");
     }
     else if (getPos().x() > -150)
     {
         hrOffset -= 10;
-        getLogger().recordLogData(INFO_, "Timezone: Hawaii-Aleutian Standard Time");
+        LOGI("Timezone: Hawaii-Aleutian Standard Time");
     }
     else
     {
-        getLogger().recordLogData(INFO_, "Timezone: UTC");
+        LOGI("Timezone: UTC");
     }
-    getLogger().recordLogData(INFO_, 100, "Timezone offset: %d", hrOffset);
+    LOGI("Timezone offset: %d", hrOffset);
 }
 
 #pragma endregion // GPS Specific Functions
 
 #pragma region Sensor Virtual Function Implementations
 
-bool GPS::update()
+int GPS::update(double currentTime)
 {
-    if (!read())
-        return false;
+    if (!initialized)
+        return -1;
+
+    int err = read();
+
+    if (err != 0)
+    {
+        healthy = false;
+        return err;
+    }
 
     if (!hasFix && fixQual >= 4)
     {
         hasFix = true;
-        getEventManager().invoke(GPSFix{"GPS_FIX"_i, this, !hasFirstFix}); // will be false the first time this runs, so invert it
+        // getEventManager().invoke(GPSFix{"GPS_FIX"_i, this, !hasFirstFix}); // will be false the first time this runs, so invert it
         if (!hasFirstFix)
         {
             findTimeZone();
@@ -158,7 +172,7 @@ bool GPS::update()
         if (fixQual < 4)
         {
             hasFix = false;
-            getEventManager().invoke(GPSFix{"GPS_FIX"_i, this, false});
+            // getEventManager().invoke(GPSFix{"GPS_FIX"_i, this, false});
         }
         hr += hrOffset;
         hr = (hr % 24 + 24) % 24; // in cpp -1 % 24 = -1, but we want it to be 23
@@ -166,17 +180,26 @@ bool GPS::update()
         sec = sec % 60;                                    // just in case
         snprintf(tod, 12, "%02d:%02d:%02d", hr, min, sec); // size is really 9 but 12 ignores warnings about truncation. IRL it will never truncate
     }
-    return true;
+
+    // GPS health is simply based on fix status
+    // No fix is expected behavior (not a hardware failure), so we keep healthy=true
+    // Health only becomes false on read() errors
+    healthy = true;
+
+    return 0;
 }
 
-bool GPS::begin()
+int GPS::begin()
 {
     position = Vector<3>(0, 0, 0);
+    velocity = Vector<3>(0, 0, 0);
     fixQual = 0;
     hasFix = false;
     hasFirstFix = false;
     heading = 0;
-    return init();
+    int err = init();
+    initialized = (err == 0);
+    return err;
 }
 
 #pragma endregion // Sensor Virtual Function Implementations

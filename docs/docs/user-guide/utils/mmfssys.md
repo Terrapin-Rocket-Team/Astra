@@ -1,108 +1,184 @@
-# MMFSSystem
+# Astra System
 
-The **MMFSSystem** object is designed to make interacting with the **MMFS** library as simple as possible. You begin by defining an **MMFSConfig** object, configuring all of the parameters your flight code needs, and then passing that configuration object into an **MMFSSystem** object. Afterward, you only need to call the `init()` and `update()` functions. **MMFSSystem** will take care of everything else.
+`Astra` is the high-level orchestrator. It wires sensors, state estimation, logging, and indicators into a single update loop.
 
-## MMFSConfig
+---
 
-The **MMFSConfig** object uses a builder-like pattern, making it easy to set up **MMFS**. The only configuration option that you **must** use in order to run **MMFSSystem** is to pass a derived **State** object with proper launch detection.
-
-### Code Example: `withState(...)`
+## Minimal Setup
 
 ```cpp
-#include <MMFS.h>
-#include <MyCustomState.h> // A user-defined State class that detects launch
+#include <Utils/Astra.h>
+#include <State/DefaultState.h>
+#include <Sensors/HW/IMU/BMI088.h>
+#include <Sensors/HW/Baro/DPS368.h>
+#include <Sensors/HW/GPS/MAX_M10S.h>
 
+using namespace astra;
 
-MyCustomState myState;
+BMI088 imu;
+DPS368 baro;
+MAX_M10S gps;
+DefaultState state;
 
-MMFSConfig config = MMFSConfig()
-                    .withState(&myState); // REQUIRED
+AstraConfig config = AstraConfig()
+    .with6DoFIMU(&imu)
+    .withBaro(&baro)
+    .withGPS(&gps)
+    .withState(&state);  // Optional: Astra will use DefaultState if not provided
+
+Astra sys(&config);
 ```
 
-Where `myState` is your derived **State** object that handles launch detection.
+Call `sys.init()` in `setup()` and `sys.update()` in `loop()`.
 
-### MMFSConfig Options
+---
 
-Below is a refined list of the configuration methods available in **MMFSConfig**. Each returns a reference to the same **MMFSConfig** instance, allowing you to chain calls together:
+## AstraConfig Overview
 
-- **`#!cpp withState(State *state)`**  
-  Adds a derived **State** (and its associated sensors) to **MMFS**. This is required for **MMFSSystem** to function properly.
+### Required
 
-- **`#!cpp withUpdateRate(unsigned int updateRate)`**  
-  Sets an update rate in Hertz. (Default is `10`.) Mutually exclusive with update interval.
+**`withState(State* state)`**
 
-- **`#!cpp withUpdateInterval(unsigned int updateInterval)`**  
-  Sets the update interval in milliseconds. (Default is `100`.) Mutually exclusive with update rate.
+Provide a `State` (or `DefaultState`). Astra uses it for orientation and position estimation.
 
-- **`#!cpp withSensorBiasCorrectionDataLength(unsigned int sensorBiasCorrectionDataLength)`**  
-  Specifies the duration (in seconds) over which sensors will average data to correct for drift. This duration is affected by the update rate/interval. (Default is `2`.)
+---
 
-- **`#!cpp withSensorBiasCorrectionDataIgnore(unsigned int sensorBiasCorrectionDataIgnore)`**  
-  Specifies the duration (in seconds) of the most recent data to **ignore** when performing drift correction. This duration is also affected by the update rate/interval. (Default is `1`.)
+### Sensor Configuration
 
-- **`#!cpp withUsingSensorBiasCorrection(bool useBiasCorrection)`**  
-  Determines whether sensors will continuously re-zero themselves while on the ground. (Default is `false`.)  
-  **Warning**: This function requires working launch detection or data may not be accurate.
+Provide sensors directly:
 
-- **`#!cpp withBuzzerPin(unsigned int buzzerPin)`**  
-  Sets the named `BUZZER` for use with `BlinkBuzz`. (No Default.)
+- `withAccel(Accel*)`
+- `withGyro(Gyro*)`
+- `withMag(Mag*)`
+- `withBaro(Barometer*)`
+- `withGPS(GPS*)`
+- `withMiscSensor(Sensor*)` (logged, not used for state)
 
-- **`#!cpp withBBPin(unsigned int bbPin)`**  
-  Adds a pin to `BlinkBuzz`. By default, no pins are added.
+Convenience for IMUs:
 
-- **`#!cpp withBBAsync(bool bbAsync, unsigned int queueSize = 50)`**  
-  Allows `BlinkBuzz` to use asynchronous features. This incurs moderate memory overhead based on the queue size (the number of state changes a pin can queue). (Default is `true` and `50`.)
+- `with6DoFIMU(IMU6DoF*)` – extracts accel + gyro
+- `with9DoFIMU(IMU9DoF*)` – extracts accel + gyro + mag
 
-- ~~**`#!cpp withReducedPreFlightDataRate(bool useReducedRate, unsigned int secondsBetweenRecords)`**  
-  Enables or disables reduced data rates before flight. (Default is `true`, `30` seconds.)  
-  **Warning**: This requires working launch detection or all data will remain at the reduced rate.~~
+The IMU itself is added as a misc sensor for logging.
 
-- **`#!cpp withOtherDataReporters(DataReporter **others)`**  
-  Adds additional **DataReporter** objects for flight data logging. Passing a **State** via `withState()` automatically captures that **State**’s sensors, so adding them here might be redundant.
+---
 
-- **`#!cpp withNoDefaultEventListener()`**  
-  Removes the default event handler from the event manager, useful if you have a custom one that alters default behavior.
+### Logging Sinks
 
-- **`#!cpp withLogPrefixFormatting(const char *prefix)`**  
-  Changes the formatting of the log prefix. You **must** use `$time` and `$logType` to reference the current log’s time and log type. (Default is `"$time - [$logType] "`.)
+**`withDataLogs(ILogSink** sinks, uint8_t count)`**
 
-## Full Example
+Configures telemetry CSV sinks for `DataLogger`. Event logs are configured separately via `EventLogger::configure()`.
 
-Below is a simple, hypothetical Arduino sketch illustrating how to use **MMFSSystem** with **MMFSConfig**:
+**`withEventLogs(ILogSink** sinks, uint8_t count)`**
+
+Configures sinks for `EventLogger` during `Astra::init()`.
+
+---
+
+### Logging Cadence
 
 ```cpp
-#include <Arduino.h>
-#include <MMFS.h>
-#include <MyCustomState.h>  // Your derived State class
-#include <MyCustomReporter.h> // Additional DataReporter
-
-// Create instances
-MyCustomState myState;
-MyCustomReporter myReporter;
-
-// Create the configuration
-MMFSConfig config = MMFSConfig()
-    .withState(&myState)    // Required for launch detection
-    .withUpdateRate(20)     // 20 Hz update
-    .withOtherDataReporters({&myReporter}) // Additional data reporters
-    .withLogPrefixFormatting("$time - [$logType]: ");
-
-// Create the system object
-MMFSSystem system = MMFSSystem(config);
-
-void setup() {
-    Serial.begin(115200);
-    // Initialize the system
-    system.init(); // (1)!
-}
-
-void loop() {
-    // Update the system
-    system.update();
-
-    // Your other code goes here...
-}
+config.withLoggingRate(20);      // Hz
+config.withLoggingInterval(50);  // ms
 ```
-{.annotate}
 
-1. This function will call events based on whether or not **State** and **Logger** initialize successfully. They are automatically handled by the default event listener.
+`Astra` evaluates logging on a seconds-based clock. Use `withLoggingInterval()` if you want an explicit interval.
+
+---
+
+### BlinkBuzz
+
+- `withBuzzerPin(uint)` – sets global `BUZZER` and registers pin
+- `withBBPin(uint)` – registers a pin
+- `withBBAsync(bool enable, uint queueSize = 50)`
+
+---
+
+### Status Indicators
+
+Optional diagnostic LEDs/buzzers:
+
+- `withStatusLED(int pin)`
+- `withStatusBuzzer(int pin)`
+- `withGPSFixLED(int pin)`
+
+Init feedback patterns:
+
+- **Solid ON** = all sensors initialized
+- **N blinks** = single sensor failure (1=Accel, 2=Gyro, 3=Mag, 4=Baro, 5=GPS, 6=Misc)
+- **Rapid blink** = multiple failures
+
+---
+
+### HITL Mode
+
+**`withHITL(bool enabled)`**
+
+Flags the system as HITL. Use this when you pass simulation time into `update(simTimeSeconds)`.
+
+---
+
+### Ownership Model
+
+- `Astra` stores a pointer to `AstraConfig`. Ensure the config outlives the `Astra` instance.
+- `Astra` does **not** own sensors or log sinks. You are responsible for their lifetime.
+- If you call `withState()`, you own that `State`.
+- If you do **not** call `withState()`, `Astra` creates a `DefaultState` and owns it.
+- `SerialMessageRouter` is created and owned by `Astra`.
+
+---
+
+## Astra API
+
+### `int init()`
+
+Initializes BlinkBuzz, logging sinks, sensors, and state.
+
+Returns the number of sensor initialization failures (0 = success).
+
+### `bool update(double timeSeconds = -1)`
+
+Runs one system cycle:
+
+- Updates `SerialMessageRouter`
+- Updates BlinkBuzz
+- Updates sensors (as each sensor’s update interval allows)
+- Updates orientation + Kalman prediction
+- Updates measurement corrections (GPS/baro)
+- Logs telemetry at the configured logging interval
+
+If `timeSeconds` is `-1`, Astra uses `millis()/1000.0`.
+
+---
+
+## SerialMessageRouter Integration
+
+Astra creates a `SerialMessageRouter` internally and registers:
+
+```
+CMD/HEADER
+```
+
+Sending `CMD/HEADER` on a serial interface prints the current telemetry header to that stream.
+
+You can access the router to add your own listeners:
+
+```cpp
+SerialMessageRouter* router = sys.getMessageRouter();
+router->withListener("CMD/", myHandler);
+```
+
+Because Astra updates the router internally, you do not need to call `router->update()` yourself.
+
+---
+
+## Diagnostics Helpers
+
+`Astra` exposes flags for debugging:
+
+- `didLog()`
+- `didUpdateState()`
+- `didPredictState()`
+
+These are updated each cycle by `update()`.  
+For per-sensor update events in custom loops or tests, see the Maintainer Guide.

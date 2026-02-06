@@ -1,15 +1,17 @@
 #include "Barometer.h"
 #include <cmath>
 #include <Arduino.h>
-namespace mmfs
+#define MEAN_SEA_LEVEL_PRESSURE_HPA 1013.25
+namespace astra
 {
 
 #pragma region Barometer Specific Functions
-    Barometer::Barometer(const char *name) : Sensor("Barometer", name)
+    Barometer::Barometer(const char *name) : Sensor(name), lastReadings(HEALTH_BUFFER_SIZE)
     {
-        addColumn(DOUBLE, &pressure, "Pres (hPa)");
-        addColumn(DOUBLE, &temp, "Temp (C)");
-        addColumn(DOUBLE, &altitudeASL, "Alt ASL (m)");
+        addColumn("%0.3f", &pressure, "Pres (hPa)");
+        addColumn("%0.3f", &temp, "Temp (C)");
+        addColumn("%0.3f", &altitudeASL, "Alt ASL (m)");
+        setUpdateRate(20);
     }
 
     Barometer::~Barometer() {}
@@ -36,24 +38,71 @@ namespace mmfs
 
 #pragma region Sensor Virtual Function Implementations
 
-    bool Barometer::update()
+    int Barometer::update(double currentTime)
     {
-        if (!read())
-            return false;
+        if (!initialized)
+            return -1;
+
+        int err = read();
+
+        if (err != 0)
+        {
+            healthy = false;
+            consecutiveGoodReads = 0;
+            return err;
+        }
+
         altitudeASL = calcAltitude(pressure);
-        return true;
+
+        // Health tracking - check for stuck pressure readings
+        lastReadings.push(pressure);
+
+        if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)
+        {
+            consecutiveGoodReads++;
+            return 0;
+        }
+
+        bool allIdentical = true;
+        for (uint8_t i = 1; i < HEALTH_BUFFER_SIZE; i++)
+        {
+            if (lastReadings[i] != lastReadings[0])
+            {
+                allIdentical = false;
+                break;
+            }
+        }
+
+        if (allIdentical)
+        {
+            if (healthy)
+                LOGW("Baro '%s' became unhealthy: stuck readings detected", getName());
+            healthy = false;
+            consecutiveGoodReads = 0;
+            lastReadings.clear();
+        }
+        else
+        {
+            if (!healthy)
+                LOGI("Baro '%s' recovered: readings varying normally", getName());
+            healthy = true;
+        }
+
+        return 0;
     }
 
-    bool Barometer::begin()
+    int Barometer::begin()
     {
         pressure = 0;
         temp = 0;
         altitudeASL = 0;
-        if(initialized = init())
+        int err = init();
+        initialized = (err == 0);
+        if (initialized)
         {
             read();
             altitudeASL = calcAltitude(pressure);
         }
-        return initialized;
+        return err;
     }
 }

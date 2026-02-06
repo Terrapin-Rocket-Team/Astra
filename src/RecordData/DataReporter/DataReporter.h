@@ -2,39 +2,44 @@
 #define DATA_REPORTER_H
 
 #include <stdint.h>
-#include <cstdio>
-#include <cstring>
-#include "../Logging/Logger.h"
+#include "../Logging/LoggingBackend/ILogSink.h" // gives you ILogSink : Print
 
-namespace mmfs
+namespace astra
 {
-
-    enum DataType
-    {
-        INT,
-        BYTE,
-        SHORT,
-        FLOAT,
-        DOUBLE,    // Displays with 3 decimal places
-        DOUBLE_HP, // Displays with 7 decimal places
-        STRING,
-        BOOL,
-        LONG,
-        UNKNOWN
-    };
 
     struct DataPoint
     {
-        DataType type = UNKNOWN;     // Type of the data
-        const char *label = nullptr; // Label for the data
-        DataPoint *next = nullptr;   // Next data point in the list
-        void *data = nullptr;        // Pointer to the data the user gave
+        const char *fmt = nullptr;                          // printf format for this value
+        const char *label = nullptr;                        // column label
+        DataPoint *next = nullptr;                          // next in list
+        const void *data = nullptr;                         // pointer to the value
+        void (*emit)(Print *, const DataPoint *) = nullptr; // type-erased printer
     };
+
+    // Templated helper to allocate & populate a node
+    template <typename T>
+    inline DataPoint *make_dp(const char *fmt, const T *p, const char *label)
+    {
+        auto *d = new DataPoint{};
+        d->fmt = fmt;
+        d->label = label;
+        d->data = p;
+        d->emit = [](Print *s, const DataPoint *self)
+        {
+            const T *val = static_cast<const T *>(self->data);
+            // Portable: format into a buffer, then write
+            char buf[64];
+            int n = snprintf(buf, sizeof(buf), self->fmt, *val);
+            if (n > 0)
+                s->write(reinterpret_cast<const uint8_t *>(buf), (size_t)n);
+        };
+        return d;
+    }
 
     class DataReporter
     {
     public:
-        static int numReporters; // Only incremented throughout the life of the program, used to assign new unique names
+        static int numReporters;
 
         DataReporter(const char *name = nullptr);
         virtual ~DataReporter();
@@ -44,25 +49,59 @@ namespace mmfs
 
         int getNumColumns();
         DataPoint *getDataPoints();
+        DataPoint *getLastPoint() { return last; }
+
+        // Initializes the reporter and sets up any necessary parameters (calls init() internally)
+        // Returns 0 on success, library-specific error code on failure
+        virtual int begin() = 0;
+
+        // Updates the reporter's fields by querying for new data (calls read() internally)
+        // @param currentTime - Current time in seconds (for SITL/HITL), -1 uses millis()
+        // Returns 0 on success, library-specific error code on failure
+        virtual int update(double currentTime = -1) = 0;
+
+        virtual bool isInitialized() const { return initialized; } // Returns whether the reporter has been initialized or not
+
+        virtual explicit operator bool() const { return initialized; } // Returns whether the reporter has been initialized or not
+
+
+        //Data reporters are automatically updated by the managing system. If another reporter owns this one, 
+        //you can set this to false to prevent multiple updates per cycle.
+        virtual void setAutoUpdate(bool update) { autoUpdate = update; }
+        virtual bool getAutoUpdate() const { return autoUpdate; }
 
     protected:
         uint8_t numColumns = 0;
-
         DataPoint *first = nullptr, *last = nullptr;
 
         template <typename T>
-        void insertColumn(uint8_t place, DataType t, T *variable, const char *label);
+        void insertColumn(int place, const char *fmt, T *variable, const char *label);
 
         template <typename T>
-        void addColumn(DataType t, T *variable, const char *label);
+        void addColumn(const char *fmt, T *variable, const char *label);
 
         void removeColumn(const char *label);
 
+        void clearColumns()
+        {
+            while (first)
+            {
+                DataPoint *next = first->next;
+                delete first;
+                first = next;
+            }
+            last = nullptr;
+            numColumns = 0;
+        }
+
+        bool initialized = false;
+        bool autoUpdate = true;
+
     private:
-        char *name = nullptr; // Name of the object
+        char *name = nullptr;
     };
 
-} // namespace mmfs
+} // namespace astra
 
-#include "DataReporter.inl" // Include templates implementation
-#endif                      // DATA_REPORTER_H
+#include "DataReporter.inl"
+#endif // DATA_REPORTER_H

@@ -1,58 +1,49 @@
 #ifndef DATA_REPORTER_INL
 #define DATA_REPORTER_INL
-
-namespace mmfs
+namespace astra
 {
 
     template <typename T>
-    void DataReporter::insertColumn(uint8_t place, DataType t, T *variable, const char *label)
+    void DataReporter::insertColumn(int place, const char *fmt, T *variable, const char *label)
     {
-        if (getLogger().isReady())
-            getLogger().recordLogData(ERROR_, "Logger already initialized. Cannot add more columns.");
+        DataPoint *packedInfo = make_dp<T>(fmt, variable, label);
 
-        auto packedInfo = new DataPoint();
-        packedInfo->type = t;
-        packedInfo->label = label;
-        packedInfo->data = variable;
-
-        if (first == nullptr)
+        if (!first)
         {
-            first = packedInfo;
-            last = packedInfo;
+            first = last = packedInfo;
         }
-        else if (place == -1 || place >= numColumns)
-        { // Append
+        else if (place == 0)
+        { // insert at beginning
+            packedInfo->next = first;
+            first = packedInfo;
+        }
+        else if (place < 0 || place >= numColumns)
+        { // append
             last->next = packedInfo;
             last = packedInfo;
         }
         else
-        { // Insert at specific position
-            auto current = first;
+        { // insert at index
+            DataPoint *current = first;
             int idx = 0;
-
-            while (current->next != nullptr && idx < place - 1)
+            while (current->next && idx < place - 1)
             {
                 current = current->next;
-                idx++;
+                ++idx;
             }
-
             packedInfo->next = current->next;
             current->next = packedInfo;
-
-            if (packedInfo->next == nullptr)
-            {
+            if (!packedInfo->next)
                 last = packedInfo;
-            }
         }
-        numColumns++;
+        ++numColumns;
     }
 
     template <typename T>
-    void DataReporter::addColumn(DataType t, T *variable, const char *label)
+    void DataReporter::addColumn(const char *fmt, T *variable, const char *label)
     {
-        insertColumn(-1, t, variable, label);
+        insertColumn<T>(-1, fmt, variable, label);
     }
 
-} // namespace mmfs
-
+} // namespace astra
 #endif // DATA_REPORTER_INL

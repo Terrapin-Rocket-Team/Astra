@@ -1,6 +1,6 @@
 #ifndef BBPATTERN_H
 #define BBPATTERN_H
-namespace mmfs
+namespace astra
 {
     class BBPattern
     {

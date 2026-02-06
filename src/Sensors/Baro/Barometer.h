@@ -3,32 +3,37 @@
 
 #include "../Sensor.h"
 
-namespace mmfs
+namespace astra
 {
     class Barometer : public Sensor
     {
     public:
         virtual ~Barometer();
-        virtual double getPressure() const;
-        virtual double getTemp() const;
-        virtual double getTempF() const;
-        virtual double getPressureAtm() const;
-        virtual double getASLAltFt() const;
-        virtual double getASLAltM() const;
+        virtual double getPressure() const;    // hPa
+        virtual double getTemp() const;        // deg C
+        virtual double getTempF() const;       // deg F
+        virtual double getPressureAtm() const; // atmospheres
+        virtual double getASLAltFt() const;    // ft
+        virtual double getASLAltM() const;     // meters
 
-        // Sensor virtual functions
-        virtual bool update() override;
-        virtual bool begin() override;
+        static double calcAltitude(double pressure);
+
+        // Sensor virtual functions - return 0 on success, error code on failure
+        virtual int update(double currentTime = -1) override;
+        virtual int begin() override;
 
     protected:
         Barometer(const char *name = "Barometer");
-        double pressure = 0;
-        double temp = 0;
+        double pressure = 0; // hPa
+        double temp = 0; // deg c
 
         // Altitude-related data
-        double altitudeASL = 0;
+        double altitudeASL = 0; // m
 
-        double calcAltitude(double pressure);
+        // Health tracking for stuck-reading detection
+        static constexpr uint8_t HEALTH_BUFFER_SIZE = 3;
+        CircBuffer<double> lastReadings;
+        uint8_t consecutiveGoodReads = 0;
     };
 }
 #endif // BAROMETER_H

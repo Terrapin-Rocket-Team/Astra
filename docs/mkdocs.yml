@@ -1,9 +1,9 @@
 
-site_name: Multi-Mission Flight Software - Documentation
-site_url: http://127.0.0.1:8000
-repo_url: https://github.com/Terrapin-Rocket-Team/Multi-Mission-Flight-Software
-repo_name: MMFS
-repo_version: "3.1.1" # Update this to the current version of the documentation. ignore the error lol
+site_name: Astra Documentation
+site_url: https://terrapin-rocket-team.github.io/Astra/
+repo_url: https://github.com/Terrapin-Rocket-Team/Astra
+repo_name: Terrapin-Rocket-Team/Astra
+repo_version: "0.2"
 theme:
   icon:
     repo: fontawesome/brands/github

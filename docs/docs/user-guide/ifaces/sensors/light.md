@@ -1,3 +1,0 @@
-# LightSensor
-
-idk maybe
