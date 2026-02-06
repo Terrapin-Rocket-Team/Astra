@@ -2,7 +2,7 @@
 
 namespace astra
 {
-    BNO055::BNO055(const char *name, uint8_t address, TwoWire *theWire)
+    BNO055::BNO055(const char *name, TwoWire *theWire, uint8_t address)
         : IMU9DoF(name),
           bno(-1, address, theWire),
           address(address),
@@ -10,11 +10,8 @@ namespace astra
     {
     }
 
-    BNO055::BNO055(uint8_t address, TwoWire *theWire)
-        : IMU9DoF("BNO055"),
-          bno(-1, address, theWire),
-          address(address),
-          wire(theWire)
+    BNO055::BNO055(TwoWire *theWire, uint8_t address)
+        : BNO055("BNO055", theWire, address)
     {
     }
 

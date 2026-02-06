@@ -6,7 +6,7 @@ namespace astra
 {
 
 #pragma region Barometer Specific Functions
-    Barometer::Barometer(const char *name) : Sensor(name)
+    Barometer::Barometer(const char *name) : Sensor(name), lastReadings(HEALTH_BUFFER_SIZE)
     {
         addColumn("%0.3f", &pressure, "Pres (hPa)");
         addColumn("%0.3f", &temp, "Temp (C)");
@@ -55,8 +55,7 @@ namespace astra
         altitudeASL = calcAltitude(pressure);
 
         // Health tracking - check for stuck pressure readings
-        lastReadings[readingIndex] = pressure;
-        readingIndex = (readingIndex + 1) % HEALTH_BUFFER_SIZE;
+        lastReadings.push(pressure);
 
         if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)
         {
@@ -80,6 +79,7 @@ namespace astra
                 LOGW("Baro '%s' became unhealthy: stuck readings detected", getName());
             healthy = false;
             consecutiveGoodReads = 0;
+            lastReadings.clear();
         }
         else
         {

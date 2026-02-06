@@ -42,7 +42,7 @@ Example:
 ```cpp
 #include <Sensors/HW/GPS/MAX_M10S.h>
 
-MAX_M10S gps("GPS", Wire, 0x42);
+MAX_M10S gps("GPS", &Wire, 0x42);
 ```
 
 ---
@@ -59,4 +59,3 @@ GPS logs:
 - `vD (m/s)`
 - `Fix Quality`
 - `Time of Day`
-

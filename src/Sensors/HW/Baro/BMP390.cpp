@@ -2,11 +2,11 @@
 
 using namespace astra;
 
-BMP390::BMP390(const char *name, uint8_t address, TwoWire *theWire) : Barometer(name), wire(theWire), addr(address), bmp()
+BMP390::BMP390(const char *name, TwoWire *theWire, uint8_t address) : Barometer(name), wire(theWire), addr(address), bmp()
 {
 }
 
-BMP390::BMP390(uint8_t address, TwoWire *theWire) : Barometer("BMP390"), wire(theWire), addr(address), bmp()
+BMP390::BMP390(TwoWire *theWire, uint8_t address) : BMP390("BMP390", theWire, address)
 {
 }
 

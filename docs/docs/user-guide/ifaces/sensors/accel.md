@@ -27,7 +27,7 @@ Example:
 ```cpp
 #include <Sensors/HW/Accel/ADXL375.h>
 
-ADXL375 accel("HighG", Wire, 0x1D);
+ADXL375 accel("HighG", &Wire, 0x1D);
 ```
 
 ---

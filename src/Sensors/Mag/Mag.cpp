@@ -2,7 +2,7 @@
 
 namespace astra
 {
-    Mag::Mag(const char *name) : RotatableSensor(name)
+    Mag::Mag(const char *name) : RotatableSensor(name), lastReadings(HEALTH_BUFFER_SIZE)
     {
         addColumn("%0.3f", &mag.x(), "Mag X (uT)");
         addColumn("%0.3f", &mag.y(), "Mag Y (uT)");

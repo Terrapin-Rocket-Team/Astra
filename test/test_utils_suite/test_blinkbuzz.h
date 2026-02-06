@@ -38,10 +38,8 @@ void test_init_basic() {
     int pins[] = {13, 14};
     bb.init(pins, 2, false, 0);
 
-    // Note: isUsingAsync() currently returns `ready` not `enableAsync`
-    // This is likely a bug in BlinkBuzz.cpp:82-87
-    // Expected: false, Actual: true (because ready=true after init)
-    TEST_ASSERT_TRUE(bb.isUsingAsync()); // Should be FALSE but currently returns TRUE
+    // Async disabled should report false
+    TEST_ASSERT_FALSE(bb.isUsingAsync());
     local_tearDown();
 }
 
@@ -302,13 +300,9 @@ void test_async_enabled_check() {
     BlinkBuzz bb;
     int pins[] = {13};
 
-    // Note: isUsingAsync() currently returns `ready` not `enableAsync`
-    // This test is adapted to match current behavior
-    // TODO: Fix BlinkBuzz.cpp:82-87 to return enableAsync instead of ready
-
     // Without async
     bb.init(pins, 1, false, 0);
-    TEST_ASSERT_TRUE(bb.isUsingAsync()); // Currently returns ready=true
+    TEST_ASSERT_FALSE(bb.isUsingAsync());
 
     // With async (need a new instance)
     BlinkBuzz bb2;

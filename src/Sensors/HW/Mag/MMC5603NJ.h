@@ -12,8 +12,8 @@ namespace astra
     public:
         int read() override;
         int init() override;
-        MMC5603NJ(const char *name = "MMC5603NJ", TwoWire &bus = Wire, uint8_t addr = MMC56X3_DEFAULT_ADDRESS);
-        MMC5603NJ(TwoWire &bus, uint8_t addr = MMC56X3_DEFAULT_ADDRESS);
+        MMC5603NJ(const char *name = "MMC5603NJ", TwoWire *bus = &Wire, uint8_t addr = MMC56X3_DEFAULT_ADDRESS);
+        MMC5603NJ(TwoWire *bus, uint8_t addr = MMC56X3_DEFAULT_ADDRESS);
 
     protected:
         Adafruit_MMC5603 magmtr;

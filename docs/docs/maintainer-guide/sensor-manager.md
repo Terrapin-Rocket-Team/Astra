@@ -1,6 +1,7 @@
-# SensorManager
+# SensorManager (Internal)
 
-`SensorManager` owns the active sensor set and provides clean access to sensor data.
+`SensorManager` owns the active sensor set and provides access to sensor data and update flags.
+It is an internal utility used by `Astra` and `AstraConfig`.
 
 ---
 
@@ -34,7 +35,6 @@ Vector<3> getGPSVelocity() const;
 
 ## Typical Usage
 
-Most users do not interact with `SensorManager` directly; `Astra` manages it internally.
+Most users should not interact with `SensorManager` directly; `Astra` manages it internally.
 
-If you need direct access (custom loop or testing), instantiate and populate it manually.
-
+If you need direct access (custom loop or testing), instantiate and populate it manually in your own code or tests.
