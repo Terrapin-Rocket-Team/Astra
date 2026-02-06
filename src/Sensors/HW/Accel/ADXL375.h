@@ -9,7 +9,8 @@ namespace astra
     class ADXL375 : public Accel
     {
     public:
-        ADXL375(const char *name = "ADXL375", TwoWire &bus = Wire, uint8_t address = 0x1D);
+        ADXL375(const char *name = "ADXL375", TwoWire *bus = &Wire, uint8_t address = 0x1D);
+        ADXL375(TwoWire *bus, uint8_t address = 0x1D);
 
         int init() override;
         int read() override;

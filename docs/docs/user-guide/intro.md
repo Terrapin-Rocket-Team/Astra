@@ -23,12 +23,12 @@ Astra is built around three layers:
 ## High-Level Data Flow
 
 ```
-Sensors → SensorManager → State → DataLogger
-                    ↘ EventLogger (LOG/)
+Sensors → Astra → State → DataLogger
+               ↘ EventLogger (LOG/)
 ```
 
 - Sensors update at their own rates
-- `SensorManager` tracks updates and sensor health
+- `Astra` tracks updates and sensor health internally
 - `State` consumes vectors (gyro/accel/GPS/baro) and estimates pose
 - `DataLogger` writes CSV telemetry from all `DataReporter`s
 
@@ -42,7 +42,7 @@ Sensors → SensorManager → State → DataLogger
 
 **Sensor Health**
 - Base sensor classes track communication failures and stuck readings
-- `SensorManager` checks health before using data
+- `Astra` checks health before using data
 
 **Orientation + Position**
 - Orientation is estimated with Mahony AHRS
@@ -59,4 +59,3 @@ If you want a working system quickly:
 3. Add log sinks and call `Astra::init()`/`Astra::update()`
 
 See [Basic Usage](basic-use.md) for a complete example.
-

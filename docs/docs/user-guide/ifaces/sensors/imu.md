@@ -34,7 +34,7 @@ AstraConfig config = AstraConfig()
     .withState(&state);
 ```
 
-This automatically extracts the component sensors for `SensorManager`, and logs the IMU as a misc sensor.
+This automatically extracts the component sensors for `Astra`, and logs the IMU as a misc sensor.
 
 ---
 
@@ -50,7 +50,7 @@ Example:
 ```cpp
 #include <Sensors/HW/IMU/BMI088.h>
 
-BMI088 imu("BMI088", Wire);
+BMI088 imu("BMI088", &Wire);
 ```
 
 ---

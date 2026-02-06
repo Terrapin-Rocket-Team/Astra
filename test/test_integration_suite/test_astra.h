@@ -4,10 +4,14 @@
 #include "Utils/Astra.h"
 #include "Utils/AstraConfig.h"
 #include "State/DefaultState.h"
+#include "State/State.h"
+#include "Filters/DefaultKalmanFilter.h"
+#include "Filters/Mahony.h"
 #include "Sensors/Accel/Accel.h"
 #include "Sensors/Gyro/Gyro.h"
 #include "Sensors/Baro/Barometer.h"
 #include "Sensors/GPS/GPS.h"
+#include "Sensors/HITL/HITL.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "UnitTestSensors.h"
 
@@ -36,7 +40,71 @@ public:
     size_t write(const uint8_t*, size_t n) override { return n; }
     void flush() override {}
 };
-DefaultState* state;
+
+class RecordingState : public State {
+public:
+    RecordingState() : State(&kf, &ahrs) {}
+
+    int begin() override {
+        initialized = true;
+        return 0;
+    }
+
+    void updateOrientation(const Vector<3>& gyro, const Vector<3>& accel, double dt) override {
+        record(Call::Orientation);
+        sawOrientation = true;
+        lastGyro = gyro;
+        lastAccel = accel;
+        lastOrientationDt = dt;
+    }
+
+    void predict(double dt) override {
+        record(Call::Predict);
+        sawPredict = true;
+        lastPredictDt = dt;
+    }
+
+    void updateGPSMeasurement(const Vector<3>& gpsPos, const Vector<3>& gpsVel) override {
+        record(Call::GPS);
+        sawGPS = true;
+        lastGPSPos = gpsPos;
+        lastGPSVel = gpsVel;
+    }
+
+    void updateBaroMeasurement(double baroAlt) override {
+        record(Call::Baro);
+        sawBaro = true;
+        lastBaroAlt = baroAlt;
+    }
+
+    enum class Call : uint8_t { Orientation, Predict, GPS, Baro };
+
+    Call calls[8];
+    uint8_t callCount = 0;
+    Vector<3> lastGyro = Vector<3>(0, 0, 0);
+    Vector<3> lastAccel = Vector<3>(0, 0, 0);
+    Vector<3> lastGPSPos = Vector<3>(0, 0, 0);
+    Vector<3> lastGPSVel = Vector<3>(0, 0, 0);
+    double lastBaroAlt = 0.0;
+    double lastOrientationDt = 0.0;
+    double lastPredictDt = 0.0;
+    bool sawOrientation = false;
+    bool sawPredict = false;
+    bool sawGPS = false;
+    bool sawBaro = false;
+
+private:
+    void record(Call call) {
+        if (callCount < sizeof(calls) / sizeof(calls[0])) {
+            calls[callCount++] = call;
+        }
+    }
+
+    DefaultKalmanFilter kf;
+    MahonyAHRS ahrs;
+};
+
+State* state;
 Astra* astra;
 
 void local_setUp(void) {
@@ -559,6 +627,78 @@ void test_hitl_mode_requires_simulation_time() {
     local_tearDown();
 }
 
+void test_hitl_update_flow_and_order() {
+    local_setUp();
+    state = new RecordingState();
+
+    HITLAccel accel;
+    HITLGyro gyro;
+    HITLBarometer baro;
+    HITLGPS gps;
+    accel.setUpdateRate(1000);
+    gyro.setUpdateRate(1000);
+    baro.setUpdateRate(1000);
+    gps.setUpdateRate(1000);
+
+    AstraConfig config;
+    config.withState(state)
+          .withAccel(&accel)
+          .withGyro(&gyro)
+          .withBaro(&baro)
+          .withGPS(&gps)
+          .withHITL(true);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+    TEST_ASSERT_EQUAL(0, errors);
+
+    RecordingState* rec = static_cast<RecordingState*>(state);
+
+    // Warm up baro health with varying pressures
+    double simTime = 0.0;
+    const char* line1 = "HITL/0.11,1.1,2.2,3.3,0.1,0.2,0.3,10.0,20.0,30.0,900.0,15.0,37.0,-122.0,100.0,1,8,45.0";
+    const char* line2 = "HITL/0.22,1.2,2.1,3.4,0.11,0.21,0.31,10.0,20.0,30.0,901.0,15.0,37.0,-122.0,100.0,1,8,45.0";
+    const char* line3 = "HITL/0.33,1.3,2.0,3.5,0.12,0.22,0.32,10.0,20.0,30.0,902.0,15.0,37.0,-122.0,100.0,1,8,45.0";
+
+    TEST_ASSERT_TRUE(HITLParser::parseAndInject(line1, simTime));
+    astra->update(simTime);
+    TEST_ASSERT_TRUE(HITLParser::parseAndInject(line2, simTime));
+    astra->update(simTime);
+
+    rec->callCount = 0;
+    rec->sawOrientation = false;
+    rec->sawPredict = false;
+    rec->sawGPS = false;
+    rec->sawBaro = false;
+    TEST_ASSERT_TRUE(HITLParser::parseAndInject(line3, simTime));
+    astra->update(simTime);
+
+    TEST_ASSERT_TRUE_MESSAGE(rec->sawOrientation, "orientation not called");
+    TEST_ASSERT_TRUE_MESSAGE(rec->sawPredict, "predict not called");
+    TEST_ASSERT_TRUE_MESSAGE(rec->sawGPS, "gps update not called");
+    TEST_ASSERT_TRUE_MESSAGE(rec->sawBaro, "baro update not called");
+    TEST_ASSERT_EQUAL(4, rec->callCount);
+    TEST_ASSERT_EQUAL((uint8_t)RecordingState::Call::Orientation, (uint8_t)rec->calls[0]);
+    TEST_ASSERT_EQUAL((uint8_t)RecordingState::Call::Predict, (uint8_t)rec->calls[1]);
+    TEST_ASSERT_EQUAL((uint8_t)RecordingState::Call::GPS, (uint8_t)rec->calls[2]);
+    TEST_ASSERT_EQUAL((uint8_t)RecordingState::Call::Baro, (uint8_t)rec->calls[3]);
+
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 0.12, rec->lastGyro.x());
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 0.22, rec->lastGyro.y());
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 0.32, rec->lastGyro.z());
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 1.3, rec->lastAccel.x());
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 2.0, rec->lastAccel.y());
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 3.5, rec->lastAccel.z());
+
+    TEST_ASSERT_FLOAT_WITHIN(0.0001, 37.0, rec->lastGPSPos.x());
+    TEST_ASSERT_FLOAT_WITHIN(0.0001, -122.0, rec->lastGPSPos.y());
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 100.0, rec->lastGPSPos.z());
+
+    double expectedAlt = Barometer::calcAltitude(902.0);
+    TEST_ASSERT_FLOAT_WITHIN(0.5, expectedAlt, rec->lastBaroAlt);
+    local_tearDown();
+}
+
 void test_complete_update_cycle() {
     local_setUp();
     state = new DefaultState();
@@ -800,6 +940,7 @@ void run_test_astra_tests()
     RUN_TEST(test_logging_rate_conversion);
     RUN_TEST(test_hitl_mode_enabled);
     RUN_TEST(test_hitl_mode_requires_simulation_time);
+    RUN_TEST(test_hitl_update_flow_and_order);
     RUN_TEST(test_complete_update_cycle);
     RUN_TEST(test_multiple_update_cycles);
     RUN_TEST(test_flight_simulation);

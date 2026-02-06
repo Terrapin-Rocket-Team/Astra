@@ -38,7 +38,7 @@ Example:
 ```cpp
 #include <Sensors/HW/Baro/DPS368.h>
 
-DPS368 baro("Baro", 0x77, &Wire);
+DPS368 baro("Baro", &Wire, 0x77);
 ```
 
 ---
@@ -62,4 +62,3 @@ By default, barometers log:
 - `Pres (hPa)`
 - `Temp (C)`
 - `Alt ASL (m)`
-

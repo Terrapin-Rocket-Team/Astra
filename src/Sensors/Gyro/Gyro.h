@@ -37,14 +37,12 @@ namespace astra
 
         // Health tracking for stuck-reading detection
         static constexpr uint8_t HEALTH_BUFFER_SIZE = 3;
-        Vector<3> lastReadings[HEALTH_BUFFER_SIZE];
-        uint8_t readingIndex = 0;
+        CircBuffer<Vector<3>> lastReadings;
         uint8_t consecutiveGoodReads = 0;
 
         void updateHealthTracking()
         {
-            lastReadings[readingIndex] = angVel;
-            readingIndex = (readingIndex + 1) % HEALTH_BUFFER_SIZE;
+            lastReadings.push(angVel);
 
             if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)
             {
@@ -70,6 +68,7 @@ namespace astra
                     LOGW("Gyro '%s' became unhealthy: stuck readings detected", getName());
                 healthy = false;
                 consecutiveGoodReads = 0;
+                lastReadings.clear();
             }
             else
             {

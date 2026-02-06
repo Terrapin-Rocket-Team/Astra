@@ -42,6 +42,12 @@ When you cut a release:
 
 ---
 
+## Internal APIs
+
+- [SensorManager (Internal)](sensor-manager.md)
+
+---
+
 ## Tests
 
 Tests are under `test/` and run with PlatformIO:
@@ -57,4 +63,3 @@ pio test -e native
 - Avoid dynamic allocation in hot paths
 - Prefer `Vector`/`Matrix` over ad‑hoc math
 - Keep sensor updates non‑blocking
-

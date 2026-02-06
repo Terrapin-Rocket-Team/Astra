@@ -2,9 +2,9 @@
 
 using namespace astra;
 
-DPS368::DPS368(const char *name, uint8_t addr, TwoWire *bus) : Barometer(name), addr(addr), bus(bus) {}
+DPS368::DPS368(const char *name, TwoWire *bus, uint8_t addr) : Barometer(name), addr(addr), bus(bus) {}
 
-DPS368::DPS368(uint8_t addr, TwoWire *bus) : addr(addr), bus(bus) {}
+DPS368::DPS368(TwoWire *bus, uint8_t addr) : DPS368("DPS368", bus, addr) {}
 
 int DPS368::init()
 {

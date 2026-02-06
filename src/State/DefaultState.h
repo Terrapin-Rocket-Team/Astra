@@ -45,7 +45,7 @@ namespace astra
 
         virtual ~DefaultState();
 
-        // Override update to handle asynchronous sensor updates
+        // DataReporter hook (does not drive estimation)
         virtual int update(double currentTime = -1) override;
 
         // Access to the default filter (for advanced tuning)

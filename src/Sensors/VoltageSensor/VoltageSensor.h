@@ -3,7 +3,6 @@
 
 #include "../Sensor.h"
 
-// TODO: Update
 #if defined(ENV_TEENSY)
 #define PLATFORM_DEFAULT_REF_VOLTAGE 3.3
 #define PLATFORM_ADC_BITS 10

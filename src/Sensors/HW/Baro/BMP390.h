@@ -14,8 +14,8 @@ namespace astra
         Adafruit_BMP3XX bmp;
 
     public:
-        BMP390(const char *name = "BMP390", uint8_t address = BMP3XX_DEFAULT_ADDRESS, TwoWire *theWire = &Wire);
-        BMP390(uint8_t address, TwoWire *theWire = &Wire);
+        BMP390(const char *name = "BMP390", TwoWire *theWire = &Wire, uint8_t address = BMP3XX_DEFAULT_ADDRESS);
+        BMP390(TwoWire *theWire, uint8_t address = BMP3XX_DEFAULT_ADDRESS);
         virtual int init() override;
         virtual int read() override;
     };

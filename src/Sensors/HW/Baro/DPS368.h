@@ -14,8 +14,8 @@ namespace astra
     class DPS368 : public Barometer
     {
     public:
-        DPS368(const char *name = "DPS368", uint8_t addr = 0x77, TwoWire *bus = &Wire); // alternative is 0x76
-        DPS368(uint8_t addr, TwoWire *bus = &Wire);
+        DPS368(const char *name = "DPS368", TwoWire *bus = &Wire, uint8_t addr = 0x77); // alternative is 0x76
+        DPS368(TwoWire *bus, uint8_t addr = 0x77);
         virtual int init() override;
         virtual int read() override;
 

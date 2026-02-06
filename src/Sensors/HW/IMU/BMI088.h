@@ -9,8 +9,8 @@ namespace astra
     class BMI088 : public IMU6DoF
     {
     public:
-        BMI088(const char *name = "BMI088", TwoWire &bus = Wire, uint8_t accelAddr = 0x18, uint8_t gyroAddr = 0x68);
-        BMI088(TwoWire &bus, uint8_t accelAddr = 0x18, uint8_t gyroAddr = 0x68);
+        BMI088(const char *name = "BMI088", TwoWire *bus = &Wire, uint8_t accelAddr = 0x18, uint8_t gyroAddr = 0x68);
+        BMI088(TwoWire *bus, uint8_t accelAddr = 0x18, uint8_t gyroAddr = 0x68);
 
         int init() override;
         int read() override;

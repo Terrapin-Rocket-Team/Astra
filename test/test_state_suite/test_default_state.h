@@ -158,7 +158,8 @@ void test_predict_updates_position_velocity() {
 
     Vector<3> gpsPos(34.0, -118.0, 100.0);
     Vector<3> gpsVel(0, 0, 0);
-    state->updateMeasurements(gpsPos, gpsVel, 100.0, true, true);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
+    state->updateBaroMeasurement(100.0);
 
     // Update orientation with some acceleration
     state->updateOrientation(Vector<3>(0, 0, 0), Vector<3>(0, 0, 12.0), 0.01);
@@ -227,7 +228,7 @@ void test_update_measurements_gps_only() {
     Vector<3> gpsPos(34.001, -118.001, 105.0);
     Vector<3> gpsVel(10.0, 5.0, -2.0);
 
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
 
     // State should be updated
     Vector<3> pos = state->getPosition();
@@ -246,7 +247,7 @@ void test_update_measurements_auto_sets_gps_origin() {
     Vector<3> gpsVel(0, 0, 0);
 
     // First measurement should auto-set origin
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
 
     // Position should be near 0,0 since it's at origin
     Vector<3> pos = state->getPosition();
@@ -263,13 +264,13 @@ void test_update_measurements_relative_to_origin() {
     // Measure at origin
     Vector<3> gpsPos1(34.0, -118.0, 100.0);
     Vector<3> gpsVel(0, 0, 0);
-    state->updateMeasurements(gpsPos1, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos1, gpsVel);
 
     Vector<3> pos1 = state->getPosition();
 
     // Measure north of origin
     Vector<3> gpsPos2(34.001, -118.0, 100.0); // ~111m north
-    state->updateMeasurements(gpsPos2, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos2, gpsVel);
 
     Vector<3> pos2 = state->getPosition();
 
@@ -286,7 +287,7 @@ void test_update_measurements_baro_only() {
     Vector<3> gpsPos(0, 0, 0);
     Vector<3> gpsVel(0, 0, 0);
 
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, false, true);
+    state->updateBaroMeasurement(150.0);
 
     // Should have updated vertical position
     Vector<3> pos = state->getPosition();
@@ -303,11 +304,11 @@ void test_update_measurements_baro_relative_to_origin() {
     Vector<3> gpsVel(0, 0, 0);
 
     // Measure at origin
-    state->updateMeasurements(gpsPos, gpsVel, 100.0, false, true);
+    state->updateBaroMeasurement(100.0);
     Vector<3> pos1 = state->getPosition();
 
     // Measure 50m higher
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, false, true);
+    state->updateBaroMeasurement(150.0);
     Vector<3> pos2 = state->getPosition();
 
     // Vertical position should have increased
@@ -324,7 +325,8 @@ void test_update_measurements_gps_and_baro() {
     Vector<3> gpsPos(34.001, -118.001, 105.0);
     Vector<3> gpsVel(10.0, 5.0, -2.0);
 
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, true, true);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
+    state->updateBaroMeasurement(150.0);
 
     // Should have updated 3D position
     Vector<3> pos = state->getPosition();
@@ -345,7 +347,8 @@ void test_update_measurements_fuses_horizontal_and_vertical() {
     Vector<3> gpsVel(10.0, 5.0, -2.0);
 
     // Combined update
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, true, true);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
+    state->updateBaroMeasurement(150.0);
 
     Vector<3> pos = state->getPosition();
 
@@ -407,7 +410,7 @@ void test_set_gps_origin_once() {
     // Test by measuring at first origin location
     Vector<3> gpsPos(34.0, -118.0, 100.0);
     Vector<3> gpsVel(0, 0, 0);
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
 
     Vector<3> pos = state->getPosition();
 
@@ -430,20 +433,12 @@ void test_set_baro_origin_once() {
     Vector<3> gpsVel(0, 0, 0);
 
     // Measure at first origin altitude
-    state->updateMeasurements(gpsPos, gpsVel, 100.0, false, true);
+    state->updateBaroMeasurement(100.0);
 
     Vector<3> pos = state->getPosition();
 
     // Vertical position should be near 0
     TEST_ASSERT_FLOAT_WITHIN(5.0, 0.0, pos.z());
-    local_tearDown();
-}
-
-void test_deprecated_update_returns_error() {
-    local_setUp();
-    state->begin();
-    int result = state->update(1.0);
-    TEST_ASSERT_EQUAL(-1, result);
     local_tearDown();
 }
 
@@ -467,7 +462,8 @@ void test_full_flight_simulation() {
     // Ground phase
     Vector<3> gpsPos(34.0, -118.0, 100.0);
     Vector<3> gpsVel(0, 0, 0);
-    state->updateMeasurements(gpsPos, gpsVel, 100.0, true, true);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
+    state->updateBaroMeasurement(100.0);
 
     Vector<3> pos_ground = state->getPosition();
 
@@ -480,7 +476,8 @@ void test_full_flight_simulation() {
     // Flight - GPS shows movement
     gpsPos = Vector<3>(34.001, -118.001, 105.0);
     gpsVel = Vector<3>(10.0, 5.0, 2.0);
-    state->updateMeasurements(gpsPos, gpsVel, 150.0, true, true);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
+    state->updateBaroMeasurement(150.0);
 
     Vector<3> pos_flight = state->getPosition();
 
@@ -524,13 +521,11 @@ void test_continuous_updates() {
             double lon = -118.0 + i * 0.0001;
             double alt = 100.0 + i * 0.5;
 
-            state->updateMeasurements(
+            state->updateGPSMeasurement(
                 Vector<3>(lat, lon, alt),
-                Vector<3>(10.0, 5.0, 0.5),
-                alt,
-                true,
-                true
+                Vector<3>(10.0, 5.0, 0.5)
             );
+            state->updateBaroMeasurement(alt);
         }
     }
 
@@ -564,7 +559,8 @@ void test_filter_parameter_tuning() {
 
     Vector<3> gpsPos(34.001, -118.001, 105.0);
     Vector<3> gpsVel(10.0, 5.0, -2.0);
-    tuned_state->updateMeasurements(gpsPos, gpsVel, 150.0, true, true);
+    tuned_state->updateGPSMeasurement(gpsPos, gpsVel);
+    tuned_state->updateBaroMeasurement(150.0);
 
     Vector<3> pos = tuned_state->getPosition();
     TEST_ASSERT_NOT_NULL(&pos);
@@ -584,12 +580,12 @@ void test_asynchronous_sensor_updates() {
     // GPS update only
     Vector<3> gpsPos(34.001, -118.001, 105.0);
     Vector<3> gpsVel(10.0, 5.0, -2.0);
-    state->updateMeasurements(gpsPos, gpsVel, 0.0, true, false);
+    state->updateGPSMeasurement(gpsPos, gpsVel);
 
     Vector<3> pos1 = state->getPosition();
 
     // Baro update only
-    state->updateMeasurements(Vector<3>(0, 0, 0), Vector<3>(0, 0, 0), 150.0, false, true);
+    state->updateBaroMeasurement(150.0);
 
     Vector<3> pos2 = state->getPosition();
 
@@ -626,7 +622,6 @@ void run_test_default_state_tests()
     RUN_TEST(test_get_orientation);
     RUN_TEST(test_set_gps_origin_once);
     RUN_TEST(test_set_baro_origin_once);
-    RUN_TEST(test_deprecated_update_returns_error);
     RUN_TEST(test_full_flight_simulation);
     RUN_TEST(test_continuous_updates);
     RUN_TEST(test_filter_parameter_tuning);

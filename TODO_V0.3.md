@@ -11,6 +11,12 @@ Version 0.3 focuses on making the system more usable in the field:
 
 ---
 
+## ✅ PREREQUISITES (v0.2)
+
+- See TODO_V0.2.md for documentation, examples, and testing blockers that must be complete before v0.3 can ship.
+
+---
+
 ## 🔥 CRITICAL FEATURES (Must Have for v0.3)
 
 ### 1. Config System - Persistence & Validation
@@ -138,6 +144,12 @@ Version 0.3 focuses on making the system more usable in the field:
 - [ ] Unify RetrieveSDCardData and FileReader
   - Choose one implementation
   - Delete or fully integrate the other
+- [ ] Decide fate of legacy SerialHandler stubs
+  - Remove or replace with SerialMessageRouter-based handlers
+- [ ] Resolve RetrieveSDCardData TODOs
+  - Define readFile API (streaming vs buffer return)
+  - Implement or remove `formatCard()` stub
+- [ ] Clarify or remove FileReader (purpose and ownership)
 - [ ] Register file handler with SerialMessageRouter
   - `router->withListener("FILE/", handleFileCommand);`
 - [ ] Progress reporting for large files
@@ -195,9 +207,37 @@ Version 0.3 focuses on making the system more usable in the field:
 
 ---
 
+### 5. BlinkBuzz PWM Support
+
+**Goal:** Add PWM dimming and volume control for LEDs and buzzers
+
+**Tasks:**
+- [ ] Add PWM-capable pin handling (platform-specific)
+- [ ] Extend BlinkBuzz patterns to accept duty cycle or intensity
+- [ ] Document supported platforms and limitations
+
+**Priority:** MEDIUM - Useful for status clarity, not blocking
+**Estimated Effort:** 1-2 days
+
+---
+
+### 6. Matrix/Vector Swap (Gemini)
+
+**Goal:** Evaluate and migrate to the Gemini Matrix/Vector implementations
+
+**Tasks:**
+- [ ] Compare API parity and performance
+- [ ] Plan migration steps and breakages
+- [ ] Implement swap if benefits outweigh the change cost
+
+**Priority:** MEDIUM - Nice-to-have, not blocking
+**Estimated Effort:** 2-4 days
+
+---
+
 ## 📊 LOW PRIORITY (Defer if Time-Constrained)
 
-### 5. STM32 eMMC Support
+### 7. STM32 eMMC Support
 
 **Goal:** Full eMMC support on STM32 platform
 
@@ -218,7 +258,7 @@ Version 0.3 focuses on making the system more usable in the field:
 
 ---
 
-### 6. Teensy CrashReport Integration
+### 8. Teensy CrashReport Integration
 
 **Goal:** Automatic crash capture and reporting
 
@@ -248,6 +288,10 @@ Version 0.3 focuses on making the system more usable in the field:
 - Would require mapping error codes from every vendor library
 - Raw error codes work fine and are orders of magnitude less work
 - Not worth the effort
+
+**Status Enums** (Rejected)
+- Current `int` return codes are sufficient
+- Refactor cost outweighs benefit for v0.3
 
 **AstraRocket Improvements** (Deferred - separate repo)
 - Will be developed in its own repository
@@ -285,20 +329,11 @@ Version 0.3 focuses on making the system more usable in the field:
 
 **Before finalizing v0.3 scope, need decisions on:**
 
-- [ ] **Status enums vs int codes?**
-  - Current: `int` return codes (0 = success, >0 = error)
-  - Alternative: `enum class SensorStatus`
-  - **Question:** Is the refactor worth it?
-
 - [ ] **dt vs currentTime in State/Sensors?**
   - Current: Methods take `currentTime` (absolute time)
   - Alternative: Methods take `dt` (time delta)
   - **Question:** Which is cleaner for event-driven architecture?
-
-- [ ] **PWM Buzzer/LED support in BlinkBuzz?**
-  - Current: Digital on/off only
-  - Alternative: PWM dimming/volume control
-  - **Question:** Is this needed?
+  - **Decision deferred:** Evaluate impact on APIs and sensor update paths.
 
 - [ ] **Chunked file transfer protocol?**
   - Current: Simple BOF/EOF streaming
@@ -325,10 +360,8 @@ Version 0.3 focuses on making the system more usable in the field:
 - STM32 eMMC
 - Teensy CrashReport
 
-**Moved to v0.2 (complete before v0.3):**
-- Documentation updates
-- Better examples
-- Unit testing expansion
+**Prerequisite from v0.2:**
+- See TODO_V0.2.md for documentation, examples, and testing blockers.
 
 **Total Estimated Effort:** 13-18 days (depending on scope)
 
@@ -348,10 +381,8 @@ Version 0.3 focuses on making the system more usable in the field:
 - Config validation (optional)
 - **Deliverable:** Field-tunable system
 
-**Phase 3 happens in v0.2 before v0.3 release:**
-- Documentation updates (README, API reference, tutorials)
-- Better examples (logger-only, minimal sensor, etc.)
-- Unit testing expansion
+**Phase 3 prerequisites (from v0.2):**
+- See TODO_V0.2.md for documentation, examples, and testing blockers.
 - **Deliverable:** Documented, stable v0.3 release
 
 ---
@@ -363,9 +394,7 @@ Version 0.3 focuses on making the system more usable in the field:
 - [ ] Core commands implemented (STATUS, PING, REBOOT)
 - [ ] File commands working (LIST, GET, DELETE)
 - [ ] No critical bugs
-- [ ] Documentation updated (README, API reference, tutorials) - v0.2 task
-- [ ] Examples updated/expanded - v0.2 task
-- [ ] Unit tests updated - v0.2 task
+- [ ] Documentation, examples, and tests complete (see TODO_V0.2.md)
 
 **Nice-to-Have (Not blocking):**
 - Config runtime modification

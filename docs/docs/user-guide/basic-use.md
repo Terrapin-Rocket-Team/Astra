@@ -149,6 +149,35 @@ gps.setUpdateRate(5);    // 5 Hz
 
 ---
 
+## Common Patterns
+
+- **IMU-only orientation**: `with6DoFIMU()` + `DefaultState` gives fast attitude estimation.
+- **Baro + GPS fusion**: add `withBaro()` and `withGPS()` for position/velocity corrections.
+- **Extra sensors for logging**: use `withMiscSensor()` to log custom sensors without feeding State.
+
+---
+
+## Command System (SerialMessageRouter)
+
+`Astra` creates a `SerialMessageRouter` internally and listens for:
+
+```
+CMD/HEADER
+```
+
+Sending `CMD/HEADER` on a serial interface prints the current telemetry header to that stream.
+
+Add your own commands via `getMessageRouter()`:
+
+```cpp
+SerialMessageRouter* router = sys.getMessageRouter();
+router->withListener("CMD/", myHandler);
+```
+
+For more details, see [SerialMessageRouter](utils/serial-router.md).
+
+---
+
 ## Next Steps
 
 - [Astra System](utils/mmfssys.md)
