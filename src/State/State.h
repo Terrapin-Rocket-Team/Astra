@@ -53,6 +53,15 @@ namespace astra
          * @param dt Time step in seconds
          */
         virtual void updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt);
+        /**
+         * Update orientation estimate from gyro, accel, and mag data (9-DOF)
+         * Should be called at high rate (100+ Hz)
+         * @param gyro Angular velocity in rad/s (body frame)
+         * @param accel Acceleration in m/s^2 (body frame)
+         * @param mag Magnetic field in uT (body frame)
+         * @param dt Time step in seconds
+         */
+        virtual void updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, const Vector<3> &mag, double dt);
 
         /**
          * Run Kalman filter prediction step

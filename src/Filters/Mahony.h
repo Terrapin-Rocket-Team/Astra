@@ -183,14 +183,14 @@ namespace astra
          * Get current orientation quaternion (Body → Inertial)
          * Returns identity quaternion before first update
          */
-        Quaternion getQuaternion() const { return _q; }
+        virtual Quaternion getQuaternion() const { return _q; }
 
         /**
          * Transform body-frame acceleration to inertial frame and remove gravity
          * @param accel Acceleration in body frame (specific force, m/s^2)
          * @return Linear acceleration in inertial frame (m/s^2)
          */
-        Vector<3> getEarthAcceleration(const Vector<3> &accel) const
+        virtual Vector<3> getEarthAcceleration(const Vector<3> &accel) const
         {
             // Rotate specific force to inertial frame
             Vector<3> inertialAcc = _q.rotateVector(accel);
@@ -206,7 +206,7 @@ namespace astra
         /**
          * Check if filter is ready (always true for math-only version)
          */
-        bool isReady() const { return true; }
+        virtual bool isReady() const { return true; }
 
         // ========================= State Control =========================
 
