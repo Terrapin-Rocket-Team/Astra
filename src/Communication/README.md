@@ -93,6 +93,12 @@ void loop() {
 }
 ```
 
+**What this does in practice:**
+- Reads lines from `Serial` and `Serial8`
+- Matches prefixes (`HITL/`, `RAD/`, `CMD/`)
+- Strips the prefix and passes only the payload to your handler
+- Lets you reply on the same interface that sent the message
+
 ### Advanced Example - Multi-Source Commands
 
 ```cpp
@@ -157,6 +163,11 @@ router
     .withDelimiter('\n')              // Set delimiter (default: '\n')
     .withDefaultHandler(callback);    // Set default handler
 ```
+
+Parameter meanings:
+- `maxInterfaces` = number of serial interfaces you plan to register
+- `maxPrefixes` = number of prefix listeners you plan to register
+- `bufferSize` = max line length per interface (bytes)
 
 ## Message Format
 
@@ -232,6 +243,10 @@ router
         }
     });
 ```
+
+If you are using the full Astra system, you can register listeners on
+`Astra::getMessageRouter()` and **skip calling** `router.update()` manually.
+Astra updates the router internally each cycle.
 
 ### Radio Telemetry
 

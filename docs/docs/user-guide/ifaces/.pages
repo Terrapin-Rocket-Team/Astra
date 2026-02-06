@@ -1,0 +1,7 @@
+nav:
+  - Sensor Interface: sensor.md
+  - Sensor Manager: sensor-manager.md
+  - State: state.md
+  - Filters: filters.md
+  - DataReporter: data-reporter.md
+  - Sensors: sensors

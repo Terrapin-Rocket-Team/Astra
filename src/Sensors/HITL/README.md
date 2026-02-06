@@ -147,6 +147,9 @@ void loop() {
 }
 ```
 
+If you are using the full `Astra` system, you can register the listener on
+`Astra::getMessageRouter()` and skip calling `router.update()` manually.
+
 **Benefits:**
 - Clean separation of concerns
 - Easy to add other message types (CMD/, RAD/, etc.)

@@ -1,0 +1,7 @@
+nav:
+  - Astra System: mmfssys.md
+  - Logging: logger.md
+  - Serial Router: serial-router.md
+  - BlinkBuzz: blinkbuzz.md
+  - CircBuffer: circbuffer.md
+  - Math: math.md

@@ -100,8 +100,8 @@ uint8_t size = v.n();            // 3
 **Position displacement:**
 
 ```cpp
-Vector<3> startPos = gps.getPosition();
-Vector<3> currentPos = state.getPosition();
+Vector<3> startPos = state.getPosition();   // capture at t0
+Vector<3> currentPos = state.getPosition(); // later in time
 
 Vector<3> displacement = currentPos - startPos;
 double distance = displacement.magnitude();
@@ -113,7 +113,7 @@ LOGI("Traveled %.2f meters", distance);
 
 ```cpp
 Vector<3> velocity(0, 0, 0);
-Vector<3> acceleration = imu.getAccelerationGlobal();
+Vector<3> acceleration = state.getAcceleration(); // ENU linear accel
 double dt = 0.01;  // 10ms
 
 velocity += acceleration * dt;
@@ -398,7 +398,7 @@ LOGI("Orientation: yaw=%.1f, pitch=%.1f, roll=%.1f",
 Apply rotation to a vector:
 
 ```cpp
-Quaternion orientation = imu.getOrientation();
+Quaternion orientation = state.getOrientation();
 Vector<3> localAccel(0.0, 0.0, 9.81);  // Gravity in body frame
 
 // Rotate to global frame
@@ -410,7 +410,7 @@ Vector<3> globalAccel = orientation.rotateVector(localAccel);
 Smoothly interpolate between orientations:
 
 ```cpp
-Quaternion current = imu.getOrientation();
+Quaternion current = state.getOrientation();
 Quaternion identity(1.0, 0.0, 0.0, 0.0);
 
 double alpha = 0.9;  // Weighting (0 = identity, 1 = current)
@@ -429,7 +429,7 @@ Quaternion smoothed = current.interpolation(identity, alpha);
 **IMU Orientation:**
 
 ```cpp
-Quaternion orientation = imu.getOrientation();
+Quaternion orientation = state.getOrientation();
 Vector<3> euler = orientation.toEuler321();
 euler.toDegrees();
 
@@ -441,10 +441,10 @@ LOGI("Yaw: %.1f, Pitch: %.1f, Roll: %.1f",
 
 ```cpp
 // Acceleration in body frame
-Vector<3> accelBody = imu.getAccelerationLocal();
+Vector<3> accelBody = imu.getAccel();  // body-frame accel (m/s^2)
 
 // Orientation of body relative to global
-Quaternion orientation = imu.getOrientation();
+Quaternion orientation = state.getOrientation();
 
 // Transform to global frame
 Vector<3> accelGlobal = orientation.rotateVector(accelBody);
@@ -465,7 +465,7 @@ Quaternion combined = rotZ * rotX;
 **Orientation Rate (Angular Velocity):**
 
 ```cpp
-Quaternion orientation = imu.getOrientation();
+Quaternion orientation = state.getOrientation();
 double dt = 0.01;  // 10ms
 
 Vector<3> angularVel = orientation.toAngularVelocity(dt);
@@ -481,20 +481,20 @@ These math classes are used throughout Astra's sensor and state systems:
 
 **Sensors:**
 ```cpp
-Vector<3> accel = imu.getAccelerationGlobal();
-Vector<3> position = gps.getPosition();
-Quaternion orientation = imu.getOrientation();
+Vector<3> accelBody = imu.getAccel();
+Vector<3> positionLLA = gps.getPos();
 ```
 
 **State:**
 ```cpp
 Vector<3> velocity = state.getVelocity();
 Vector<3> acceleration = state.getAcceleration();
+Quaternion orientation = state.getOrientation();
 ```
 
 **Filters:**
 ```cpp
-class MyKalmanFilter : public Filter {
+class MyKalmanFilter : public LinearKalmanFilter {
     Matrix F;  // State transition
     Matrix H;  // Measurement model
     Matrix Q;  // Process noise

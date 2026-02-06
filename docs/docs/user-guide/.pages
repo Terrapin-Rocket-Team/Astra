@@ -1,7 +1,9 @@
 nav:
   - Intro: intro.md
-  - Installation: installation.md 
+  - Installation: installation.md
   - Basic Usage: basic-use.md
+  - HITL: hitl.md
+  - SITL: sitl.md
   - Troubleshooting: troubleshooting.md
   - FAQ: faq.md
   - Utilities: utils
