@@ -5,9 +5,10 @@ import shutil
 import time
 import sys
 import signal
+import threading
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 
 # --- CONFIGURATION ---
 MAX_WORKERS = max(1, multiprocessing.cpu_count() - 2)
@@ -38,6 +39,9 @@ class TestResult:
     code: int
     log: str
     duration: float
+    test_count: Optional[int] = None
+    passed_count: Optional[int] = None
+    failed_count: Optional[int] = None
 
 # --- UPDATED PROGRESS BAR ---
 def draw_progress(done, total, start_time, bar_len=30):
@@ -90,6 +94,61 @@ def analyze_output(log_text: str, return_code: int) -> Tuple[str, str]:
     if not cleaned_lines: cleaned_lines = [f"{M}  [SYSTEM CRASH] {NC}No error output captured."]
     return STATUS_SYSTEM_ERR, "\n".join(cleaned_lines)
 
+def parse_test_counts(log_text: str) -> Tuple[Optional[int], Optional[int], Optional[int]]:
+    total = None
+    passed = None
+    failed = None
+    collected = None
+
+    for line in log_text.split('\n'):
+        line_strip = line.strip()
+        if line_strip.startswith("Collected ") and " tests" in line_strip:
+            parts = line_strip.split()
+            if len(parts) >= 2:
+                try:
+                    collected = int(parts[1])
+                except ValueError:
+                    pass
+        if " test cases:" in line_strip and ("failed" in line_strip or "succeeded" in line_strip):
+            # Example: "102 test cases: 1 failed, 101 succeeded in 00:00:12.171"
+            left, right = line_strip.split(" test cases:", 1)
+            # left might contain padding like "==== 151"
+            num = ""
+            for ch in left:
+                if ch.isdigit():
+                    num += ch
+                elif num:
+                    break
+            if num:
+                try:
+                    total = int(num)
+                except ValueError:
+                    pass
+            failed = 0
+            passed = 0
+            parts = right.split(',')
+            for part in parts:
+                part = part.strip()
+                if part.endswith("failed") or " failed" in part:
+                    try:
+                        failed = int(part.split()[0])
+                    except ValueError:
+                        pass
+                if part.endswith("succeeded") or " succeeded" in part:
+                    try:
+                        passed = int(part.split()[0])
+                    except ValueError:
+                        pass
+            if total is not None:
+                if passed is None:
+                    passed = 0
+                if failed is None:
+                    failed = 0
+            break
+    if total is None:
+        total = collected
+    return total, passed, failed
+
 def run_test_folder(folder_name):
     unique_build_path = os.path.join(PARALLEL_BUILD_BASE, folder_name)
     env = os.environ.copy()
@@ -107,7 +166,8 @@ def run_test_folder(folder_name):
 
         duration = time.time() - start_time
         status, clean_log = analyze_output(result.stdout, result.returncode)
-        return TestResult(folder_name, status, result.returncode, clean_log, duration)
+        test_count, passed_count, failed_count = parse_test_counts(result.stdout)
+        return TestResult(folder_name, status, result.returncode, clean_log, duration, test_count, passed_count, failed_count)
     except Exception as e:
         return TestResult(folder_name, STATUS_SYSTEM_ERR, -1, str(e), 0)
 
@@ -128,7 +188,7 @@ def main():
     folders = [f for f in os.listdir(TEST_DIR) if os.path.isdir(os.path.join(TEST_DIR, f))]
     total_tests = len(folders)
     
-    print(f"{BS}🚀 Queueing {total_tests} tests ({MAX_WORKERS} workers){NC}")
+    print(f"{BS}🚀 Queueing {total_tests} suites ({MAX_WORKERS} workers){NC}")
     print("---------------------------------------------------")
 
     results = {}
@@ -161,6 +221,15 @@ def main():
     # --- STEP 2: PARALLEL EXECUTION ---
     queue = folders[:] 
     draw_progress(completed_count, total_tests, global_start_time)
+
+    # Periodic progress refresher so timer updates even when no suite completes
+    stop_refresh = threading.Event()
+    def progress_refresher():
+        while not stop_refresh.is_set():
+            draw_progress(completed_count, total_tests, global_start_time)
+            time.sleep(0.5)
+    refresh_thread = threading.Thread(target=progress_refresher, daemon=True)
+    refresh_thread.start()
 
     # We use a try/except block around the Pool to handle Ctrl+C
     try:
@@ -198,15 +267,19 @@ def main():
                     clear_line()
                     
                     if res.status == STATUS_PASS:
-                        print(f"{G}✅ PASS: {res.name} ({res.duration:.1f}s){NC}")
+                        count_str = f" [{res.test_count} cases]" if res.test_count is not None else ""
+                        print(f"{G}✅ PASS: {res.name}{count_str} ({res.duration:.1f}s){NC}")
                     elif res.status == STATUS_TEST_FAIL:
-                        print(f"{R}❌ FAIL: {res.name}{NC}")
+                        count_str = f" [{res.test_count} cases]" if res.test_count is not None else ""
+                        print(f"{R}❌ FAIL: {res.name}{count_str}{NC}")
                         print(res.log)
                     elif res.status == STATUS_COMPILE_ERR:
-                        print(f"{Y}💥 ERR : {res.name} (Build Failed){NC}")
+                        count_str = f" [{res.test_count} cases]" if res.test_count is not None else ""
+                        print(f"{Y}💥 ERR : {res.name}{count_str} (Build Failed){NC}")
                         print(res.log)
                     elif res.status == STATUS_SYSTEM_ERR:
-                        print(f"{M}☠️  CRASH: {res.name} (System Error){NC}")
+                        count_str = f" [{res.test_count} cases]" if res.test_count is not None else ""
+                        print(f"{M}☠️  CRASH: {res.name}{count_str} (System Error){NC}")
                         print(res.log)
 
                     results[folder] = {'res': res}
@@ -220,6 +293,9 @@ def main():
         sys.exit(1)
 
     # --- SUMMARY ---
+    stop_refresh.set()
+    refresh_thread.join(timeout=1.0)
+
     global_duration = time.time() - global_start_time
     print("\n" + "="*50)
     print(f"{BS}RUN COMPLETE in {global_duration:.2f}s{NC}")
@@ -229,6 +305,10 @@ def main():
     failed = [r['res'] for r in results.values() if r['res'].status == STATUS_TEST_FAIL]
     broken = [r['res'] for r in results.values() if r['res'].status == STATUS_COMPILE_ERR]
     crashed = [r['res'] for r in results.values() if r['res'].status == STATUS_SYSTEM_ERR]
+
+    total_test_cases = sum(r['res'].test_count or 0 for r in results.values())
+    total_passed_cases = sum(r['res'].passed_count or 0 for r in results.values())
+    total_failed_cases = sum(r['res'].failed_count or 0 for r in results.values())
 
     if passed:
         print(f"{G}Passing ({len(passed)}):{NC}")
@@ -242,7 +322,12 @@ def main():
     if crashed:
         print(f"\n{M}System Crashes ({len(crashed)}) - [OS/Locking Issues]:{NC}")
         for r in crashed: print(f"  ☠️  {r.name}")
-    
+
+    print("\n" + "-"*50)
+    print(f"{BS}Test Case Totals{NC}")
+    print(f"  Total: {total_test_cases}")
+    print(f"  Passed: {total_passed_cases}")
+    print(f"  Failed: {total_failed_cases}")
     print("="*50)
     if len(failed) + len(broken) + len(crashed) > 0: exit(1)
     else: exit(0)
