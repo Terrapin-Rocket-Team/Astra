@@ -41,8 +41,8 @@
             "owner": "adafruit"
         },
         {
-            "name": "SparkFun u-blox GNSS v3",
-            "owner": "sparkfun"
+            "name": "RTClib",
+            "owner": "adafruit"
         },
         {
             "name": "Adafruit DPS310",
@@ -61,6 +61,18 @@
             "owner": "adafruit"
         },
         {
+            "name": "Adafruit ADXL375",
+            "owner": "adafruit"
+        },
+        {
+            "name": "SparkFun u-blox GNSS v3",
+            "owner": "sparkfun"
+        },
+        {
+            "name": "SdFat",
+            "version": "https://github.com/greiman/SdFat.git#2.3.1"
+        },
+        {
             "name": "MS5611",
             "version": "https://github.com/RobTillaart/MS5611.git#0.4.1"
         },
@@ -69,16 +81,9 @@
             "version": "https://github.com/redstonee/bmi088-arduino-esp32.git"
         },
         {
-            "name": "Adafruit ADXL375",
-            "owner": "adafruit"
-        },
-        {
-            "name": "SdFat",
-            "version": "https://github.com/greiman/SdFat.git#2.3.1"
-        },
-        {
-            "name": "Eigen",
-            "version": "hideakitai/ArduinoEigen@^0.3.2"
+            "name": "ArduinoEigen",
+            "owner": "hideakitai",
+            "version": "^0.3.2"
         },
         {
             "owner": "stm32duino",
@@ -98,14 +103,13 @@
     "frameworks": "*",
     "platforms": "*",
     "build": {
-        "libLDFMode": "chain+",
         "libCompatMode": "strict",
         "srcFilter": [
-            "+<*>"
+            "+<*>",
+            "+<../examples/Avionics/**>"
         ],
         "flags": "-Wno-unknown-pragmas -std=gnu++17",
-        "extraScript": "get_version.py",
-        "unflags": "-std=gnu++11"
+        "extraScript": "pre:get_version.py"
     },
     "export": {
         "exclude": [
