@@ -65,11 +65,11 @@ namespace astra
         virtual int read() = 0;
 
         // Health tracking state
-        bool initialized = false;  // Did begin() succeed? (internal, never changes)
+        // NOTE: initialized is inherited from DataReporter - do not redefine it here!
         bool healthy = false;      // Can we trust the data? (dynamic, updated by read())
 
         double updateInterval = 0.1; // default to 10 hz
-        double lastUpdateTime = 0;
+        double lastUpdateTime = -0.1;
     };
 }; // namespace astra
 

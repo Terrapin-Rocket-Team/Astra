@@ -85,6 +85,11 @@ namespace astra
 
     void LinearKalmanFilter::updateGPS(double px, double py, double gpsNoise)
     {
+        // Use member variable if not specified
+        if (gpsNoise < 0) {
+            gpsNoise = getGPSNoise();
+        }
+
         // GPS measures horizontal position [px, py]
         // H = [1 0 0 0 0 0]
         //     [0 1 0 0 0 0]
@@ -109,6 +114,11 @@ namespace astra
 
     void LinearKalmanFilter::updateBaro(double pz, double baroNoise)
     {
+        // Use member variable if not specified
+        if (baroNoise < 0) {
+            baroNoise = getBaroNoise();
+        }
+
         // Barometer measures vertical position [pz]
         // H = [0 0 1 0 0 0]
         double h_data[6] = {
@@ -128,6 +138,14 @@ namespace astra
 
     void LinearKalmanFilter::updateGPSBaro(double px, double py, double pz, double gpsNoise, double baroNoise)
     {
+        // Use member variables if not specified
+        if (gpsNoise < 0) {
+            gpsNoise = getGPSNoise();
+        }
+        if (baroNoise < 0) {
+            baroNoise = getBaroNoise();
+        }
+
         // Combined GPS + Baro measurement [px, py, pz]
         // H = [1 0 0 0 0 0]
         //     [0 1 0 0 0 0]

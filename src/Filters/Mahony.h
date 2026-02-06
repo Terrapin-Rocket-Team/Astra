@@ -87,10 +87,11 @@ namespace astra
             Vector<3> m = calMag;
             m.normalize();
 
-            // Estimated gravity and north direction in body frame
+            // Estimated specific force (opposite of gravity) direction in body frame
             // q conjugate rotates Inertial → Body
+            // In ENU: gravity is -Z (down), so specific force (what accel measures) is +Z (up)
             Quaternion qConj = _q.conjugate();
-            Vector<3> vAcc = qConj.rotateVector(Vector<3>(0.0, 0.0, -1.0)); // Gravity is -Z (down)
+            Vector<3> vAcc = qConj.rotateVector(Vector<3>(0.0, 0.0, 1.0)); // Specific force is +Z (up)
             Vector<3> vMag = qConj.rotateVector(Vector<3>(0.0, 1.0, 0.0));  // North is +Y
 
             // Accel error (tilt correction)
@@ -136,10 +137,11 @@ namespace astra
             Vector<3> a = accel;
             a.normalize();
 
-            // Estimated gravity direction in body frame
+            // Estimated specific force (opposite of gravity) direction in body frame
             // q conjugate rotates Inertial → Body
+            // In ENU: gravity is -Z (down), so specific force (what accel measures) is +Z (up)
             Quaternion qConj = _q.conjugate();
-            Vector<3> vAcc = qConj.rotateVector(Vector<3>(0.0, 0.0, -1.0)); // Gravity is -Z (down)
+            Vector<3> vAcc = qConj.rotateVector(Vector<3>(0.0, 0.0, 1.0)); // Specific force is +Z (up)
 
             // Compute error (cross product)
             Vector<3> e = a.cross(vAcc);
@@ -185,16 +187,18 @@ namespace astra
 
         /**
          * Transform body-frame acceleration to inertial frame and remove gravity
-         * @param accel Acceleration in body frame (m/s^2)
+         * @param accel Acceleration in body frame (specific force, m/s^2)
          * @return Linear acceleration in inertial frame (m/s^2)
          */
         Vector<3> getEarthAcceleration(const Vector<3> &accel) const
         {
-            // Rotate to inertial frame
+            // Rotate specific force to inertial frame
             Vector<3> inertialAcc = _q.rotateVector(accel);
 
-            // Remove gravity (pointing down = -Z in inertial frame)
-            inertialAcc.z() += 9.81;
+            // Subtract gravity to get linear acceleration
+            // In ENU: gravity = (0, 0, -9.81), so we subtract it
+            // Linear accel = Specific force - Gravity = SpecificForce - (0,0,-9.81)
+            inertialAcc.z() -= 9.81;
 
             return inertialAcc;
         }

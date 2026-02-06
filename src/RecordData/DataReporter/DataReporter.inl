@@ -12,6 +12,11 @@ namespace astra
         {
             first = last = packedInfo;
         }
+        else if (place == 0)
+        { // insert at beginning
+            packedInfo->next = first;
+            first = packedInfo;
+        }
         else if (place < 0 || place >= numColumns)
         { // append
             last->next = packedInfo;

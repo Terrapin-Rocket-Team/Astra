@@ -33,6 +33,7 @@ namespace astra
         static bool unregisterReporter(DataReporter *reporter);
         static DataLogger &instance();
         static bool available();
+        static void reset(); // Reset for testing - clears all reporters and sinks
     };
 }
 
