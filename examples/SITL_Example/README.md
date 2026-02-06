@@ -40,16 +40,13 @@ pio run -e native
 The flight software will:
 1. Connect to the simulator
 2. Receive HITL/ messages with sensor data
-3. Process the data through HITL sensors
-4. Send TELEM/ messages back
+3. Process the data through HITL sensors + Astra
+4. Send TELEM/ CSV messages back (DataLogger)
 
 You'll see output like:
 ```
-SITL: Connected to localhost:5555
-SITL mode initialized
-TELEM/baro,pressure=1013.25,alt=0.00,temp=25.00
-TELEM/accel,x=0.000,y=0.000,z=-9.810
-TELEM/gps,lat=38.123000,lon=-122.456000,alt=0.00
+TELEM/State - Time (s),State - PX (m),...,HITL_Accelerometer - Acc X (m/s^2),...
+TELEM/0.000,0.000,...,0.000,...
 ...
 ```
 
