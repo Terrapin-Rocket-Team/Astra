@@ -6,6 +6,7 @@ import time
 import sys
 import signal
 import threading
+import argparse
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Tuple, Optional, List, Dict
@@ -31,6 +32,9 @@ STATUS_TEST_FAIL = "TEST_FAIL"
 STATUS_COMPILE_ERR = "COMPILE_ERR" 
 STATUS_SYSTEM_ERR = "SYSTEM_ERR"   
 STATUS_CANCELLED = "CANCELLED"
+
+# Progress output control (overridden by CLI)
+PROGRESS_ENABLED = True
 
 @dataclass
 class TestResult:
@@ -61,7 +65,8 @@ class PlatformInstallResult:
 
 # --- UPDATED PROGRESS BAR ---
 def draw_progress(done, total, start_time, bar_len=30):
-    if total == 0: return
+    if not PROGRESS_ENABLED or total == 0:
+        return
     
     elapsed = time.time() - start_time
     m, s = divmod(int(elapsed), 60)
@@ -76,6 +81,8 @@ def draw_progress(done, total, start_time, bar_len=30):
     sys.stdout.flush()
 
 def clear_line():
+    if not PROGRESS_ENABLED:
+        return
     sys.stdout.write("\r" + " " * 90 + "\r")
     sys.stdout.flush()
 
@@ -278,6 +285,12 @@ def run_test_folder(folder_name, test_env: str):
         return TestResult(folder_name, STATUS_SYSTEM_ERR, -1, str(e), 0)
 
 def main():
+    global PROGRESS_ENABLED
+    parser = argparse.ArgumentParser(description="Run PlatformIO builds/tests with parallel execution.")
+    parser.add_argument("--no-progress", action="store_true", help="Disable progress bar updates (CI friendly).")
+    args = parser.parse_args()
+    PROGRESS_ENABLED = not args.no_progress
+
     envs = list_platformio_envs()
     build_envs = select_build_envs(envs)
     env_platforms = parse_env_platforms()
@@ -411,12 +424,14 @@ def main():
 
         # Periodic progress refresher so timer updates even when no suite completes
         stop_refresh = threading.Event()
-        def progress_refresher():
-            while not stop_refresh.is_set():
-                draw_progress(completed_count, total_tests, global_start_time)
-                time.sleep(0.5)
-        refresh_thread = threading.Thread(target=progress_refresher, daemon=True)
-        refresh_thread.start()
+        refresh_thread = None
+        if PROGRESS_ENABLED:
+            def progress_refresher():
+                while not stop_refresh.is_set():
+                    draw_progress(completed_count, total_tests, global_start_time)
+                    time.sleep(0.5)
+            refresh_thread = threading.Thread(target=progress_refresher, daemon=True)
+            refresh_thread.start()
 
         # We use a try/except block around the Pool to handle Ctrl+C
         try:
@@ -481,7 +496,8 @@ def main():
 
         # --- TEST SUMMARY ---
         stop_refresh.set()
-        refresh_thread.join(timeout=1.0)
+        if refresh_thread is not None:
+            refresh_thread.join(timeout=1.0)
         test_duration = time.time() - global_start_time
 
     # --- SUMMARY ---
