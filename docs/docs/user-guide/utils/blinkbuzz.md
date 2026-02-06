@@ -45,11 +45,11 @@ void loop() {
 
 **Configuration options:**
 
-| Method | Description | Default |
-|--------|-------------|---------|
-| `withBuzzerPin(int)` | Set buzzer pin | None (required) |
-| `withBBPin(int)` | Add LED/buzzer pin | None (add as many as needed) |
-| `withBBAsync(bool, int)` | Enable async mode with queue size | `(false, 0)` |
+| Method | Description | Notes |
+|--------|-------------|-------|
+| `withBuzzerPin(int)` | Set buzzer pin | Also registers the pin |
+| `withBBPin(int)` | Add LED/buzzer pin | Call multiple times for multiple pins |
+| `withBBAsync(bool, int)` | Enable async mode with queue size | Set explicitly for clarity |
 
 ### Without AstraConfig
 
@@ -59,7 +59,7 @@ If you prefer standalone usage, initialize manually:
 #include <BlinkBuzz.h>
 
 int allowedPins[] = {LED_BUILTIN, 33};
-BlinkBuzz bb;  // Global variable for easy access
+// Note: `bb` is already defined by the library; you do not need to define it.
 
 double lastTime = 0;
 

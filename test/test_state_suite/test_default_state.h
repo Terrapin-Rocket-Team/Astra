@@ -273,8 +273,8 @@ void test_update_measurements_relative_to_origin() {
 
     Vector<3> pos2 = state->getPosition();
 
-    // Position should have moved north (positive X in NED)
-    TEST_ASSERT_GREATER_THAN(pos1.x(), pos2.x());
+    // Position should have moved north (positive Y in ENU)
+    TEST_ASSERT_GREATER_THAN(pos1.y(), pos2.y());
     local_tearDown();
 }
 

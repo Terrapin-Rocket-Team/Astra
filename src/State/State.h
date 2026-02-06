@@ -20,8 +20,8 @@ namespace astra
      * 3. GPS/coordinate tracking
      *
      * Frame convention:
-     *   - Body frame: X forward, Y right, Z down (NED-like, attached to vehicle)
-     *   - Inertial frame: NED (North, East, Down) relative to launch point
+     *   - Body frame: X forward, Y right, Z down (airframe convention)
+     *   - Inertial frame: ENU (East, North, Up) relative to launch point
      *
      * Architecture:
      *   - State is pure math - Astra orchestrates data flow

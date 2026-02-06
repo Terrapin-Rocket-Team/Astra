@@ -24,7 +24,7 @@ namespace astra
 
     public:
         // Add state to Astra's knowledge.
-        // No default.
+        // If omitted, Astra will create a DefaultState.
         AstraConfig &withState(State *state);
 
         // ===== Individual Sensor Configuration =====
@@ -134,6 +134,10 @@ namespace astra
         // No default
         AstraConfig &withDataLogs(ILogSink **logs, uint8_t numLogs);
 
+        // Setup which event logs will be written to on update
+        // No default. If not set, EventLogger must be configured manually.
+        AstraConfig &withEventLogs(ILogSink **logs, uint8_t numLogs);
+
         // Enable HITL (Hardware-In-The-Loop) mode
         // When enabled, Astra configures all update intervals to 0 for maximum simulation speed
         // The user must pass simulation time to update(simTimeMs)
@@ -166,6 +170,8 @@ namespace astra
         int pins[50];
         ILogSink *logs[50];
         uint8_t numLogs = 0;
+        ILogSink *eventLogs[50];
+        uint8_t numEventLogs = 0;
         bool bbAsync;
         unsigned int maxQueueSize = 50;
         double loggingInterval = 0.100; // in seconds (100ms = 10Hz)

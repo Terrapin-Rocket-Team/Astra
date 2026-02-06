@@ -1,0 +1,9 @@
+nav:
+  - IMU: imu.md
+  - Accelerometer: accel.md
+  - Gyroscope: gyro.md
+  - Magnetometer: mag.md
+  - Barometer: baro.md
+  - GPS: gps.md
+  - Voltage Sensor: voltage.md
+  - HITL Sensors: hitl.md

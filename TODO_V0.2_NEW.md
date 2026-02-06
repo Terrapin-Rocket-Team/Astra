@@ -399,4 +399,8 @@ Start with #1-3 (architecture cleanup). Once the coupling is fixed, the rest wil
 ## 📥 NEEDS TRIAGE
 
 - [ ] State/Sensors should use dt instead of currentTime?
-- [ ] PWM Buzzer/LED support in BlinkBuzz
+- [ ] PWM Buzzer/LED support in BlinkBuzz (v0.3)
+- [ ] Actually use the CircBuffer in places where that kind of behavior is needed (state *cough cough*)
+- [ ] Change Matrix and Vector over to the Gemini created ones? (v 0.3)
+- [ ] remove updateMeasurements in favor of updating only the sensor that got data
+- [ ] normalize sensor hardware constructor convention

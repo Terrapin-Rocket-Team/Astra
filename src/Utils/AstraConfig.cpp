@@ -20,7 +20,10 @@ namespace astra
         for (int i = 0; i < 50; i++)
         {
             pins[i] = -1;
+            logs[i] = nullptr;
+            eventLogs[i] = nullptr;
         }
+        bbAsync = true;
     }
     AstraConfig &AstraConfig::withState(State *state)
     {
@@ -32,9 +35,9 @@ namespace astra
     {
         if (this->loggingRate == loggingRate)
             return *this;
-        LOGI("Logging rate modified from %d to %d hz.", loggingRate, loggingRate);
+        LOGI("Logging rate modified from %d to %d hz.", this->loggingRate, loggingRate);
         this->loggingRate = loggingRate;
-        this->loggingInterval = 1000.0 / loggingRate;
+        this->loggingInterval = 1.0 / loggingRate;
         return *this;
     }
     AstraConfig &AstraConfig::withLoggingInterval(unsigned int loggingIntervalMs)
@@ -88,10 +91,8 @@ namespace astra
     }
     AstraConfig &AstraConfig::withBBAsync(bool bbAsync, unsigned int queueSize)
     {
-        if (this->bbAsync == bbAsync)
-            return *this;
-        LOGI("BlinkBuzz async modified from %s to %s.", this->bbAsync ? "true" : "false", bbAsync ? "true" : "false");
         this->bbAsync = bbAsync;
+        this->maxQueueSize = queueSize;
         return *this;
     }
 
@@ -105,6 +106,19 @@ namespace astra
         for (uint8_t i = 0; i < numLogs; i++)
             this->logs[i] = logs[i];
         this->numLogs = numLogs;
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withEventLogs(ILogSink **logs, uint8_t numLogs)
+    {
+        if (numLogs > 50)
+        {
+            LOGW("Attempted to add %d event log sinks, but the maximum number of log sinks is 50. That's too many logs. Why.", numLogs);
+            numLogs = 50;
+        }
+        for (uint8_t i = 0; i < numLogs; i++)
+            this->eventLogs[i] = logs[i];
+        this->numEventLogs = numLogs;
         return *this;
     }
 
