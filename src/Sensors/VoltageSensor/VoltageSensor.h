@@ -3,18 +3,28 @@
 
 #include "../Sensor.h"
 
-#if defined(ENV_TEENSY)
-#define PLATFORM_DEFAULT_REF_VOLTAGE 3.3
-#define PLATFORM_ADC_BITS 10
-#elif defined(ENV_STM)
-#define PLATFORM_DEFAULT_REF_VOLTAGE 3.3
-#define PLATFORM_ADC_BITS 16
-#elif defined(ENV_ESP)
-#define PLATFORM_DEFAULT_REF_VOLTAGE 3.1
-#define PLATFORM_ADC_BITS 12
-#else
-#define PLATFORM_DEFAULT_REF_VOLTAGE 0
-#define PLATFORM_ADC_BITS 0
+#if !defined(PLATFORM_DEFAULT_REF_VOLTAGE)
+    #if defined(ENV_TEENSY)
+        #define PLATFORM_DEFAULT_REF_VOLTAGE 3.3
+    #elif defined(ENV_STM)
+        #define PLATFORM_DEFAULT_REF_VOLTAGE 3.3
+    #elif defined(ENV_ESP)
+        #define PLATFORM_DEFAULT_REF_VOLTAGE 3.1
+    #else
+        #define PLATFORM_DEFAULT_REF_VOLTAGE 0
+    #endif
+#endif
+
+#if !defined(PLATFORM_ADC_BITS)
+    #if defined(ENV_TEENSY)
+        #define PLATFORM_ADC_BITS 10
+    #elif defined(ENV_STM)
+        #define PLATFORM_ADC_BITS 16
+    #elif defined(ENV_ESP)
+        #define PLATFORM_ADC_BITS 12
+    #else
+        #define PLATFORM_ADC_BITS 0
+    #endif
 #endif
 
 namespace astra

@@ -95,8 +95,8 @@ void loop()
     delay(1);
 }
 
-// For native builds, provide main()
-#ifdef NATIVE
+// For native SITL runs, provide main(); unit tests provide their own main().
+#if defined(NATIVE) && !defined(PIO_UNIT_TESTING)
 int main()
 {
     setup();
