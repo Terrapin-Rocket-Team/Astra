@@ -241,6 +241,38 @@ namespace astra
         acceleration.z() = earthAccel.z();
     }
 
+    void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, const Vector<3> &mag, double dt)
+    {
+        if (!orientationFilter)
+            return;
+
+        // High-G switching logic:
+        // Check if accelerometer is measuring close to 1g (stationary or coasting)
+        // If so, trust it for orientation correction. Otherwise, use gyro-only.
+        double accelMag = accel.magnitude();
+        double accelError = abs(accelMag - 9.81);
+
+        if (accelError < 1.0)
+        {
+            // Low acceleration - trust accelerometer (and magnetometer) for correction
+            orientationFilter->update(accel, gyro, mag, dt);
+        }
+        else
+        {
+            // High-G or freefall - gyro-only mode
+            orientationFilter->update(gyro, dt);
+        }
+
+        // Update orientation quaternion from filter
+        orientation = orientationFilter->getQuaternion();
+
+        // Transform body-frame acceleration to earth-frame
+        Vector<3> earthAccel = orientationFilter->getEarthAcceleration(accel);
+        acceleration.x() = earthAccel.x();
+        acceleration.y() = earthAccel.y();
+        acceleration.z() = earthAccel.z();
+    }
+
 #pragma endregion Update Functions
 
 } // namespace astra

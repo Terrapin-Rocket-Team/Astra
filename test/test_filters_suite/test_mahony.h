@@ -7,21 +7,27 @@
 #include "NativeTestHelper.h"
 
 using astra::MahonyAHRS;
+using astra::MountingOrientation;
+using astra::MountingTransform;
 using astra::Quaternion;
 using astra::Vector;
 
 namespace test_mahony {
 
+double quaternionDistance(const Quaternion& a, const Quaternion& b) {
+    double dist1 = sqrt(pow(a.w() - b.w(), 2) +
+                        pow(a.x() - b.x(), 2) +
+                        pow(a.y() - b.y(), 2) +
+                        pow(a.z() - b.z(), 2));
+    double dist2 = sqrt(pow(a.w() + b.w(), 2) +
+                        pow(a.x() + b.x(), 2) +
+                        pow(a.y() + b.y(), 2) +
+                        pow(a.z() + b.z(), 2));
+    return (dist1 < dist2) ? dist1 : dist2;
+}
+
 void assertQuaternionEqual(const Quaternion& expected, const Quaternion& actual, double tolerance = 0.01) {
-    double dist1 = sqrt(pow(expected.w() - actual.w(), 2) +
-                       pow(expected.x() - actual.x(), 2) +
-                       pow(expected.y() - actual.y(), 2) +
-                       pow(expected.z() - actual.z(), 2));
-    double dist2 = sqrt(pow(expected.w() + actual.w(), 2) +
-                       pow(expected.x() + actual.x(), 2) +
-                       pow(expected.y() + actual.y(), 2) +
-                       pow(expected.z() + actual.z(), 2));
-    double dist = (dist1 < dist2) ? dist1 : dist2;
+    double dist = quaternionDistance(expected, actual);
     char msg[200];
     snprintf(msg, sizeof(msg), "Quaternion mismatch: expected(%.3f,%.3f,%.3f,%.3f) actual(%.3f,%.3f,%.3f,%.3f) dist=%.3f",
              expected.w(), expected.x(), expected.y(), expected.z(),
@@ -44,6 +50,16 @@ void local_setUp(void) {
 
 void local_tearDown(void) {
     // Cleanup after each test
+}
+
+void collectCalibratableMagSamples(MahonyAHRS& ahrs, int sampleCount = 150) {
+    // Use a non-coplanar 3D sweep to avoid degenerate ellipsoid fits.
+    for (int i = 0; i < sampleCount; i++) {
+        double theta = 2.0 * M_PI * i / static_cast<double>(sampleCount);
+        double phi = M_PI * (i % 30) / 30.0;
+        Vector<3> mag(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
+        ahrs.collectMagCalibrationSample(mag * 50.0);
+    }
 }
 
 void test_always_ready(void) {
@@ -109,6 +125,196 @@ void test_set_quaternion(void) {
 
     Quaternion q_get = ahrs.getQuaternion();
     assertQuaternionEqual(q_set, q_get, 0.01);
+    local_tearDown();
+}
+
+void test_board_to_body_orientation_setter_and_getters(void) {
+    local_setUp();
+    MahonyAHRS ahrs;
+    ahrs.setBoardToBodyOrientation(MountingOrientation::ROTATE_90_Z, false);
+
+    MountingTransform transform = ahrs.getBoardToBodyTransform();
+    TEST_ASSERT_EQUAL(MountingOrientation::ROTATE_90_Z, transform.getOrientation());
+
+    Quaternion qMount = ahrs.getBoardToBodyQuaternion();
+    Vector<3> x(1.0, 0.0, 0.0);
+    Vector<3> y(0.0, 1.0, 0.0);
+    Vector<3> z(0.0, 0.0, 1.0);
+
+    assertVectorEqual(transform.transform(x), qMount.rotateVector(x), 0.01);
+    assertVectorEqual(transform.transform(y), qMount.rotateVector(y), 0.01);
+    assertVectorEqual(transform.transform(z), qMount.rotateVector(z), 0.01);
+
+    Quaternion identity(1.0, 0.0, 0.0, 0.0);
+    assertQuaternionEqual(identity, ahrs.getBodyToEarthQuaternion(), 0.01);
+    assertQuaternionEqual(qMount, ahrs.getBoardToEarthQuaternion(), 0.01);
+    local_tearDown();
+}
+
+void test_board_to_body_matrix_setter(void) {
+    local_setUp();
+    MahonyAHRS ahrs;
+    const double rotNeg90Y[9] = {
+        0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0,
+        -1.0, 0.0, 0.0
+    };
+    ahrs.setBoardToBodyMatrix(rotNeg90Y, false);
+
+    MountingTransform transform = ahrs.getBoardToBodyTransform();
+    TEST_ASSERT_EQUAL(MountingOrientation::CUSTOM, transform.getOrientation());
+
+    const double* m = transform.getMatrix();
+    for (int i = 0; i < 9; i++) {
+        TEST_ASSERT_FLOAT_WITHIN(1e-9, rotNeg90Y[i], m[i]);
+    }
+
+    Quaternion qMount = ahrs.getBoardToBodyQuaternion();
+    Vector<3> x(1.0, 0.0, 0.0);
+    Vector<3> y(0.0, 1.0, 0.0);
+    Vector<3> z(0.0, 0.0, 1.0);
+    assertVectorEqual(transform.transform(x), qMount.rotateVector(x), 0.01);
+    assertVectorEqual(transform.transform(y), qMount.rotateVector(y), 0.01);
+    assertVectorEqual(transform.transform(z), qMount.rotateVector(z), 0.01);
+    local_tearDown();
+}
+
+void test_board_to_body_quaternion_setter_normalizes(void) {
+    local_setUp();
+    MahonyAHRS ahrs;
+
+    double half = M_PI / 4.0;
+    Quaternion qUnnormalized(2.0 * cos(half), 0.0, 0.0, 2.0 * sin(half));
+    ahrs.setBoardToBodyQuaternion(qUnnormalized, false);
+
+    Quaternion qMount = ahrs.getBoardToBodyQuaternion();
+    double norm = sqrt(qMount.w() * qMount.w() + qMount.x() * qMount.x() +
+                       qMount.y() * qMount.y() + qMount.z() * qMount.z());
+    TEST_ASSERT_FLOAT_WITHIN(1e-6, 1.0, norm);
+
+    Vector<3> x(1.0, 0.0, 0.0);
+    Vector<3> expectedX(0.0, 1.0, 0.0);
+    assertVectorEqual(expectedX, qMount.rotateVector(x), 0.01);
+    assertVectorEqual(expectedX, ahrs.getBoardToBodyTransform().transform(x), 0.01);
+    local_tearDown();
+}
+
+void test_set_board_to_body_preserve_earth_true(void) {
+    local_setUp();
+    MahonyAHRS ahrs;
+
+    double halfYaw = M_PI / 8.0; // 45 deg yaw
+    Quaternion qInit(cos(halfYaw), 0.0, 0.0, sin(halfYaw));
+    ahrs.setQuaternion(qInit);
+
+    Quaternion boardEarthBefore = ahrs.getBoardToEarthQuaternion();
+    ahrs.setBoardToBodyOrientation(MountingOrientation::ROTATE_90_X, true);
+
+    Quaternion boardEarthAfter = ahrs.getBoardToEarthQuaternion();
+    assertQuaternionEqual(boardEarthBefore, boardEarthAfter, 0.001);
+
+    Quaternion expectedBodyToEarth = boardEarthBefore * ahrs.getBoardToBodyQuaternion().conjugate();
+    assertQuaternionEqual(expectedBodyToEarth, ahrs.getBodyToEarthQuaternion(), 0.001);
+    local_tearDown();
+}
+
+void test_set_board_to_body_preserve_earth_false(void) {
+    local_setUp();
+    MahonyAHRS ahrs;
+
+    double halfPitch = M_PI / 12.0; // 30 deg pitch
+    Quaternion qInit(cos(halfPitch), 0.0, sin(halfPitch), 0.0);
+    ahrs.setQuaternion(qInit);
+
+    Quaternion bodyEarthBefore = ahrs.getBodyToEarthQuaternion();
+    Quaternion boardEarthBefore = ahrs.getBoardToEarthQuaternion();
+    ahrs.setBoardToBodyOrientation(MountingOrientation::ROTATE_90_X, false);
+
+    assertQuaternionEqual(bodyEarthBefore, ahrs.getBodyToEarthQuaternion(), 0.001);
+
+    Quaternion expectedBoardToEarth = bodyEarthBefore * ahrs.getBoardToBodyQuaternion();
+    assertQuaternionEqual(expectedBoardToEarth, ahrs.getBoardToEarthQuaternion(), 0.001);
+    double dist = quaternionDistance(boardEarthBefore, ahrs.getBoardToEarthQuaternion());
+    TEST_ASSERT_TRUE(dist > 0.05);
+    local_tearDown();
+}
+
+void test_reset_preserves_board_to_body_transform(void) {
+    local_setUp();
+    MahonyAHRS ahrs;
+    ahrs.setBoardToBodyOrientation(MountingOrientation::ROTATE_NEG90_Z, false);
+
+    Quaternion mountBeforeReset = ahrs.getBoardToBodyQuaternion();
+    Quaternion qInit(cos(M_PI / 10.0), sin(M_PI / 10.0), 0.0, 0.0);
+    ahrs.setQuaternion(qInit);
+    ahrs.reset();
+
+    Quaternion identity(1.0, 0.0, 0.0, 0.0);
+    assertQuaternionEqual(identity, ahrs.getBodyToEarthQuaternion(), 0.001);
+    assertQuaternionEqual(mountBeforeReset, ahrs.getBoardToBodyQuaternion(), 0.001);
+    assertQuaternionEqual(mountBeforeReset, ahrs.getBoardToEarthQuaternion(), 0.001);
+    local_tearDown();
+}
+
+void test_gyro_update_respects_board_to_body_transform(void) {
+    local_setUp();
+    MahonyAHRS mounted;
+    MahonyAHRS bodyRef;
+    MountingTransform mount(MountingOrientation::ROTATE_90_Z);
+    mounted.setBoardToBodyOrientation(MountingOrientation::ROTATE_90_Z, false);
+
+    Vector<3> gyroBoard(0.6, -0.2, 0.3);
+    Vector<3> gyroBody = mount.transform(gyroBoard);
+    double dt = 0.01;
+
+    for (int i = 0; i < 300; i++) {
+        mounted.update(gyroBoard, dt);
+        bodyRef.update(gyroBody, dt);
+    }
+
+    assertQuaternionEqual(bodyRef.getQuaternion(), mounted.getQuaternion(), 0.01);
+    local_tearDown();
+}
+
+void test_accel_gyro_update_respects_board_to_body_transform(void) {
+    local_setUp();
+    MahonyAHRS mounted;
+    MahonyAHRS bodyRef;
+    MountingTransform mount(MountingOrientation::ROTATE_NEG90_Y);
+    mounted.setBoardToBodyOrientation(MountingOrientation::ROTATE_NEG90_Y, false);
+
+    Vector<3> accelBoard(1.5, -2.0, 9.5);
+    Vector<3> gyroBoard(0.05, -0.03, 0.02);
+    Vector<3> accelBody = mount.transform(accelBoard);
+    Vector<3> gyroBody = mount.transform(gyroBoard);
+    double dt = 0.01;
+
+    for (int i = 0; i < 400; i++) {
+        mounted.update(accelBoard, gyroBoard, dt);
+        bodyRef.update(accelBody, gyroBody, dt);
+    }
+
+    assertQuaternionEqual(bodyRef.getQuaternion(), mounted.getQuaternion(), 0.02);
+    local_tearDown();
+}
+
+void test_get_earth_acceleration_respects_board_to_body_transform(void) {
+    local_setUp();
+    MahonyAHRS mounted;
+    MahonyAHRS bodyRef;
+    MountingTransform mount(MountingOrientation::FLIP_XY);
+    mounted.setBoardToBodyOrientation(MountingOrientation::FLIP_XY, false);
+
+    Quaternion qInit(cos(M_PI / 12.0), sin(M_PI / 12.0), 0.0, 0.0); // 30 deg roll
+    mounted.setQuaternion(qInit);
+    bodyRef.setQuaternion(qInit);
+
+    Vector<3> accelBoard(2.0, -3.0, 11.0);
+    Vector<3> accelBody = mount.transform(accelBoard);
+
+    Vector<3> mountedEarth = mounted.getEarthAcceleration(accelBoard);
+    Vector<3> bodyEarth = bodyRef.getEarthAcceleration(accelBody);
+    assertVectorEqual(bodyEarth, mountedEarth, 0.001);
     local_tearDown();
 }
 
@@ -476,12 +682,8 @@ void test_mag_calibration_sufficient_samples(void) {
     local_setUp();
     MahonyAHRS ahrs;
 
-    // Collect 150 samples in various orientations
-    for (int i = 0; i < 150; i++) {
-        double angle = 2.0 * M_PI * i / 150.0;
-        Vector<3> mag(cos(angle), sin(angle), 0.5);
-        ahrs.collectMagCalibrationSample(mag);
-    }
+    // Collect 150 non-coplanar samples to ensure ellipsoid fit is solvable.
+    collectCalibratableMagSamples(ahrs, 150);
 
     // Finalize - should calibrate
     ahrs.finalizeMagCalibration();
@@ -494,11 +696,7 @@ void test_mag_calibration_persists_after_reset(void) {
     MahonyAHRS ahrs;
 
     // Calibrate mag
-    for (int i = 0; i < 150; i++) {
-        double angle = 2.0 * M_PI * i / 150.0;
-        Vector<3> mag(cos(angle), sin(angle), 0.5);
-        ahrs.collectMagCalibrationSample(mag);
-    }
+    collectCalibratableMagSamples(ahrs, 150);
     ahrs.finalizeMagCalibration();
 
     TEST_ASSERT_TRUE(ahrs.isMagCalibrated());
@@ -645,6 +843,15 @@ void run_test_mahony_tests()
     RUN_TEST(test_constructor_with_gains);
     RUN_TEST(test_reset);
     RUN_TEST(test_set_quaternion);
+    RUN_TEST(test_board_to_body_orientation_setter_and_getters);
+    RUN_TEST(test_board_to_body_matrix_setter);
+    RUN_TEST(test_board_to_body_quaternion_setter_normalizes);
+    RUN_TEST(test_set_board_to_body_preserve_earth_true);
+    RUN_TEST(test_set_board_to_body_preserve_earth_false);
+    RUN_TEST(test_reset_preserves_board_to_body_transform);
+    RUN_TEST(test_gyro_update_respects_board_to_body_transform);
+    RUN_TEST(test_accel_gyro_update_respects_board_to_body_transform);
+    RUN_TEST(test_get_earth_acceleration_respects_board_to_body_transform);
     RUN_TEST(test_static_orientation_upright);
     RUN_TEST(test_static_orientation_tilted);
     RUN_TEST(test_gyro_only_no_drift);

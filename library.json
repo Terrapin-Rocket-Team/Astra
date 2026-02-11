@@ -109,7 +109,7 @@
             "+<../examples/Avionics/**>"
         ],
         "flags": "-Wno-unknown-pragmas -std=gnu++17",
-        "extraScript": "pre:get_version.py"
+        "extraScript": "get_version.py"
     },
     "export": {
         "exclude": [

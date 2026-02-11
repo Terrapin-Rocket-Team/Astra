@@ -204,10 +204,12 @@ bool Astra::update(double timeSeconds)
     // Only update orientation and predict when new IMU data is available AND sensors are healthy
     bool hasAccel = config->sensorManager.hasAccelUpdate();
     bool hasGyro = config->sensorManager.hasGyroUpdate();
+    bool hasMag = config->sensorManager.hasMagUpdate();
 
     // Check sensor health before using data
     bool accelHealthy = !config->sensorManager.getAccelSource() || config->sensorManager.getAccelSource()->isHealthy();
     bool gyroHealthy = !config->sensorManager.getGyroSource() || config->sensorManager.getGyroSource()->isHealthy();
+    bool magHealthy = !config->sensorManager.getMagSource() || config->sensorManager.getMagSource()->isHealthy();
 
     if ((hasAccel || hasGyro) && accelHealthy && gyroHealthy)
     {
@@ -218,7 +220,15 @@ bool Astra::update(double timeSeconds)
 
         if (dt > 0 && config->state)
         {
-            config->state->updateOrientation(gyro, accel, dt);
+            if (hasMag && magHealthy)
+            {
+                Vector<3> mag = config->sensorManager.getMagneticField();
+                config->state->updateOrientation(gyro, accel, mag, dt);
+            }
+            else
+            {
+                config->state->updateOrientation(gyro, accel, dt);
+            }
 
             // Run KF prediction immediately after orientation update
             // Prediction uses the updated earth-frame acceleration
@@ -237,14 +247,23 @@ bool Astra::update(double timeSeconds)
             config->sensorManager.clearAccelUpdate();
         if (hasGyro)
             config->sensorManager.clearGyroUpdate();
+        if (hasMag)
+            config->sensorManager.clearMagUpdate();
     }
-    else if ((hasAccel || hasGyro) && (!accelHealthy || !gyroHealthy))
+    else if ((hasAccel || hasGyro || hasMag) && (!accelHealthy || !gyroHealthy || !magHealthy))
     {
         // Clear flags even if unhealthy to prevent stale data from being used later
         if (hasAccel)
             config->sensorManager.clearAccelUpdate();
         if (hasGyro)
             config->sensorManager.clearGyroUpdate();
+        if (hasMag)
+            config->sensorManager.clearMagUpdate();
+    }
+    else if (hasMag)
+    {
+        // Clear mag update if no accel/gyro update this cycle
+        config->sensorManager.clearMagUpdate();
     }
 
     // =================== Measurement Update ===================
