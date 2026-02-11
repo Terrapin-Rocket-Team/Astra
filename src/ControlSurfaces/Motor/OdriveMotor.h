@@ -4,6 +4,7 @@
 #define ODRIVE_MOTOR_H
 
 #include "ControlSurfaces/ControlSurface.h"
+#include "Utils/CircBuffer.h"
 #include <Arduino.h>
 #include <ODriveUART.h>
 
@@ -18,15 +19,21 @@ namespace astra
 		ERROR = 4
 	};
 
-	/**
-	 * Configuration for ODrive motor control
-	 */
-	struct OdriveMotorConfig : public ControlSurfaceConfig
+  enum class MotorControlMode
+  {
+    POSITION,
+    VELOCITY,
+    TORQUE
+  };
+  /**
+   * Configuration for ODrive motor control
+   */
+  struct OdriveMotorConfig : public ControlSurfaceConfig
 	{
 		HardwareSerial* serial = &Serial1;
 		unsigned long baudrate = 115200;
-		ODriveUART* odrive = nullptr;
 
+    ODriveUART* odrive = nullptr;
 		int topLimitSwitchPin = 35;  // Active LOW limit switch
 
 		float minPosition = 0.0f;
@@ -38,7 +45,9 @@ namespace astra
 		bool useClosedLoop = true;
 		bool idleOnEStop = false;
 
-		uint32_t initTimeoutMs = 10000;
+    bool usingEncoder = false;
+
+    uint32_t initTimeoutMs = 10000;
 		uint32_t stateRetryDelayMs = 1000;
 		float zeroVelocity = 1.0f;
 
@@ -70,22 +79,27 @@ namespace astra
 		/**
 		 * Convenience methods
 		 */
-		bool updateFeedback();
 		float getPosition() const;
 		float getVelocity() const;
-		float getAngle() const;
+    float getTorque() const;
+    float getAngle() const;
 
-		bool setPosition(float pos);
-		bool setVelocity(float vel);
-
-		float angleToPos(float angle) const;
+    void setControl(MotorControlMode mode, float val);
+    
+    float angleToPos(float angle) const;
 		float posToAngle(float pos) const;
 
-		bool motorStall();
+		bool isStalled();
 		bool zeroMotor();
 
-	protected:
+    void updateSensors() override;
+
+  private:
 		int init(const ControlSurfaceConfig* config) override;
+    
+    bool setPosition(float pos);
+    bool setVelocity(float vel);
+    bool setTorque(float torque);
 
 		HardwareSerial* serial;
 		ODriveUART* odrive;
@@ -97,7 +111,9 @@ namespace astra
 		float maxPosition;
 		float minAngle;
 		float maxAngle;
-		float directionSign;
+    // negative if direction should be inverted, 
+    //    positive if direction should be normal
+		float invert;
 
 		bool useClosedLoop;
 		bool idleOnEStop;
@@ -109,26 +125,24 @@ namespace astra
 		int stallSampleCount;
 		float stallPositionEpsilon;
 
-		static constexpr int kMaxStallSamples = 32;
 
 		ODriveFeedback feedback;
-		float positionHistory[kMaxStallSamples];
-		int positionHistoryCount;
-		int positionHistoryIndex;
+		CircBuffer<float> positionHistory;
 
 		float position;
 		float angle;
 		float velocity;
-		float initPositionOffset;
-		float targetPosition;
+    float initPositionOffset;
+    float targetPosition;
 		float targetVelocity;
-		float voltage;
+    float targetTorque;
+    float voltage;
 
-		OdriveStalledState stalledState;
+    float encoderPosition;
+
+    OdriveStalledState stalledState;
 		int stalledStateTelemetry;
 
-		void resetPositionHistory();
-		void pushPositionHistory(float value);
 	};
 
 } // namespace astra

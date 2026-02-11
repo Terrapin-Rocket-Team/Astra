@@ -44,7 +44,7 @@ namespace astra
         }
 
         /**
-         * Set position using normalized value (0.0 to 1.0 or -1.0 to 1.0)
+         * Set position using normalized value (-1.0 to 1.0)
          * @param normalized Normalized position value
          * @return true if position set successfully
          */
@@ -88,14 +88,15 @@ namespace astra
         virtual bool EStop() = 0;
 
         /**
+         * Update any sensor readings. Astra will periodically call this
+         */
+        virtual void updateSensors() = 0;
+
+        /**
          * Check if control surface is initialized and ready
          */
         bool isInitialized() const { return initialized; }
 
-        /**
-         * Explicit bool conversion - returns initialization state
-         */
-        explicit operator bool() const { return initialized; }
 
     protected:
         /**

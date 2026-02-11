@@ -6,6 +6,7 @@ This is a (not comprehensive) list of motor controllers and protocols to impleme
 - [ ] DShot
 ## Hardware Drivers
 - [ ] Odrive
+  - [ ] Odrive CAN 
 - [ ] VESC
 - [ ] SimpleFOC
 - [ ] Roboclaw (not as important)
