@@ -5,6 +5,7 @@
 #include <ArduinoEigen.h> // Required for Mag Calibration
 #include <vector>
 #include <math.h>
+#include <math.h>
 #include "../Math/Quaternion.h"
 #include "Math/Vector.h"
 #include "../Sensors/MountingTransform.h"
