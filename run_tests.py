@@ -36,6 +36,16 @@ STATUS_CANCELLED = "CANCELLED"
 # Progress output control (overridden by CLI)
 PROGRESS_ENABLED = True
 
+def configure_console_output() -> None:
+    # Ensure unicode status symbols do not crash on Windows cp1252 consoles.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
 @dataclass
 class TestResult:
     name: str
@@ -286,8 +296,13 @@ def run_test_folder(folder_name, test_env: str):
 
 def main():
     global PROGRESS_ENABLED
+    configure_console_output()
+
     parser = argparse.ArgumentParser(description="Run PlatformIO builds/tests with parallel execution.")
     parser.add_argument("--no-progress", action="store_true", help="Disable progress bar updates (CI friendly).")
+    parser.add_argument("--no-install", action="store_true", help="Skip PlatformIO platform installation step.")
+    parser.add_argument("--no-builds", action="store_true", help="Skip environment build step.")
+    parser.add_argument("--no-tests", action="store_true", help="Skip test execution step.")
     args = parser.parse_args()
     PROGRESS_ENABLED = not args.no_progress
 
@@ -298,7 +313,9 @@ def main():
     install_results: List[PlatformInstallResult] = []
     build_results: List[BuildResult] = []
 
-    if platforms_to_install:
+    if args.no_install:
+        print(f"{Y}⚠️  Platform install stage skipped (--no-install).{NC}")
+    elif platforms_to_install:
         print(f"{BS}📦 Installing {len(platforms_to_install)} PlatformIO platforms{NC}")
         print("---------------------------------------------------")
         install_start_time = time.time()
@@ -328,7 +345,9 @@ def main():
         else:
             print(f"{Y}⚠️  No PlatformIO environments found. Skipping installs.{NC}")
 
-    if build_envs:
+    if args.no_builds:
+        print(f"{Y}⚠️  Build stage skipped (--no-builds).{NC}")
+    elif build_envs:
         print(f"{BS}🔨 Building {len(build_envs)} environments{NC}")
         print("---------------------------------------------------")
         build_start_time = time.time()
@@ -361,8 +380,10 @@ def main():
         else:
             print(f"{Y}⚠️  No PlatformIO environments found. Skipping builds.{NC}")
 
-    test_env = select_test_env(envs)
-    if test_env:
+    test_env = select_test_env(envs) if not args.no_tests else None
+    if args.no_tests:
+        print(f"{Y}⚠️  Test stage skipped (--no-tests).{NC}")
+    elif test_env:
         print(f"{C}🧪 Test env: {test_env}{NC}")
     else:
         print(f"{Y}⚠️  No compatible test environment found. Skipping tests.{NC}")
@@ -372,7 +393,9 @@ def main():
     total_tests = 0
     tests_skipped_reason = None
 
-    if not test_env:
+    if args.no_tests:
+        tests_skipped_reason = "Disabled by --no-tests."
+    elif not test_env:
         tests_skipped_reason = "No compatible test environment."
     elif not os.path.exists(TEST_DIR):
         tests_skipped_reason = f"Directory '{TEST_DIR}' not found."
