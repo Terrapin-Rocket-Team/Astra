@@ -2,6 +2,7 @@ name: Run Unit Tests
 
 on:
   pull_request:
+  push:
 
 jobs:
   test:
@@ -21,6 +22,8 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
-      - name: Run Test Runner
-        run: python run_tests.py --no-progress
+        run: pip install --upgrade platformio pipx
+      - name: Install Astra Support CLI
+        run: pipx install "git+https://github.com/Terrapin-Rocket-Team/Astra-Support.git@main"
+      - name: Run Shared Test Runner
+        run: astra-support test --project . --no-progress

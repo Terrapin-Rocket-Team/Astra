@@ -98,6 +98,13 @@
             "platforms": [
                 "ststm32"
             ]
+        },
+        {
+            "name": "AstraSupportNativeMocks",
+            "version": "https://github.com/Terrapin-Rocket-Team/Astra-Support.git#main",
+            "platforms": [
+                "native"
+            ]
         }
     ],
     "frameworks": "*",
