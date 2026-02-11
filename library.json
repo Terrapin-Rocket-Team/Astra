@@ -116,7 +116,7 @@
             "+<../examples/Avionics/**>"
         ],
         "flags": "-Wno-unknown-pragmas -std=gnu++17",
-        "extraScript": "get_version.py"
+        "extraScript": "tools/pio_build_hooks.py"
     },
     "export": {
         "exclude": [
