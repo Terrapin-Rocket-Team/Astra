@@ -1,6 +1,6 @@
 {
     "name": "TRT-Astra",
-    "version": "0.2",
+    "version": "0.2.1",
     "description": "Terrapin Rocket Team's Multi-Mission Flight Software. Designed to be used with any FC and any sensor suite.",
     "keywords": "Astra, TRT, Terrapin Rocket Team, Flight Software",
     "repository": {
@@ -49,6 +49,10 @@
             "owner": "adafruit"
         },
         {
+            "name": "LPS",
+            "owner": "pololu"
+        },
+        {
             "name": "LIS3MDL",
             "owner": "pololu"
         },
@@ -65,12 +69,21 @@
             "owner": "adafruit"
         },
         {
+            "name": "Adafruit MLX90393",
+            "owner": "adafruit"
+        },
+        {
             "name": "SparkFun u-blox GNSS v3",
             "owner": "sparkfun"
         },
         {
             "name": "SdFat",
-            "version": "https://github.com/greiman/SdFat.git#2.3.1"
+            "version": "https://github.com/greiman/SdFat.git#2.3.1",
+            "platforms": [
+                "teensy",
+                "ststm32",
+                "espressif32"
+            ]
         },
         {
             "name": "MS5611",
@@ -84,6 +97,13 @@
             "name": "ArduinoEigen",
             "owner": "hideakitai",
             "version": "^0.3.2"
+        },
+        {
+            "name": "NativeTestMocks",
+            "version": "https://github.com/DrewBrandt/NativeTestMocks.git",
+            "platforms": [
+                "native"
+            ]
         },
         {
             "owner": "stm32duino",
@@ -108,7 +128,12 @@
         }
     ],
     "frameworks": "*",
-    "platforms": "*",
+    "platforms": [
+        "teensy",
+        "native",
+        "ststm32",
+        "espressif32"
+    ],
     "build": {
         "libCompatMode": "strict",
         "srcFilter": [

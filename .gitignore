@@ -9,3 +9,4 @@
 
 # Version build tracking
 .version_build_track.json
+compile_commands.json
