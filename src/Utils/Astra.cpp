@@ -174,9 +174,12 @@ bool Astra::update(double timeSeconds)
     }
 
     // Update SerialMessageRouter to handle incoming commands
-    if (messageRouter)
+    // Guard against re-entrant calls (e.g. HITL handler calling sys.update())
+    if (messageRouter && !inRouterUpdate)
     {
+        inRouterUpdate = true;
         messageRouter->update();
+        inRouterUpdate = false;
     }
 
     bb.update();

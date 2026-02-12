@@ -36,6 +36,7 @@ namespace astra
         bool _didLog = false, _didUpdateState = false, _didPredictState = false;
         SerialMessageRouter *messageRouter = nullptr;
         bool ownsState = false;
+        bool inRouterUpdate = false;  // Re-entrancy guard for router update
 
         // Status indicator state
         int initErrorCode = 0;  // 0=success, 1-6=specific sensor, 7+=multiple failures

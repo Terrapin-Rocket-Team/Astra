@@ -11,11 +11,11 @@
 
 #include <Arduino.h>
 #include <Sensors/HITL/HITL.h>
-#include <Communication/SerialMessageRouter.h>
 #include <Utils/Astra.h>
 #include <State/DefaultState.h>
 #include <RecordData/Logging/LoggingBackend/ILogSink.h>
 #include <RecordData/Logging/EventLogger.h>
+#include <Testing/HITLParser.h>
 
 using namespace astra;
 
@@ -47,10 +47,12 @@ AstraConfig config = AstraConfig()
                          .withEventLogs(eventSinks, 1);
 
 Astra sys(&config);
-SerialMessageRouter router;
 
 static void handleHITL(const char *message, const char *prefix, Stream *source)
 {
+    (void)prefix;
+    (void)source;
+
     double simTime;
     if (HITLParser::parse(message, simTime))
     {
@@ -81,15 +83,25 @@ void setup()
         return;
     }
 
-    // Setup router to parse HITL messages from the simulator
-    router.withInterface(&Serial)
-        .withListener("HITL/", handleHITL);
+    // Register HITL listener on Astra's internal message router
+    SerialMessageRouter *router = sys.getMessageRouter();
+    if (router)
+    {
+        router->withListener("HITL/", handleHITL);
+    }
+    else
+    {
+        LOGE("Astra message router not available - SITL cannot continue.");
+    }
 }
 
 void loop()
 {
-    // Process incoming HITL messages
-    router.update();
+    // Process incoming messages via Astra's internal router
+    // (CMD/ is already registered; HITL/ registered in setup())
+    SerialMessageRouter *router = sys.getMessageRouter();
+    if (router)
+        router->update();
 
     // DataLogger automatically outputs TELEM/ CSV at the configured logging rate
     delay(1);

@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include "Sensors/HITL/HITL.h"
-#include "Communication/SerialMessageRouter.h"
 #include "Utils/Astra.h"
 #include "State/DefaultState.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "RecordData/Logging/EventLogger.h"
+#include "Testing/HITLParser.h"
 
 using namespace astra;
 
@@ -54,9 +54,6 @@ AstraConfig config = AstraConfig()
 
 Astra sys(&config);
 
-// SerialMessageRouter for handling all incoming messages
-SerialMessageRouter router;
-
 //------------------------------------------------------------------------------
 // Message Handlers
 //------------------------------------------------------------------------------
@@ -67,6 +64,9 @@ SerialMessageRouter router;
  */
 void handleHITL(const char *message, const char *prefix, Stream *source)
 {
+    (void)prefix;
+    (void)source;
+
     double simTime;
 
     // Parse the CSV data (prefix already stripped by router)
@@ -83,7 +83,7 @@ void handleHITL(const char *message, const char *prefix, Stream *source)
 
 /**
  * Handle ground station commands
- * Called when "CMD/" message arrives
+ * Called when "CMD/" message arrives (in addition to Astra's built-in CMD handler)
  */
 void handleCommand(const char *message, const char *prefix, Stream *source)
 {
@@ -107,14 +107,6 @@ void handleCommand(const char *message, const char *prefix, Stream *source)
     {
         LOGW("Unknown command: %s", message);
     }
-}
-
-/**
- * Default handler for unrecognized messages
- */
-void handleUnknown(const char *message, const char *prefix, Stream *source)
-{
-    LOGW("Unknown message type: %s", message);
 }
 
 //------------------------------------------------------------------------------
@@ -150,22 +142,34 @@ void setup()
         LOGI("Astra system initialized");
     }
 
-    // Configure SerialMessageRouter
-    router.withInterface(&Serial)
-        .withListener("HITL/", handleHITL)
-        .withListener("CMD/", handleCommand)
-        .withDefaultHandler(handleUnknown);
+    // Register HITL and CMD listeners on Astra's internal message router.
+    // Astra creates this router and attaches it to Serial during init().
+    // Using a single router avoids two routers competing for bytes on Serial.
+    SerialMessageRouter *router = sys.getMessageRouter();
+    if (router)
+    {
+        router->withListener("HITL/", handleHITL)
+               .withListener("CMD/", handleCommand);
 
-    LOGI("Router configured with %d interfaces and %d listeners",
-         router.getInterfaceCount(), router.getListenerCount());
+        LOGI("Router configured with %d interfaces and %d listeners",
+             router->getInterfaceCount(), router->getListenerCount());
+    }
+    else
+    {
+        LOGE("Astra message router not available!");
+    }
+
     LOGI("");
     LOGI("Ready! Waiting for HITL data...");
 }
 
 void loop()
 {
-    // Update the router - handles all serial message routing
-    router.update();
+    // Update the router via Astra's internal router - handles all serial message routing.
+    // handleHITL calls sys.update(simTime) which is re-entry-safe.
+    SerialMessageRouter *router = sys.getMessageRouter();
+    if (router)
+        router->update();
 
     // DataLogger automatically outputs TELEM/ CSV at the configured logging rate
 }
