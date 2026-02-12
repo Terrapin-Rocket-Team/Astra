@@ -1,6 +1,6 @@
 {
     "name": "TRT-Astra",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "Terrapin Rocket Team's Multi-Mission Flight Software. Designed to be used with any FC and any sensor suite.",
     "keywords": "Astra, TRT, Terrapin Rocket Team, Flight Software",
     "repository": {
@@ -38,6 +38,14 @@
         },
         {
             "name": "Adafruit BNO055",
+            "owner": "adafruit"
+        },
+        {
+            "name": "Adafruit Unified Sensor",
+            "owner": "adafruit"
+        },
+        {
+            "name": "Adafruit BusIO",
             "owner": "adafruit"
         },
         {
@@ -83,6 +91,13 @@
                 "teensy",
                 "ststm32",
                 "espressif32"
+            ]
+        },
+        {
+            "name": "STM32duino STM32SD",
+            "owner": "stm32duino",
+            "platforms": [
+                "ststm32"
             ]
         },
         {
