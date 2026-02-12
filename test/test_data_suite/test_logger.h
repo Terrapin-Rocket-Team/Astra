@@ -131,10 +131,12 @@ static std::vector<std::string> splitLines(const std::string &s)
 
 void local_setUp(void)
 {
+    DataLogger::reset();
 }
 
 void local_tearDown(void)
 {
+    DataLogger::reset();
 }
 
 void test_header_single_reporter(void)
