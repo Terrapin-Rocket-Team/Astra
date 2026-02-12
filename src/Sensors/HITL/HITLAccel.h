@@ -47,6 +47,10 @@ namespace astra
 
             return 0;
         }
+        void updateHealth() override
+        {
+            healthy = true;
+        }
     };
 
 } // namespace astra
