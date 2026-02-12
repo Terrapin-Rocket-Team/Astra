@@ -1,9 +1,9 @@
 import json
-import platform
+import importlib.util
 import subprocess
+from pathlib import Path
 
 Import("env")
-from SCons.Script import DefaultEnvironment
 
 
 def _get_git_sha() -> str:
@@ -17,7 +17,8 @@ def _get_git_sha() -> str:
 
 
 def _get_version() -> str:
-    with open("library.json", "r", encoding="utf-8") as f:
+    library_json_path = Path(__file__).resolve().parent.parent / "library.json"
+    with open(library_json_path, "r", encoding="utf-8") as f:
         base_version = json.load(f)["version"]
     parts = base_version.split(".")
     major = int(parts[0]) if parts else 0
@@ -33,21 +34,13 @@ def _apply_version_define() -> None:
 
 
 def _apply_native_platform_flags() -> None:
-    if env.get("PIOENV", "") != "native":
-        return
-
-    env.AppendUnique(CPPDEFINES=["NATIVE=1", "ARDUINO=100", "UNITY_INCLUDE_DOUBLE"])
-    env.AppendUnique(CPPPATH=["$PROJECT_DIR/src"])
-
-    # Keep permissive mode scoped to C++ only for native-hosted vendor code.
-    env.AppendUnique(CXXFLAGS=["-fpermissive"])
-
-    if platform.system() == "Windows":
-        env.AppendUnique(CPPDEFINES=["ENV_WINDOWS"])
-        env.AppendUnique(LIBS=["ws2_32"])
-        DefaultEnvironment().AppendUnique(LIBS=["ws2_32"])
-    else:
-        env.AppendUnique(CPPDEFINES=["ENV_UNIX"])
+    helper_path = Path(__file__).with_name("pio_auto_defines.py")
+    spec = importlib.util.spec_from_file_location("astra_pio_auto_defines", helper_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load native auto-define helper: {helper_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.apply_native_auto_defines(env)
 
 
 _apply_version_define()
