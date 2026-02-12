@@ -99,20 +99,6 @@
             "version": "^0.3.2"
         },
         {
-            "owner": "stm32duino",
-            "name": "STM32duino STM32SD",
-            "platforms": [
-                "ststm32"
-            ]
-        },
-        {
-            "name": "FatFs",
-            "version": "https://github.com/stm32duino/FatFs.git",
-            "platforms": [
-                "ststm32"
-            ]
-        },
-        {
             "name": "AstraSupportNativeMocks",
             "version": "https://github.com/Terrapin-Rocket-Team/Astra-Support.git#main",
             "platforms": [
