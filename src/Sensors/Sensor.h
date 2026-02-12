@@ -49,6 +49,10 @@ namespace astra
             return read();
         }
     protected:
+        // Called after a successful read() to evaluate sensor health.
+        // Override to implement sensor-specific health checks (e.g. stuck-reading detection).
+        // Sets healthy directly. HITL sensors override this to always set healthy = true.
+        virtual void updateHealth() {}
         // --------------------------------- HARDWARE IMPLEMENTATION -----------------------------------------------
 
         Sensor(const char *name = nullptr) : DataReporter(name)

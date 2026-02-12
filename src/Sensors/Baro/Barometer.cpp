@@ -53,14 +53,18 @@ namespace astra
         }
 
         altitudeASL = calcAltitude(pressure);
+        updateHealth();
+        return 0;
+    }
 
-        // Health tracking - check for stuck pressure readings
+    void Barometer::updateHealth()
+    {
         lastReadings.push(pressure);
 
         if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)
         {
             consecutiveGoodReads++;
-            return 0;
+            return;
         }
 
         bool allIdentical = true;
@@ -87,8 +91,6 @@ namespace astra
                 LOGI("Baro '%s' recovered: readings varying normally", getName());
             healthy = true;
         }
-
-        return 0;
     }
 
     int Barometer::begin()

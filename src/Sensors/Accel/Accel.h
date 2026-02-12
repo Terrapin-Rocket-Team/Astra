@@ -28,7 +28,7 @@ namespace astra
             }
 
             // Check for stuck readings after successful read
-            updateHealthTracking();
+            updateHealth();
             return 0;
         }
 
@@ -41,7 +41,7 @@ namespace astra
         CircBuffer<Vector<3>> lastReadings;
         uint8_t consecutiveGoodReads = 0;
 
-        void updateHealthTracking()
+        virtual void updateHealth() override
         {
             // Store current reading in circular buffer
             lastReadings.push(acc);
