@@ -23,9 +23,9 @@ namespace astra
      */
     struct PyroChargeConfig : public RelayConfig
     {
-        int continuityPin = -1;        // Analog pin for continuity sensing
-        int maxFireDuration = 1000;    // Maximum firing duration in milliseconds (safety)
-        int minFireDuration = 50;      // Minimum firing duration in milliseconds
+        int continuityPin = -1;         // Analog pin for continuity sensing
+        int maxFireDuration = 1000;     // Maximum firing duration in milliseconds (safety)
+        int minFireDuration = 50;       // Minimum firing duration in milliseconds
         float continuityCurrent = 0.0f; // Expected continuity current (implementation specific)
         bool requireContinuity = true;  // Require continuity check before arming
         bool oneShot = true;            // Can only fire once
@@ -42,28 +42,10 @@ namespace astra
      * - Automatic safety timeout
      * 
      * Normalized position: 0.0 = safe, 1.0 = fire (when armed)
-     * 
-     * Safety workflow:
-     *   1. checkContinuity() - Verify e-match connected
-     *   2. arm() - Arm the charge (only if continuity good)
-     *   3. fire(duration) - Fire for specified duration
-     *   4. Automatically safes after firing
-     * 
-     * Usage:
-     *   PyroChargeConfig config = {
-     *     .name = "Drogue",
-     *     .pin = 23,              // Fire pin
-     *     .continuityPin = A0,    // Continuity sense pin
-     *     .maxFireDuration = 1000,
-     *     .requireContinuity = true
-     *   };
-     *   PyroCharge drogue;
-     *   drogue.begin(&config);
-     *   
-     *   if (drogue.checkContinuity()) {
-     *     drogue.arm();
-     *     drogue.fire(500);  // Fire for 500ms
-     *   }
+     *   checkContinuity() - Verify e-match connected
+     *   arm() - Arm the charge (only if continuity good)
+     *   fire(duration) - Fire for specified duration
+     *   Automatically safes after firing
      */
     class PyroCharge : public Relay
     {
