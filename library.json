@@ -94,13 +94,6 @@
             ]
         },
         {
-            "name": "STM32duino STM32SD",
-            "owner": "stm32duino",
-            "platforms": [
-                "ststm32"
-            ]
-        },
-        {
             "name": "MS5611",
             "version": "https://github.com/RobTillaart/MS5611.git#0.4.1"
         },

@@ -1,7 +1,7 @@
 #include "StorageFactory.h"
 
 // Include platform-specific backend implementations
-#if defined(ENV_STM)
+#if defined(ENV_STM) && !defined(USE_SIMPLE_STORAGE)
 #include "Backends/STM32/EMMCBackend.h"
 #include "Backends/STM32/SDCardBackend.h"
 #elif defined(ENV_ESP)
@@ -18,12 +18,12 @@ namespace astra
     {
         switch (type)
         {
-#if defined(ENV_STM)
+#if defined(ENV_STM) && !defined(USE_SIMPLE_STORAGE)
         case StorageBackend::EMMC:
             return new EMMCBackend();
 #endif
 
-#if defined(ENV_STM) || defined(ENV_ESP) || defined(ENV_TEENSY)
+#if (defined(ENV_STM) && !defined(USE_SIMPLE_STORAGE)) || defined(ENV_ESP) || defined(ENV_TEENSY)
         case StorageBackend::SD_CARD:
             return new SDCardBackend();
 #endif
