@@ -328,6 +328,11 @@ namespace astra
             _q = Quaternion(1.0, 0.0, 0.0, 0.0);
         }
 
+       
+    void setKp(double Kp) { _Kp = Kp; }
+    void setKi(double Ki) { _Ki = Ki; }
+ 
+
     private:
         void setBoardToBodyInternal(const MountingTransform &transform, const Quaternion &qBoardToBody, bool preserveEarth)
         {
