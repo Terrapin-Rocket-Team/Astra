@@ -58,6 +58,15 @@ public:
         lastOrientationDt = dt;
     }
 
+    void updateOrientation(const Vector<3>& gyro, const Vector<3>& accel, const Vector<3>& mag, double dt) override {
+        record(Call::Orientation);
+        sawOrientation = true;
+        lastGyro = gyro;
+        lastAccel = accel;
+        lastMag = mag;
+        lastOrientationDt = dt;
+    }
+
     void predict(double dt) override {
         record(Call::Predict);
         sawPredict = true;
@@ -89,6 +98,7 @@ public:
     uint8_t callCount = 0;
     Vector<3> lastGyro = Vector<3>(0, 0, 0);
     Vector<3> lastAccel = Vector<3>(0, 0, 0);
+    Vector<3> lastMag = Vector<3>(0, 0, 0);
     Vector<3> lastGPSPos = Vector<3>(0, 0, 0);
     Vector<3> lastGPSVel = Vector<3>(0, 0, 0);
     double lastBaroAlt = 0.0;
