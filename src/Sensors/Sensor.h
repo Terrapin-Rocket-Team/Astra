@@ -46,7 +46,12 @@ namespace astra
         // Returns 0 on success, library-specific error code on failure
         virtual int update(double currentTime = -1) override
         {
-            return read();
+            if (!initialized)
+                return -1;
+
+            int err = read();
+            updateHealth(err, currentTime);
+            return err;
         }
     protected:
         // --------------------------------- HARDWARE IMPLEMENTATION -----------------------------------------------
@@ -63,6 +68,14 @@ namespace astra
         // Physically reads the outputs from the sensor hardware. Called by update()
         // Returns 0 on success, library-specific error code on failure.
         virtual int read() = 0;
+
+        // Update sensor health after each read(). Override in derived sensors
+        // for custom policies (e.g. stuck-reading checks).
+        virtual void updateHealth(int readErr, double currentTime)
+        {
+            (void)currentTime;
+            healthy = initialized && (readErr == 0);
+        }
 
         // Health tracking state
         // NOTE: initialized is inherited from DataReporter - do not redefine it here!

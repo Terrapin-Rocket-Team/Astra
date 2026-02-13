@@ -44,15 +44,25 @@ namespace astra
             return -1;
 
         int err = read();
-
+        updateHealth(err, currentTime);
         if (err != 0)
+            return err;
+
+        altitudeASL = calcAltitude(pressure);
+
+        return 0;
+    }
+
+    void Barometer::updateHealth(int readErr, double currentTime)
+    {
+        (void)currentTime;
+        if (readErr != 0)
         {
             healthy = false;
             consecutiveGoodReads = 0;
-            return err;
+            lastReadings.clear();
+            return;
         }
-
-        altitudeASL = calcAltitude(pressure);
 
         // Health tracking - check for stuck pressure readings
         lastReadings.push(pressure);
@@ -60,7 +70,7 @@ namespace astra
         if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)
         {
             consecutiveGoodReads++;
-            return 0;
+            return;
         }
 
         bool allIdentical = true;
@@ -87,8 +97,6 @@ namespace astra
                 LOGI("Baro '%s' recovered: readings varying normally", getName());
             healthy = true;
         }
-
-        return 0;
     }
 
     int Barometer::begin()

@@ -149,12 +149,9 @@ int GPS::update(double currentTime)
         return -1;
 
     int err = read();
-
+    updateHealth(err, currentTime);
     if (err != 0)
-    {
-        healthy = false;
         return err;
-    }
 
     if (!hasFix && fixQual >= 4)
     {
@@ -181,12 +178,14 @@ int GPS::update(double currentTime)
         snprintf(tod, 12, "%02d:%02d:%02d", hr, min, sec); // size is really 9 but 12 ignores warnings about truncation. IRL it will never truncate
     }
 
-    // GPS health is simply based on fix status
-    // No fix is expected behavior (not a hardware failure), so we keep healthy=true
-    // Health only becomes false on read() errors
-    healthy = true;
-
     return 0;
+}
+
+void GPS::updateHealth(int readErr, double currentTime)
+{
+    (void)currentTime;
+    // GPS health is based on hardware communication, not fix state.
+    healthy = initialized && (readErr == 0);
 }
 
 int GPS::begin()

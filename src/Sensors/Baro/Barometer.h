@@ -34,6 +34,8 @@ namespace astra
         static constexpr uint8_t HEALTH_BUFFER_SIZE = 3;
         CircBuffer<double> lastReadings;
         uint8_t consecutiveGoodReads = 0;
+
+        void updateHealth(int readErr, double currentTime) override;
     };
 }
 #endif // BAROMETER_H

@@ -17,6 +17,11 @@ namespace astra
     class GPS;
     class IMU6DoF;
     class IMU9DoF;
+    class HITLAccel;
+    class HITLGyro;
+    class HITLMag;
+    class HITLBarometer;
+    class HITLGPS;
 
     class AstraConfig
     {
@@ -145,10 +150,12 @@ namespace astra
         AstraConfig &withHITL(bool hitlEnabled);
 
         AstraConfig();
+        virtual ~AstraConfig();
 
     private:
         // Internal method called by Astra to populate SensorManager from individual sensor pointers
         void populateSensorManager();
+        void ensureHITLSensors();
 
     protected:
         State *state = nullptr;
@@ -178,6 +185,11 @@ namespace astra
         double loggingRate = 10;        // in hz
 
         bool hitlMode = false;          // HITL mode enabled
+        HITLAccel *hitlAccelOwned = nullptr;
+        HITLGyro *hitlGyroOwned = nullptr;
+        HITLMag *hitlMagOwned = nullptr;
+        HITLBarometer *hitlBaroOwned = nullptr;
+        HITLGPS *hitlGpsOwned = nullptr;
 
         // Status indicator pins
         int statusLED = -1;      // Main status LED for init diagnostics

@@ -9,6 +9,11 @@
 #include "../Sensors/Sensor.h"
 #include "../Sensors/IMU/IMU6DoF.h"
 #include "../Sensors/IMU/IMU9DoF.h"
+#include "../Sensors/HITL/HITLAccel.h"
+#include "../Sensors/HITL/HITLGyro.h"
+#include "../Sensors/HITL/HITLMag.h"
+#include "../Sensors/HITL/HITLBarometer.h"
+#include "../Sensors/HITL/HITLGPS.h"
 #include "../Sensors/SensorManager/SensorManager.h"
 #include "../RecordData/Logging/EventLogger.h"
 
@@ -24,6 +29,15 @@ namespace astra
             eventLogs[i] = nullptr;
         }
         bbAsync = true;
+    }
+
+    AstraConfig::~AstraConfig()
+    {
+        delete hitlAccelOwned;
+        delete hitlGyroOwned;
+        delete hitlMagOwned;
+        delete hitlBaroOwned;
+        delete hitlGpsOwned;
     }
     AstraConfig &AstraConfig::withState(State *state)
     {
@@ -126,6 +140,14 @@ namespace astra
     AstraConfig &AstraConfig::withHITL(bool hitlEnabled)
     {
         this->hitlMode = hitlEnabled;
+        if (hitlEnabled)
+        {
+            ensureHITLSensors();
+            // In HITL, emit telemetry every update so lock-step simulators
+            // get a response for each injected sample.
+            this->loggingInterval = 0.0;
+            this->loggingRate = 0.0;
+        }
 
         return *this;
     }
@@ -223,6 +245,9 @@ namespace astra
 
     void AstraConfig::populateSensorManager()
     {
+        if (hitlMode)
+            ensureHITLSensors();
+
         // Populate SensorManager from individual sensor pointers
         if (accel)
             sensorManager.setAccelSource(accel);
@@ -245,6 +270,26 @@ namespace astra
         LOGI("SensorManager populated with %d primary sensors and %d misc sensors.",
              (accel ? 1 : 0) + (gyro ? 1 : 0) + (mag ? 1 : 0) + (baro ? 1 : 0) + (gps ? 1 : 0),
              numMiscSensors);
+    }
+
+    void AstraConfig::ensureHITLSensors()
+    {
+        if (!hitlAccelOwned)
+            hitlAccelOwned = new HITLAccel();
+        if (!hitlGyroOwned)
+            hitlGyroOwned = new HITLGyro();
+        if (!hitlMagOwned)
+            hitlMagOwned = new HITLMag();
+        if (!hitlBaroOwned)
+            hitlBaroOwned = new HITLBarometer();
+        if (!hitlGpsOwned)
+            hitlGpsOwned = new HITLGPS();
+
+        accel = hitlAccelOwned;
+        gyro = hitlGyroOwned;
+        mag = hitlMagOwned;
+        baro = hitlBaroOwned;
+        gps = hitlGpsOwned;
     }
 
     AstraConfig &AstraConfig::withStatusLED(int pin)

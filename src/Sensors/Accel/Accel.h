@@ -19,17 +19,8 @@ namespace astra
                 return -1;  // Don't attempt read if not initialized
 
             int err = read();  // Calls derived hardware class read()
-
-            if (err != 0)
-            {
-                healthy = false;  // Immediate invalidation on read failure
-                consecutiveGoodReads = 0;
-                return err;
-            }
-
-            // Check for stuck readings after successful read
-            updateHealthTracking();
-            return 0;
+            updateHealth(err, currentTime);
+            return err;
         }
 
     protected:
@@ -41,8 +32,17 @@ namespace astra
         CircBuffer<Vector<3>> lastReadings;
         uint8_t consecutiveGoodReads = 0;
 
-        void updateHealthTracking()
+        void updateHealth(int readErr, double currentTime) override
         {
+            (void)currentTime;
+            if (readErr != 0)
+            {
+                healthy = false;
+                consecutiveGoodReads = 0;
+                lastReadings.clear();
+                return;
+            }
+
             // Store current reading in circular buffer
             lastReadings.push(acc);
 

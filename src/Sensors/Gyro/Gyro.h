@@ -19,16 +19,8 @@ namespace astra
                 return -1;
 
             int err = read();
-
-            if (err != 0)
-            {
-                healthy = false;
-                consecutiveGoodReads = 0;
-                return err;
-            }
-
-            updateHealthTracking();
-            return 0;
+            updateHealth(err, currentTime);
+            return err;
         }
 
     protected:
@@ -40,8 +32,17 @@ namespace astra
         CircBuffer<Vector<3>> lastReadings;
         uint8_t consecutiveGoodReads = 0;
 
-        void updateHealthTracking()
+        void updateHealth(int readErr, double currentTime) override
         {
+            (void)currentTime;
+            if (readErr != 0)
+            {
+                healthy = false;
+                consecutiveGoodReads = 0;
+                lastReadings.clear();
+                return;
+            }
+
             lastReadings.push(angVel);
 
             if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)

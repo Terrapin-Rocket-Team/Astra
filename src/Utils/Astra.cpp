@@ -303,7 +303,9 @@ bool Astra::update(double timeSeconds)
 
     // Logging update
 
-    if (timeSeconds - lastLoggingUpdate >= config->loggingInterval)
+    // HITL should emit a telemetry line every update for strict lock-step.
+    bool shouldLogNow = config->hitlMode || ((timeSeconds - lastLoggingUpdate) >= config->loggingInterval);
+    if (shouldLogNow)
     {
 
         lastLoggingUpdate = timeSeconds;
