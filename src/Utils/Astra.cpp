@@ -15,9 +15,11 @@
 #include "RecordData/Logging/DataLogger.h"
 #include "RecordData/Logging/EventLogger.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "Testing/HITLParser.h"
 #include <cstring>
 using namespace astra;
 BlinkBuzz bb;
+Astra *Astra::activeHITLInstance = nullptr;
 
 #ifndef ASTRA_VERSION
 #define ASTRA_VERSION "UNKNOWN"
@@ -29,6 +31,15 @@ Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 
 Astra::~Astra()
 {
+    if (activeHITLInstance == this)
+        activeHITLInstance = nullptr;
+
+    if (messageRouter)
+    {
+        delete messageRouter;
+        messageRouter = nullptr;
+    }
+
     if (ownsState && config && config->state)
     {
         delete config->state;
@@ -57,8 +68,28 @@ void Astra::handleCommandMessage(const char *message, const char *prefix, Stream
     }
 }
 
+void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *source)
+{
+    (void)prefix;
+    (void)source;
+
+    if (!activeHITLInstance || !message)
+        return;
+
+    double simTime = 0.0;
+    if (!HITLParser::parse(message, simTime))
+        return;
+
+    // Avoid recursive router polling when this callback invokes update().
+    activeHITLInstance->inHITLDispatch = true;
+    activeHITLInstance->update(simTime);
+    activeHITLInstance->inHITLDispatch = false;
+}
+
 int Astra::init()
 {
+    warnedDataLoggerUnavailable = false;
+
     // Configure event logger before any LOGI/LOGW output
     if (config->numEventLogs > 0)
     {
@@ -80,6 +111,13 @@ int Astra::init()
         pins++;
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
+
+    // Ensure HITL reporters exist before DataLogger init so the emitted CSV
+    // header includes HITL sensor columns on startup.
+    if (config->hitlMode)
+    {
+        config->ensureHITLSensors();
+    }
 
     // Logging next
     DataLogger::configure(config->logs, config->numLogs);
@@ -122,9 +160,15 @@ int Astra::init()
     }
 
     // Setup SerialMessageRouter for command handling
-    messageRouter = new SerialMessageRouter(4, 8, 256);
+    if (!messageRouter)
+        messageRouter = new SerialMessageRouter(4, 8, 256);
     messageRouter->withInterface(&Serial)
         .withListener("CMD/", handleCommandMessage);
+    if (config->hitlMode)
+    {
+        activeHITLInstance = this;
+        messageRouter->withListener("HITL/", handleHITLMessage);
+    }
 
     delay(10);
 
@@ -140,12 +184,19 @@ int Astra::init()
         config->state->begin();
     }
 
-    // Set baro origin if available (sensors have settled by now)
-    if (config->sensorManager.getBaroSource() && config->sensorManager.getBaroSource()->isInitialized())
+    // Set baro origin immediately in hardware mode.
+    // In HITL mode, defer until the first valid simulation packet.
+    if (!config->hitlMode &&
+        config->sensorManager.getBaroSource() &&
+        config->sensorManager.getBaroSource()->isInitialized())
     {
         double baroAlt = config->sensorManager.getBarometricAltitude();
         if (config->state)
             config->state->setBaroOrigin(baroAlt);
+    }
+    else if (config->hitlMode)
+    {
+        hitlBaselineEstablished = false;
     }
 
     ready = true;
@@ -173,20 +224,27 @@ bool Astra::update(double timeSeconds)
         init();
     }
 
-    // Update SerialMessageRouter to handle incoming commands
-    if (messageRouter)
+    // Update SerialMessageRouter to handle incoming commands/HITL packets.
+    // Skip router polling while dispatching a HITL callback to avoid recursion.
+    if (messageRouter && !inHITLDispatch)
     {
         messageRouter->update();
     }
 
     bb.update();
 
-    // If no time provided, use system time in seconds
+    // HITL is event-driven: if no simulation time is provided, only pump router.
+    if (config->hitlMode && timeSeconds == -1)
+    {
+        updateStatusLEDs();
+        return true;
+    }
+
+    // If no time provided, use system time in seconds.
     if (timeSeconds == -1)
         timeSeconds = millis() / 1000.0;
 
     double currentTime = timeSeconds;
-    
 
     if (!config->state)
     {
@@ -196,9 +254,25 @@ bool Astra::update(double timeSeconds)
         config->state->begin();
     }
 
+    // Keep State reporter time synchronized for telemetry/logging.
+    config->state->update(timeSeconds);
+
     // =================== Sensor Update ===================
     // Update sensors every loop - each sensor's shouldUpdate() decides when to read
     config->sensorManager.update(timeSeconds);
+
+    // In HITL mode, establish baro origin from the first valid packet.
+    if (config->hitlMode && !hitlBaselineEstablished && config->state)
+    {
+        Barometer *baroSource = config->sensorManager.getBaroSource();
+        if (baroSource && baroSource->isInitialized())
+        {
+            double baroAlt = config->sensorManager.getBarometricAltitude();
+            config->state->setBaroOrigin(baroAlt);
+            hitlBaselineEstablished = true;
+            LOGI("HITL baseline established from first packet: baro origin %.2f m ASL", baroAlt);
+        }
+    }
 
     // =================== Orientation & Prediction ===================
     // Only update orientation and predict when new IMU data is available AND sensors are healthy
@@ -320,11 +394,14 @@ bool Astra::update(double timeSeconds)
                 }
             }
             DataLogger::instance().appendLine();
-            LOGI("DEBUG Astra: appendLine() complete");
         }
         else
         {
-            LOGE("DEBUG Astra: DataLogger NOT available!");
+            if (!warnedDataLoggerUnavailable)
+            {
+                LOGW("DataLogger not available; telemetry output is disabled.");
+                warnedDataLoggerUnavailable = true;
+            }
         }
         _didLog = true;
         

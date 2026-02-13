@@ -142,7 +142,6 @@ namespace astra
         this->hitlMode = hitlEnabled;
         if (hitlEnabled)
         {
-            ensureHITLSensors();
             // In HITL, emit telemetry every update so lock-step simulators
             // get a response for each injected sample.
             this->loggingInterval = 0.0;
@@ -274,22 +273,36 @@ namespace astra
 
     void AstraConfig::ensureHITLSensors()
     {
-        if (!hitlAccelOwned)
-            hitlAccelOwned = new HITLAccel();
-        if (!hitlGyroOwned)
-            hitlGyroOwned = new HITLGyro();
-        if (!hitlMagOwned)
-            hitlMagOwned = new HITLMag();
-        if (!hitlBaroOwned)
-            hitlBaroOwned = new HITLBarometer();
-        if (!hitlGpsOwned)
-            hitlGpsOwned = new HITLGPS();
-
-        accel = hitlAccelOwned;
-        gyro = hitlGyroOwned;
-        mag = hitlMagOwned;
-        baro = hitlBaroOwned;
-        gps = hitlGpsOwned;
+        if (!accel)
+        {
+            if (!hitlAccelOwned)
+                hitlAccelOwned = new HITLAccel();
+            accel = hitlAccelOwned;
+        }
+        if (!gyro)
+        {
+            if (!hitlGyroOwned)
+                hitlGyroOwned = new HITLGyro();
+            gyro = hitlGyroOwned;
+        }
+        if (!mag)
+        {
+            if (!hitlMagOwned)
+                hitlMagOwned = new HITLMag();
+            mag = hitlMagOwned;
+        }
+        if (!baro)
+        {
+            if (!hitlBaroOwned)
+                hitlBaroOwned = new HITLBarometer();
+            baro = hitlBaroOwned;
+        }
+        if (!gps)
+        {
+            if (!hitlGpsOwned)
+                hitlGpsOwned = new HITLGPS();
+            gps = hitlGpsOwned;
+        }
     }
 
     AstraConfig &AstraConfig::withStatusLED(int pin)

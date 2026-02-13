@@ -1,102 +1,75 @@
-/**
- * SITL (Software-In-The-Loop) Example
- *
- * This example runs Astra on your PC and connects to an external simulator
- * over TCP using the HITL message format.
- *
- * Usage:
- * 1. Start the Python simulator: python sitl_simulator.py --sim parabolic
- * 2. Build and run this example for native: pio run -e native
- */
+#if !defined(PIO_UNIT_TESTING) && !defined(UNIT_TEST)
 
 #include <Arduino.h>
-#include <Sensors/HITL/HITL.h>
-#include <Communication/SerialMessageRouter.h>
 #include <Utils/Astra.h>
 #include <State/DefaultState.h>
 #include <RecordData/Logging/LoggingBackend/ILogSink.h>
-#include <RecordData/Logging/EventLogger.h>
 
 using namespace astra;
 
-// HITL Sensors
-HITLBarometer baro;
-HITLAccel accel;
-HITLGyro gyro;
-HITLMag mag;
-HITLGPS gps;
+static DefaultState g_state;
 
-// Default state estimation
-DefaultState state;
+static PrintLog g_telemLog(Serial, true);
+static ILogSink *g_telemSinks[] = {&g_telemLog};
+static PrintLog g_eventLog(Serial, true);
+static ILogSink *g_eventSinks[] = {&g_eventLog};
 
-// Telemetry + event logs go to the SITL socket
-PrintLog telemLog(Serial, true);
-ILogSink *telemSinks[] = {&telemLog};
-PrintLog eventLog(Serial, true);
-ILogSink *eventSinks[] = {&eventLog};
-
-AstraConfig config = AstraConfig()
-                         .withHITL(true)
-                         .withAccel(&accel)
-                         .withGyro(&gyro)
-                         .withMag(&mag)
-                         .withBaro(&baro)
-                         .withGPS(&gps)
-                         .withState(&state)
-                         .withDataLogs(telemSinks, 1)
-                         .withEventLogs(eventSinks, 1);
-
-Astra sys(&config);
-SerialMessageRouter router;
-
-static void handleHITL(const char *message, const char *prefix, Stream *source)
-{
-    double simTime;
-    if (HITLParser::parse(message, simTime))
-    {
-        // Update Astra with simulation time (seconds)
-        sys.update(simTime);
-    }
-}
+static AstraConfig g_config;
+static Astra g_sys(&g_config);
 
 void setup()
 {
-    // Connect to SITL simulator
-    // The simulator should be running on localhost:5555
+    Serial.begin(115200);
     if (Serial.connectSITL("localhost", 5555))
     {
-        // Initialize Astra after the socket is ready (logs/TELEM go to the socket)
-        int err = sys.init();
-        if (err != 0)
-        {
-            LOGE("Astra init failed with %d error(s)", err);
-        }
-        else
-        {
-            LOGI("SITL mode initialized");
-        }
+        Serial.println("Connected to SITL");
     }
     else
     {
+        Serial.println("Failed to connect to SITL");
         return;
     }
 
-    // Setup router to parse HITL messages from the simulator
-    router.withInterface(&Serial)
-        .withListener("HITL/", handleHITL);
+    while (!Serial && millis() < 5000)
+    {
+        delay(10);
+    }
+
+    Serial.println("===========================================");
+    Serial.println("  Astra SITL Mode");
+    Serial.println("  Hardware-In-The-Loop Simulation");
+    Serial.println("===========================================");
+    Serial.println();
+
+    g_config.withHITL(true)
+        .withState(&g_state)
+        .withDataLogs(g_telemSinks, 1)
+        .withEventLogs(g_eventSinks, 1);
+
+    Serial.println("Initializing HITL mode...");
+    int err = g_sys.init();
+    if (err != 0)
+    {
+        Serial.println("ERROR: Astra initialization failed!");
+        return;
+    }
+
+    Serial.println("HITL mode initialized successfully!");
+    Serial.println();
+    Serial.println("Ready for simulation. Waiting for HITL packets...");
+    Serial.println("Expected format:");
+    Serial.println("  HITL/timestamp,ax,ay,az,gx,gy,gz,mx,my,mz,pressure,temp,lat,lon,alt,fix,fixqual,heading");
+    Serial.println();
 }
 
 void loop()
 {
-    // Process incoming HITL messages
-    router.update();
-
-    // DataLogger automatically outputs TELEM/ CSV at the configured logging rate
-    delay(1);
+    // In HITL mode, Astra core handles HITL/ packet parsing and update(simTime)
+    // through its internal SerialMessageRouter listener.
+    g_sys.update();
 }
 
-// For native builds, provide main()
-#ifdef NATIVE
+#if defined(NATIVE)
 int main()
 {
     setup();
@@ -104,7 +77,8 @@ int main()
     {
         loop();
     }
-    LOGI("SITL connection closed");
     return 0;
 }
 #endif
+
+#endif // !PIO_UNIT_TESTING && !UNIT_TEST

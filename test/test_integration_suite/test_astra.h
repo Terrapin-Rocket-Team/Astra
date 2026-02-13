@@ -77,6 +77,12 @@ public:
         lastBaroAlt = baroAlt;
     }
 
+    void setBaroOrigin(double altASL) override {
+        baroOriginSetCount++;
+        lastBaroOrigin = altASL;
+        State::setBaroOrigin(altASL);
+    }
+
     enum class Call : uint8_t { Orientation, Predict, GPS, Baro };
 
     Call calls[8];
@@ -92,6 +98,8 @@ public:
     bool sawPredict = false;
     bool sawGPS = false;
     bool sawBaro = false;
+    uint8_t baroOriginSetCount = 0;
+    double lastBaroOrigin = 0.0;
 
 private:
     void record(Call call) {
@@ -611,7 +619,7 @@ void test_hitl_mode_enabled() {
 
 void test_hitl_mode_requires_simulation_time() {
     local_setUp();
-    state = new DefaultState();
+    state = new RecordingState();
 
     AstraConfig config;
     config.withState(state)
@@ -620,10 +628,15 @@ void test_hitl_mode_requires_simulation_time() {
     astra = new Astra(&config);
     astra->init();
 
-    // In HITL mode, must pass simulation time
-    bool result = astra->update(1.0);
+    // In HITL mode, update() without explicit time should only poll router.
+    bool result = astra->update();
 
     TEST_ASSERT_TRUE(result);
+    RecordingState* rec = static_cast<RecordingState*>(state);
+    TEST_ASSERT_FALSE(rec->sawOrientation);
+    TEST_ASSERT_FALSE(rec->sawPredict);
+    TEST_ASSERT_FALSE(rec->sawGPS);
+    TEST_ASSERT_FALSE(rec->sawBaro);
     local_tearDown();
 }
 
@@ -696,6 +709,86 @@ void test_hitl_update_flow_and_order() {
 
     double expectedAlt = Barometer::calcAltitude(902.0);
     TEST_ASSERT_FLOAT_WITHIN(0.5, expectedAlt, rec->lastBaroAlt);
+    local_tearDown();
+}
+
+void test_hitl_router_drives_core_update_from_serial() {
+    local_setUp();
+    state = new RecordingState();
+
+    AstraConfig config;
+    config.withState(state)
+          .withHITL(true);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+    TEST_ASSERT_EQUAL(0, errors);
+
+    RecordingState* rec = static_cast<RecordingState*>(state);
+    const char* line = "HITL/0.25,1.0,2.0,3.0,0.1,0.2,0.3,10.0,20.0,30.0,901.0,15.0,37.0,-122.0,100.0,1,8,45.0\n";
+    Serial.simulateInput(line);
+
+    TEST_ASSERT_TRUE(astra->update()); // HITL event loop path
+
+    TEST_ASSERT_TRUE(rec->sawOrientation);
+    TEST_ASSERT_TRUE(rec->sawPredict);
+    TEST_ASSERT_TRUE(rec->sawGPS);
+    TEST_ASSERT_TRUE(rec->sawBaro);
+    TEST_ASSERT_TRUE(astra->didPredictState());
+    TEST_ASSERT_TRUE(astra->didUpdateState());
+    TEST_ASSERT_TRUE(astra->didLog());
+    local_tearDown();
+}
+
+void test_hitl_router_ignores_invalid_packet() {
+    local_setUp();
+    state = new RecordingState();
+
+    AstraConfig config;
+    config.withState(state)
+          .withHITL(true);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+    TEST_ASSERT_EQUAL(0, errors);
+
+    RecordingState* rec = static_cast<RecordingState*>(state);
+    Serial.simulateInput("HITL/not,a,valid,packet\n");
+    TEST_ASSERT_TRUE(astra->update());
+
+    TEST_ASSERT_FALSE(rec->sawOrientation);
+    TEST_ASSERT_FALSE(rec->sawPredict);
+    TEST_ASSERT_FALSE(rec->sawGPS);
+    TEST_ASSERT_FALSE(rec->sawBaro);
+    TEST_ASSERT_FALSE(astra->didPredictState());
+    TEST_ASSERT_FALSE(astra->didUpdateState());
+    local_tearDown();
+}
+
+void test_hitl_baro_origin_set_once_from_first_packet() {
+    local_setUp();
+    state = new RecordingState();
+
+    AstraConfig config;
+    config.withState(state)
+          .withHITL(true);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+    TEST_ASSERT_EQUAL(0, errors);
+
+    RecordingState* rec = static_cast<RecordingState*>(state);
+    TEST_ASSERT_EQUAL(0, rec->baroOriginSetCount);
+
+    Serial.simulateInput("HITL/0.11,1.0,2.0,3.0,0.1,0.2,0.3,10.0,20.0,30.0,900.0,15.0,37.0,-122.0,100.0,1,8,45.0\n");
+    TEST_ASSERT_TRUE(astra->update());
+    TEST_ASSERT_EQUAL(1, rec->baroOriginSetCount);
+    double expectedOrigin = Barometer::calcAltitude(900.0);
+    TEST_ASSERT_FLOAT_WITHIN(0.5, expectedOrigin, rec->lastBaroOrigin);
+
+    Serial.simulateInput("HITL/0.22,1.0,2.0,3.0,0.1,0.2,0.3,10.0,20.0,30.0,950.0,15.0,37.0,-122.0,100.0,1,8,45.0\n");
+    TEST_ASSERT_TRUE(astra->update());
+    TEST_ASSERT_EQUAL(1, rec->baroOriginSetCount);
     local_tearDown();
 }
 
@@ -941,6 +1034,9 @@ void run_test_astra_tests()
     RUN_TEST(test_hitl_mode_enabled);
     RUN_TEST(test_hitl_mode_requires_simulation_time);
     RUN_TEST(test_hitl_update_flow_and_order);
+    RUN_TEST(test_hitl_router_drives_core_update_from_serial);
+    RUN_TEST(test_hitl_router_ignores_invalid_packet);
+    RUN_TEST(test_hitl_baro_origin_set_once_from_first_packet);
     RUN_TEST(test_complete_update_cycle);
     RUN_TEST(test_multiple_update_cycles);
     RUN_TEST(test_flight_simulation);

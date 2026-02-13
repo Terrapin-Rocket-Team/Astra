@@ -36,6 +36,9 @@ namespace astra
         bool _didLog = false, _didUpdateState = false, _didPredictState = false;
         SerialMessageRouter *messageRouter = nullptr;
         bool ownsState = false;
+        bool inHITLDispatch = false;
+        bool hitlBaselineEstablished = false;
+        bool warnedDataLoggerUnavailable = false;
 
         // Status indicator state
         int initErrorCode = 0;  // 0=success, 1-6=specific sensor, 7+=multiple failures
@@ -44,7 +47,9 @@ namespace astra
         void playInitFeedback(int errorCode);
         void updateStatusLEDs();
 
+        static Astra *activeHITLInstance;
         static void handleCommandMessage(const char* message, const char* prefix, Stream* source);
+        static void handleHITLMessage(const char* message, const char* prefix, Stream* source);
     };
 }
 #endif

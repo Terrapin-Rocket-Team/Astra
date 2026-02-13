@@ -99,8 +99,8 @@
             "version": "^0.3.2"
         },
         {
-            "name": "NativeTestMocks",
-            "version": "https://github.com/DrewBrandt/NativeTestMocks.git",
+            "name": "AstraSupportNativeMocks",
+            "version": "https://github.com/Terrapin-Rocket-Team/Astra-Support.git#main",
             "platforms": [
                 "native"
             ]
