@@ -202,7 +202,7 @@ namespace astra
             Vector<3> eMag = mHoriz.cross(vMagHoriz);
 
             // Combine errors (mag gets lower weight)
-            double magWeight = 0.2;
+            double magWeight = 0.4; // Tunable parameter: how much to trust magnetometer vs accelerometer
             Vector<3> e = eAcc + (eMag * magWeight);
 
             // Apply PI feedback
