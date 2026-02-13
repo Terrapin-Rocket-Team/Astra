@@ -16,6 +16,7 @@
 #include "RecordData/Logging/EventLogger.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "Testing/HITLParser.h"
+#include <cmath>
 #include <cstring>
 using namespace astra;
 BlinkBuzz bb;
@@ -353,6 +354,26 @@ bool Astra::update(double timeSeconds)
     bool hasBaro = config->sensorManager.hasBaroUpdate() &&
                    baro &&
                    baro->isHealthy();
+
+    if (hasBaro && config->baroMachLockoutEnabled && config->state)
+    {
+        const Vector<3> vel = config->state->getVelocity();
+        const double speed = vel.magnitude();
+        double speedOfSound = 340.3; // m/s fallback near sea-level standard atmosphere
+        const double tempC = baro->getTemp();
+        if (std::isfinite(tempC))
+        {
+            const double tempK = tempC + 273.15;
+            if (tempK > 0.0)
+                speedOfSound = std::sqrt(1.4 * 287.05 * tempK);
+        }
+
+        const double mach = (speedOfSound > 1e-6) ? (speed / speedOfSound) : 0.0;
+        if (mach >= config->baroMachLockoutThreshold)
+        {
+            hasBaro = false;
+        }
+    }
 
     // Update only the sensor that has new data
     if (config->state && hasGPS)

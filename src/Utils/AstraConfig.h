@@ -149,6 +149,10 @@ namespace astra
         // Default `false`
         AstraConfig &withHITL(bool hitlEnabled);
 
+        // Lock out barometric measurement updates into the KF above a Mach threshold.
+        // Useful to avoid transonic/supersonic pressure distortions corrupting vertical state.
+        AstraConfig &withBaroMachLockout(bool enabled, double machThreshold = 0.7);
+
         AstraConfig();
         virtual ~AstraConfig();
 
@@ -185,6 +189,8 @@ namespace astra
         double loggingRate = 10;        // in hz
 
         bool hitlMode = false;          // HITL mode enabled
+        bool baroMachLockoutEnabled = false;
+        double baroMachLockoutThreshold = 0.7;
         HITLAccel *hitlAccelOwned = nullptr;
         HITLGyro *hitlGyroOwned = nullptr;
         HITLMag *hitlMagOwned = nullptr;

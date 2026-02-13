@@ -151,6 +151,14 @@ namespace astra
         return *this;
     }
 
+    AstraConfig &AstraConfig::withBaroMachLockout(bool enabled, double machThreshold)
+    {
+        this->baroMachLockoutEnabled = enabled;
+        if (machThreshold > 0.0)
+            this->baroMachLockoutThreshold = machThreshold;
+        return *this;
+    }
+
     AstraConfig &AstraConfig::withAccel(Accel *accel)
     {
         this->accel = accel;
