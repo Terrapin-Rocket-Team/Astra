@@ -20,6 +20,7 @@ namespace astra
         this->P = P;
         this->K = Matrix(X.getRows(), P.getRows(), new double[X.getRows() * P.getRows()]());
 
+        this->stateSize = X.getRows();
         this->measurementSize = K.getCols();
         this->controlSize = K.getRows();
     }

@@ -85,6 +85,15 @@ void test_parse_null_data_no_timestamp() {
     local_tearDown();
 }
 
+void test_parse_invalid_data_no_timestamp() {
+    local_setUp();
+    const char* data = "not,valid,data";
+    bool result = HITLParser::parse(data);
+
+    TEST_ASSERT_FALSE(result);
+    local_tearDown();
+}
+
 void test_parse_incomplete_data() {
     local_setUp();
     const char* data = "1.0,2.0,3.0,4.0";  // Only 4 fields instead of 18
@@ -248,6 +257,15 @@ void test_parseAndInject_null_line() {
     bool result = HITLParser::parseAndInject(nullptr, timestamp);
 
     // Should fail gracefully - strncmp will handle null
+    TEST_ASSERT_FALSE(result);
+    local_tearDown();
+}
+
+void test_parseAndInject_invalid_prefix_no_timestamp() {
+    local_setUp();
+    const char* line = "INVALID/1.0,2.0,3.0,4.0";
+    bool result = HITLParser::parseAndInject(line);
+
     TEST_ASSERT_FALSE(result);
     local_tearDown();
 }
@@ -617,6 +635,7 @@ void run_test_hitl_parser_tests()
     RUN_TEST(test_parse_without_timestamp_extraction);
     RUN_TEST(test_parse_null_data);
     RUN_TEST(test_parse_null_data_no_timestamp);
+    RUN_TEST(test_parse_invalid_data_no_timestamp);
     RUN_TEST(test_parse_incomplete_data);
     RUN_TEST(test_parse_incomplete_data_17_fields);
     RUN_TEST(test_parse_malformed_data);
@@ -631,6 +650,7 @@ void run_test_hitl_parser_tests()
     RUN_TEST(test_parseAndInject_case_sensitive_prefix);
     RUN_TEST(test_parseAndInject_partial_prefix);
     RUN_TEST(test_parseAndInject_null_line);
+    RUN_TEST(test_parseAndInject_invalid_prefix_no_timestamp);
     RUN_TEST(test_parse_extreme_values);
     RUN_TEST(test_parse_negative_values);
     RUN_TEST(test_parse_zero_values);

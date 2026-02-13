@@ -21,6 +21,20 @@ public:
     Matrix getCovariance() const { return P; }
     void setCovariance(const Matrix& newCov) { P = newCov; }
 };
+
+class BareLinearKalmanFilter : public LinearKalmanFilter {
+public:
+    BareLinearKalmanFilter(Matrix initialState, Matrix initialCovariance)
+        : LinearKalmanFilter(initialState, initialCovariance) {}
+
+    void initialize() override {}
+    Matrix getF(double) override { return Matrix::ident(stateSize); }
+    Matrix getG(double) override { return Matrix(stateSize, controlSize, new double[stateSize * controlSize]()); }
+    Matrix getH() override { return Matrix::ident(stateSize); }
+    Matrix getR() override { return Matrix::ident(stateSize); }
+    Matrix getQ(double) override { return Matrix::ident(stateSize); }
+};
+
 void assertMatrixEqual(const Matrix& expected, const Matrix& actual, double tolerance = 0.01) {
     char msg[200];
     snprintf(msg, sizeof(msg), "Matrix dimensions: expected(%d,%d) actual(%d,%d)",
@@ -619,6 +633,88 @@ void test_kalman_state_vector_dimension(void) {
     local_tearDown();
 }
 
+void test_linear_kalman_matrix_constructor_sets_dimensions(void) {
+    local_setUp();
+    double xData[6] = {1, 2, 3, 4, 5, 6};
+    Matrix X0(6, 1, xData);
+    Matrix P0 = Matrix::ident(6);
+
+    BareLinearKalmanFilter kf(X0, P0);
+    Matrix X = kf.getState();
+
+    TEST_ASSERT_EQUAL(6, kf.getStateSize());
+    TEST_ASSERT_EQUAL(6, kf.getMeasurementSize());
+    TEST_ASSERT_EQUAL(6, kf.getInputSize());
+    assertMatrixEqual(X0, X, 0.001);
+    local_tearDown();
+}
+
+void test_updateGPS_uses_default_noise_when_negative(void) {
+    local_setUp();
+    TestableKalmanFilter implicitNoise(1.0, 7.5, 2.0);
+    TestableKalmanFilter explicitNoise(1.0, 7.5, 2.0);
+    implicitNoise.initialize();
+    explicitNoise.initialize();
+
+    double stateData[6] = {10.0, 20.0, 30.0, 0.0, 0.0, 0.0};
+    Matrix X0(6, 1, stateData);
+    Matrix P0 = Matrix::ident(6);
+    implicitNoise.setState(X0);
+    explicitNoise.setState(X0);
+    implicitNoise.setCovariance(P0);
+    explicitNoise.setCovariance(P0);
+
+    implicitNoise.updateGPS(15.0, 25.0, -1.0);
+    explicitNoise.updateGPS(15.0, 25.0, 7.5);
+
+    assertMatrixEqual(explicitNoise.getState(), implicitNoise.getState(), 0.001);
+    local_tearDown();
+}
+
+void test_updateBaro_uses_default_noise_when_negative(void) {
+    local_setUp();
+    TestableKalmanFilter implicitNoise(1.0, 5.0, 3.25);
+    TestableKalmanFilter explicitNoise(1.0, 5.0, 3.25);
+    implicitNoise.initialize();
+    explicitNoise.initialize();
+
+    double stateData[6] = {10.0, 20.0, 30.0, 0.0, 0.0, 0.0};
+    Matrix X0(6, 1, stateData);
+    Matrix P0 = Matrix::ident(6);
+    implicitNoise.setState(X0);
+    explicitNoise.setState(X0);
+    implicitNoise.setCovariance(P0);
+    explicitNoise.setCovariance(P0);
+
+    implicitNoise.updateBaro(35.0, -1.0);
+    explicitNoise.updateBaro(35.0, 3.25);
+
+    assertMatrixEqual(explicitNoise.getState(), implicitNoise.getState(), 0.001);
+    local_tearDown();
+}
+
+void test_updateGPSBaro_uses_default_noise_when_negative(void) {
+    local_setUp();
+    TestableKalmanFilter implicitNoise(1.0, 4.0, 1.5);
+    TestableKalmanFilter explicitNoise(1.0, 4.0, 1.5);
+    implicitNoise.initialize();
+    explicitNoise.initialize();
+
+    double stateData[6] = {10.0, 20.0, 30.0, 0.0, 0.0, 0.0};
+    Matrix X0(6, 1, stateData);
+    Matrix P0 = Matrix::ident(6);
+    implicitNoise.setState(X0);
+    explicitNoise.setState(X0);
+    implicitNoise.setCovariance(P0);
+    explicitNoise.setCovariance(P0);
+
+    implicitNoise.updateGPSBaro(15.0, 25.0, 35.0, -1.0, -1.0);
+    explicitNoise.updateGPSBaro(15.0, 25.0, 35.0, 4.0, 1.5);
+
+    assertMatrixEqual(explicitNoise.getState(), implicitNoise.getState(), 0.001);
+    local_tearDown();
+}
+
 void run_test_kalman_filter_tests()
 {
     RUN_TEST(test_default_kalman_constructor);
@@ -645,6 +741,10 @@ void run_test_kalman_filter_tests()
     RUN_TEST(test_kalman_measurement_noise_effect);
     RUN_TEST(test_kalman_matrix_dimensions_consistency);
     RUN_TEST(test_kalman_state_vector_dimension);
+    RUN_TEST(test_linear_kalman_matrix_constructor_sets_dimensions);
+    RUN_TEST(test_updateGPS_uses_default_noise_when_negative);
+    RUN_TEST(test_updateBaro_uses_default_noise_when_negative);
+    RUN_TEST(test_updateGPSBaro_uses_default_noise_when_negative);
 }
 
 } // namespace test_kalman_filter

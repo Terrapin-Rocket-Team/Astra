@@ -22,9 +22,16 @@ namespace test_astra {
 // Use FakeSensors from UnitTestSensors.h
 using MockAccel = FakeAccel;
 using MockGyro = FakeGyro;
+using MockMag = FakeMag;
 using MockBaro = FakeBarometer;
 using MockGPS = FakeGPS;
 using MockFailingAccel = FakeFailingAccel;
+
+class MockFailingMiscSensor : public FakeSensor {
+public:
+    MockFailingMiscSensor() : FakeSensor("MockFailingMisc") {}
+    int init() override { return -1; }
+};
 
 class MockLogSink : public ILogSink {
 public:
@@ -39,6 +46,28 @@ public:
     size_t write(uint8_t) override { return 1; }
     size_t write(const uint8_t*, size_t n) override { return n; }
     void flush() override {}
+};
+
+class AutoUpdateReporter : public DataReporter {
+public:
+    int updateCount = 0;
+    float value = 0.0f;
+
+    AutoUpdateReporter() : DataReporter("AutoUpdateReporter") {
+        addColumn("%0.2f", &value, "value");
+    }
+
+    int begin() override {
+        initialized = true;
+        return 0;
+    }
+
+    int update(double currentTime = -1) override {
+        (void)currentTime;
+        updateCount++;
+        value += 1.0f;
+        return 0;
+    }
 };
 
 class RecordingState : public State {
@@ -211,6 +240,129 @@ void test_init_with_failing_sensor() {
 
     // Should return 1 error
     TEST_ASSERT_EQUAL(1, errors);
+    local_tearDown();
+}
+
+void test_init_with_failing_gyro_reports_error() {
+    local_setUp();
+    state = new DefaultState();
+    MockGyro gyro;
+    gyro._shouldFailInit = true;
+
+    AstraConfig config;
+    config.withState(state)
+          .withGyro(&gyro);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(1, errors);
+    local_tearDown();
+}
+
+void test_init_with_failing_mag_reports_error() {
+    local_setUp();
+    state = new DefaultState();
+    MockMag mag;
+    mag._shouldFailInit = true;
+
+    AstraConfig config;
+    config.withState(state)
+          .withMag(&mag);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(1, errors);
+    local_tearDown();
+}
+
+void test_init_with_failing_baro_reports_error() {
+    local_setUp();
+    state = new DefaultState();
+    MockBaro baro;
+    baro._shouldFailInit = true;
+
+    AstraConfig config;
+    config.withState(state)
+          .withBaro(&baro);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(1, errors);
+    local_tearDown();
+}
+
+void test_init_with_failing_gps_reports_error() {
+    local_setUp();
+    state = new DefaultState();
+    MockGPS gps;
+    gps._shouldFailInit = true;
+
+    AstraConfig config;
+    config.withState(state)
+          .withGPS(&gps);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(1, errors);
+    local_tearDown();
+}
+
+void test_init_with_failing_misc_reports_error() {
+    local_setUp();
+    state = new DefaultState();
+    MockFailingMiscSensor misc;
+
+    AstraConfig config;
+    config.withState(state)
+          .withMiscSensor(&misc);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(1, errors);
+    local_tearDown();
+}
+
+void test_init_with_multiple_failing_sensors_reports_multiple_errors() {
+    local_setUp();
+    state = new DefaultState();
+    MockAccel accel;
+    MockGyro gyro;
+    accel._shouldFailInit = true;
+    gyro._shouldFailInit = true;
+
+    AstraConfig config;
+    config.withState(state)
+          .withAccel(&accel)
+          .withGyro(&gyro);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(2, errors);
+    local_tearDown();
+}
+
+void test_init_reuses_message_router_when_called_twice() {
+    local_setUp();
+    state = new DefaultState();
+
+    AstraConfig config;
+    config.withState(state);
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+    SerialMessageRouter* firstRouter = astra->getMessageRouter();
+    TEST_ASSERT_NOT_NULL(firstRouter);
+
+    TEST_ASSERT_EQUAL(0, astra->init());
+    SerialMessageRouter* secondRouter = astra->getMessageRouter();
+    TEST_ASSERT_NOT_NULL(secondRouter);
+    TEST_ASSERT_EQUAL_PTR(firstRouter, secondRouter);
     local_tearDown();
 }
 
@@ -750,6 +902,49 @@ void test_hitl_router_drives_core_update_from_serial() {
     local_tearDown();
 }
 
+void test_logging_auto_updates_enabled_reporters() {
+    local_setUp();
+    state = new DefaultState();
+    static MockLogSink sink;
+    ILogSink* sinks[] = {&sink};
+    static AutoUpdateReporter reporter;
+    reporter.updateCount = 0;
+    reporter.value = 0.0f;
+    reporter.begin();
+
+    AstraConfig config;
+    config.withState(state)
+          .withLoggingInterval(100)
+          .withDataLogs(sinks, 1);
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+
+    astra->update(0.0);
+    astra->update(0.1);
+
+    TEST_ASSERT_TRUE(astra->didLog());
+    TEST_ASSERT_GREATER_THAN(0, reporter.updateCount);
+    local_tearDown();
+}
+
+void test_init_with_event_logs_configured() {
+    local_setUp();
+    state = new DefaultState();
+    static MockLogSink sink;
+    ILogSink* eventSinks[] = {&sink};
+
+    AstraConfig config;
+    config.withState(state)
+          .withEventLogs(eventSinks, 1);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(0, errors);
+    local_tearDown();
+}
+
 void test_hitl_router_ignores_invalid_packet() {
     local_setUp();
     state = new RecordingState();
@@ -771,6 +966,156 @@ void test_hitl_router_ignores_invalid_packet() {
     TEST_ASSERT_FALSE(rec->sawGPS);
     TEST_ASSERT_FALSE(rec->sawBaro);
     TEST_ASSERT_FALSE(astra->didPredictState());
+    TEST_ASSERT_FALSE(astra->didUpdateState());
+    local_tearDown();
+}
+
+void test_update_with_mag_only_sensor_does_not_predict() {
+    local_setUp();
+    state = new DefaultState();
+    MockMag mag;
+
+    AstraConfig config;
+    config.withState(state)
+          .withMag(&mag);
+
+    astra = new Astra(&config);
+    astra->init();
+
+    astra->update(0.0);
+    astra->update(0.2);
+
+    TEST_ASSERT_FALSE(astra->didPredictState());
+    TEST_ASSERT_FALSE(astra->didUpdateState());
+    local_tearDown();
+}
+
+void test_update_with_unhealthy_mag_only_sensor_does_not_predict() {
+    local_setUp();
+    state = new DefaultState();
+    MockMag mag;
+    mag._healthy = false;
+
+    AstraConfig config;
+    config.withState(state)
+          .withMag(&mag);
+
+    astra = new Astra(&config);
+    astra->init();
+
+    astra->update(0.0);
+    astra->update(0.2);
+
+    TEST_ASSERT_FALSE(astra->didPredictState());
+    TEST_ASSERT_FALSE(astra->didUpdateState());
+    local_tearDown();
+}
+
+void test_status_indicators_success_path() {
+    local_setUp();
+    state = new DefaultState();
+
+    AstraConfig config;
+    config.withState(state)
+          .withStatusLED(13)
+          .withStatusBuzzer(33);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(0, errors);
+    local_tearDown();
+}
+
+void test_status_indicators_single_failure_path() {
+    local_setUp();
+    state = new DefaultState();
+    MockGPS gps;
+    gps._shouldFailInit = true;
+
+    AstraConfig config;
+    config.withState(state)
+          .withGPS(&gps)
+          .withStatusLED(13)
+          .withStatusBuzzer(33);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(1, errors);
+    local_tearDown();
+}
+
+void test_status_indicators_multiple_failure_path() {
+    local_setUp();
+    state = new DefaultState();
+    MockAccel accel;
+    MockGyro gyro;
+    accel._shouldFailInit = true;
+    gyro._shouldFailInit = true;
+
+    AstraConfig config;
+    config.withState(state)
+          .withAccel(&accel)
+          .withGyro(&gyro)
+          .withStatusLED(13)
+          .withStatusBuzzer(33);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(2, errors);
+    local_tearDown();
+}
+
+void test_gps_fix_led_without_gps_source() {
+    local_setUp();
+    state = new DefaultState();
+
+    AstraConfig config;
+    config.withState(state)
+          .withGPSFixLED(13);
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+    TEST_ASSERT_TRUE(astra->update(0.0));
+    local_tearDown();
+}
+
+void test_gps_fix_led_with_fix() {
+    local_setUp();
+    state = new DefaultState();
+    MockGPS gps;
+    gps.setHasFirstFix(1);
+
+    AstraConfig config;
+    config.withState(state)
+          .withGPS(&gps)
+          .withGPSFixLED(13);
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+    gps.setHasFirstFix(1);
+    TEST_ASSERT_TRUE(astra->update(0.0));
+    TEST_ASSERT_TRUE(astra->update(0.2));
+    local_tearDown();
+}
+
+void test_gps_fix_led_without_fix() {
+    local_setUp();
+    state = new DefaultState();
+    MockGPS gps;
+    gps.setHasFirstFix(0);
+
+    AstraConfig config;
+    config.withState(state)
+          .withGPS(&gps)
+          .withGPSFixLED(13);
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+    astra->update(0.0);
+    astra->update(0.2);
     TEST_ASSERT_FALSE(astra->didUpdateState());
     local_tearDown();
 }
@@ -1015,6 +1360,21 @@ void test_backwards_time() {
     local_tearDown();
 }
 
+void test_update_recreates_state_when_config_state_is_cleared_after_init() {
+    local_setUp();
+    state = new DefaultState();
+
+    AstraConfig config;
+    config.withState(state);
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+
+    config.withState(nullptr);
+    TEST_ASSERT_TRUE(astra->update(0.2));
+    local_tearDown();
+}
+
 void run_test_astra_tests()
 {
     RUN_TEST(test_constructor_with_config);
@@ -1022,6 +1382,13 @@ void run_test_astra_tests()
     RUN_TEST(test_init_minimal_config);
     RUN_TEST(test_init_with_all_sensors);
     RUN_TEST(test_init_with_failing_sensor);
+    RUN_TEST(test_init_with_failing_gyro_reports_error);
+    RUN_TEST(test_init_with_failing_mag_reports_error);
+    RUN_TEST(test_init_with_failing_baro_reports_error);
+    RUN_TEST(test_init_with_failing_gps_reports_error);
+    RUN_TEST(test_init_with_failing_misc_reports_error);
+    RUN_TEST(test_init_with_multiple_failing_sensors_reports_multiple_errors);
+    RUN_TEST(test_init_reuses_message_router_when_called_twice);
     RUN_TEST(test_init_sets_baro_origin);
     RUN_TEST(test_init_creates_message_router);
     RUN_TEST(test_update_without_init_auto_initializes);
@@ -1039,8 +1406,18 @@ void run_test_astra_tests()
     RUN_TEST(test_update_skips_gps_without_fix);
     RUN_TEST(test_update_skips_unhealthy_gps);
     RUN_TEST(test_update_skips_unhealthy_baro);
+    RUN_TEST(test_update_with_mag_only_sensor_does_not_predict);
+    RUN_TEST(test_update_with_unhealthy_mag_only_sensor_does_not_predict);
     RUN_TEST(test_logging_at_specified_interval);
     RUN_TEST(test_logging_rate_conversion);
+    RUN_TEST(test_logging_auto_updates_enabled_reporters);
+    RUN_TEST(test_init_with_event_logs_configured);
+    RUN_TEST(test_status_indicators_success_path);
+    RUN_TEST(test_status_indicators_single_failure_path);
+    RUN_TEST(test_status_indicators_multiple_failure_path);
+    RUN_TEST(test_gps_fix_led_without_gps_source);
+    RUN_TEST(test_gps_fix_led_with_fix);
+    RUN_TEST(test_gps_fix_led_without_fix);
     RUN_TEST(test_hitl_mode_enabled);
     RUN_TEST(test_hitl_mode_requires_simulation_time);
     RUN_TEST(test_hitl_update_flow_and_order);
@@ -1055,6 +1432,7 @@ void run_test_astra_tests()
     RUN_TEST(test_rapid_updates);
     RUN_TEST(test_large_time_jump);
     RUN_TEST(test_backwards_time);
+    RUN_TEST(test_update_recreates_state_when_config_state_is_cleared_after_init);
 }
 
 } // namespace test_astra

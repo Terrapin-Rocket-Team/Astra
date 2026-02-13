@@ -11,6 +11,16 @@ namespace test_rotatable_sensor {
 
 FakeAccel accel;
 
+class NullNameRotatableSensor : public RotatableSensor
+{
+public:
+    NullNameRotatableSensor() : RotatableSensor(nullptr) {}
+
+protected:
+    int init() override { return 0; }
+    int read() override { return 0; }
+};
+
 void local_setUp(void)
 {
     accel.begin();
@@ -311,6 +321,15 @@ void test_rotatable_sensor_orientation_after_data_change()
     local_tearDown();
 }
 
+void test_rotatable_sensor_null_name_ctor_path()
+{
+    local_setUp();
+    NullNameRotatableSensor sensor;
+    TEST_ASSERT_EQUAL(0, sensor.begin());
+    TEST_ASSERT_NOT_NULL(sensor.getName());
+    local_tearDown();
+}
+
 void run_test_rotatable_sensor_tests()
 {
     RUN_TEST(test_rotatable_sensor_identity);
@@ -329,6 +348,7 @@ void run_test_rotatable_sensor_tests()
     RUN_TEST(test_rotatable_sensor_preserves_magnitude);
     RUN_TEST(test_rotatable_sensor_gyro);
     RUN_TEST(test_rotatable_sensor_orientation_after_data_change);
+    RUN_TEST(test_rotatable_sensor_null_name_ctor_path);
 }
 
 } // namespace test_rotatable_sensor

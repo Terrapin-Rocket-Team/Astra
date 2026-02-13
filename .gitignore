@@ -14,3 +14,7 @@ compile_commands.json
 # Local native/SITL diagnostics
 .pio_native_verbose.log
 sim_log_*.csv
+
+# Local coverage artifacts
+results/coverage/
+*.gcov

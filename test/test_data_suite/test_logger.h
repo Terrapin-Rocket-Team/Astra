@@ -3,6 +3,7 @@
 #include <unity.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <cstdint>
 #include <cstdarg>
 #include <cstdio>
@@ -54,6 +55,164 @@ public:
     }
     void flush() override { flushCount++; }
 };
+
+class MemoryFile final : public IFile
+{
+public:
+    MemoryFile(std::string *storage, bool isOpen = true) : storage_(storage), open_(isOpen) {}
+
+    size_t write(uint8_t b) override
+    {
+        if (!open_ || !storage_)
+            return 0;
+        storage_->push_back(static_cast<char>(b));
+        return 1;
+    }
+
+    size_t write(const uint8_t *buffer, size_t size) override
+    {
+        if (!open_ || !storage_ || !buffer)
+            return 0;
+        storage_->append(reinterpret_cast<const char *>(buffer), size);
+        return size;
+    }
+
+    bool flush() override { return open_; }
+
+    int read() override
+    {
+        if (!open_ || !storage_ || readPos_ >= storage_->size())
+            return -1;
+        return static_cast<unsigned char>((*storage_)[readPos_++]);
+    }
+
+    int readBytes(uint8_t *buffer, size_t length) override
+    {
+        if (!open_ || !storage_ || !buffer)
+            return 0;
+        size_t bytesRead = 0;
+        while (bytesRead < length && readPos_ < storage_->size())
+            buffer[bytesRead++] = static_cast<uint8_t>((*storage_)[readPos_++]);
+        return static_cast<int>(bytesRead);
+    }
+
+    int available() override
+    {
+        if (!open_ || !storage_)
+            return 0;
+        return static_cast<int>(storage_->size() - readPos_);
+    }
+
+    bool seek(uint32_t pos) override
+    {
+        if (!open_ || !storage_ || pos > storage_->size())
+            return false;
+        readPos_ = pos;
+        return true;
+    }
+
+    uint32_t position() override { return static_cast<uint32_t>(readPos_); }
+    uint32_t size() override { return storage_ ? static_cast<uint32_t>(storage_->size()) : 0U; }
+
+    bool close() override
+    {
+        open_ = false;
+        return true;
+    }
+
+    bool isOpen() const override { return open_; }
+
+private:
+    std::string *storage_ = nullptr;
+    size_t readPos_ = 0;
+    bool open_ = false;
+};
+
+class MemoryStorage final : public IStorage
+{
+public:
+    bool begin() override
+    {
+        if (failBegin_)
+            return false;
+        begun_ = true;
+        return true;
+    }
+
+    bool end() override
+    {
+        begun_ = false;
+        return true;
+    }
+
+    bool ok() const override { return begun_; }
+
+    IFile *openRead(const char *filename) override
+    {
+        if (!begun_ || !filename)
+            return nullptr;
+        auto it = files_.find(filename);
+        if (it == files_.end())
+            return nullptr;
+        return new MemoryFile(&it->second, true);
+    }
+
+    IFile *openWrite(const char *filename, bool append = true) override
+    {
+        if (!begun_ || !filename)
+            return nullptr;
+
+        std::string &content = files_[filename];
+        if (!append)
+            content.clear();
+        return new MemoryFile(&content, true);
+    }
+
+    bool exists(const char *filename) override
+    {
+        if (!begun_ || !filename)
+            return false;
+        return files_.find(filename) != files_.end();
+    }
+
+    bool remove(const char *filename) override
+    {
+        if (!begun_ || !filename)
+            return false;
+        return files_.erase(filename) > 0;
+    }
+
+    bool mkdir(const char *path) override
+    {
+        (void)path;
+        return begun_;
+    }
+
+    bool rmdir(const char *path) override
+    {
+        (void)path;
+        return begun_;
+    }
+
+    void setFailBegin(bool fail) { failBegin_ = fail; }
+
+    bool hasFile(const std::string &filename) const
+    {
+        return files_.find(filename) != files_.end();
+    }
+
+    std::string readAll(const std::string &filename) const
+    {
+        auto it = files_.find(filename);
+        return it == files_.end() ? std::string() : it->second;
+    }
+
+private:
+    std::map<std::string, std::string> files_;
+    bool begun_ = false;
+    bool failBegin_ = false;
+};
+
 class FakeReporter : public DataReporter
 {
 public:
@@ -447,6 +606,153 @@ void test_printHeaderTo_multi_reporter(void)
     local_tearDown();
 }
 
+void test_event_logger_unavailable_without_sinks(void)
+{
+    local_setUp();
+    EventLogger logger(nullptr, 0);
+    TEST_ASSERT_FALSE(logger.init());
+    TEST_ASSERT_FALSE(logger.info("hello"));
+    TEST_ASSERT_FALSE(logger.warn("warn"));
+    TEST_ASSERT_FALSE(logger.err("err"));
+    local_tearDown();
+}
+
+void test_event_logger_writes_prefix_and_level(void)
+{
+    local_setUp();
+    MockSink sink(true, true);
+    ILogSink *sinks[] = {&sink};
+
+    EventLogger logger(sinks, 1);
+    TEST_ASSERT_TRUE(logger.init());
+    TEST_ASSERT_TRUE(logger.info("value=%d", 42));
+
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, sink.buf.find("LOG/"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, sink.buf.find("[INFO]"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, sink.buf.find("value=42"));
+    TEST_ASSERT_GREATER_THAN(0, sink.flushCount);
+    local_tearDown();
+}
+
+void test_event_logger_skips_sink_that_becomes_unhealthy(void)
+{
+    local_setUp();
+    MockSink sink(true, false);
+    ILogSink *sinks[] = {&sink};
+
+    EventLogger logger(sinks, 1);
+    TEST_ASSERT_TRUE(logger.init());
+
+    sink.healthy = false;
+    sink.buf.clear();
+    TEST_ASSERT_FALSE(logger.warn("dropped"));
+    TEST_ASSERT_TRUE(sink.buf.empty());
+    local_tearDown();
+}
+
+void test_event_logger_empty_message_returns_false(void)
+{
+    local_setUp();
+    MockSink sink(true, false);
+    ILogSink *sinks[] = {&sink};
+
+    EventLogger logger(sinks, 1);
+    TEST_ASSERT_TRUE(logger.init());
+    sink.buf.clear();
+
+    TEST_ASSERT_FALSE(logger.err(""));
+    TEST_ASSERT_TRUE(sink.buf.empty());
+    local_tearDown();
+}
+
+void test_file_log_sink_begin_fails_without_backend(void)
+{
+    local_setUp();
+    FileLogSink sink("flight.csv", static_cast<IStorage *>(nullptr));
+    TEST_ASSERT_FALSE(sink.begin());
+    TEST_ASSERT_FALSE(sink.ok());
+    local_tearDown();
+}
+
+void test_file_log_sink_begin_fails_when_backend_begin_fails(void)
+{
+    local_setUp();
+    MemoryStorage backend;
+    backend.setFailBegin(true);
+
+    FileLogSink sink("flight.csv", &backend);
+    TEST_ASSERT_FALSE(sink.begin());
+    TEST_ASSERT_FALSE(sink.ok());
+    local_tearDown();
+}
+
+void test_file_log_sink_allocates_suffix_when_filename_exists(void)
+{
+    local_setUp();
+    MemoryStorage backend;
+    TEST_ASSERT_TRUE(backend.begin());
+
+    IFile *f0 = backend.openWrite("flight.csv", false);
+    IFile *f1 = backend.openWrite("flight_1.csv", false);
+    TEST_ASSERT_NOT_NULL(f0);
+    TEST_ASSERT_NOT_NULL(f1);
+    f0->close();
+    f1->close();
+    delete f0;
+    delete f1;
+
+    FileLogSink sink("flight.csv", &backend, true);
+    TEST_ASSERT_TRUE(sink.begin());
+    TEST_ASSERT_TRUE(sink.ok());
+    TEST_ASSERT_TRUE(sink.wantsPrefix());
+
+    const uint8_t payload[] = {'A', 'B', 'C'};
+    TEST_ASSERT_EQUAL(3, sink.write(payload, 3));
+    sink.flush();
+    sink.end();
+
+    TEST_ASSERT_TRUE(backend.hasFile("flight_2.csv"));
+    TEST_ASSERT_EQUAL_STRING_LEN("ABC", backend.readAll("flight_2.csv").c_str(), 3);
+    local_tearDown();
+}
+
+void test_file_log_sink_no_extension_suffix_path(void)
+{
+    local_setUp();
+    MemoryStorage backend;
+    TEST_ASSERT_TRUE(backend.begin());
+
+    IFile *existing = backend.openWrite("session", false);
+    TEST_ASSERT_NOT_NULL(existing);
+    existing->close();
+    delete existing;
+
+    FileLogSink sink("session", &backend);
+    TEST_ASSERT_TRUE(sink.begin());
+    TEST_ASSERT_TRUE(sink.write(static_cast<uint8_t>('Z')) == 1);
+    sink.end();
+
+    TEST_ASSERT_TRUE(backend.hasFile("session_1"));
+    TEST_ASSERT_EQUAL_STRING_LEN("Z", backend.readAll("session_1").c_str(), 1);
+    local_tearDown();
+}
+
+void test_file_log_sink_write_after_end_returns_zero(void)
+{
+    local_setUp();
+    MemoryStorage backend;
+    TEST_ASSERT_TRUE(backend.begin());
+
+    FileLogSink sink("final.csv", &backend);
+    TEST_ASSERT_TRUE(sink.begin());
+    sink.end();
+
+    TEST_ASSERT_EQUAL(0, sink.write(static_cast<uint8_t>('X')));
+    uint8_t buffer[2] = {'1', '2'};
+    TEST_ASSERT_EQUAL(0, sink.write(buffer, 2));
+    local_tearDown();
+}
+
 void run_test_logger_tests()
 {
     RUN_TEST(test_header_single_reporter);
@@ -460,6 +766,15 @@ void run_test_logger_tests()
     RUN_TEST(test_printHeaderTo_without_prefix);
     RUN_TEST(test_printHeaderTo_unhealthy_sink);
     RUN_TEST(test_printHeaderTo_multi_reporter);
+    RUN_TEST(test_event_logger_unavailable_without_sinks);
+    RUN_TEST(test_event_logger_writes_prefix_and_level);
+    RUN_TEST(test_event_logger_skips_sink_that_becomes_unhealthy);
+    RUN_TEST(test_event_logger_empty_message_returns_false);
+    RUN_TEST(test_file_log_sink_begin_fails_without_backend);
+    RUN_TEST(test_file_log_sink_begin_fails_when_backend_begin_fails);
+    RUN_TEST(test_file_log_sink_allocates_suffix_when_filename_exists);
+    RUN_TEST(test_file_log_sink_no_extension_suffix_path);
+    RUN_TEST(test_file_log_sink_write_after_end_returns_zero);
 }
 
 } // namespace test_logger

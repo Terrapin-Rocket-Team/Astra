@@ -71,6 +71,13 @@ public:
         last_predict_dt = 0.0;
     }
 };
+
+class InspectableState : public State {
+public:
+    InspectableState(LinearKalmanFilter *kf, MahonyAHRS *ahrs) : State(kf, ahrs) {}
+    double getCurrentTimeForTest() const { return currentTime; }
+};
+
 MockLinearKalmanFilter* kalmanFilter;
 MahonyAHRS* orientationFilter;
 State* state;
@@ -327,6 +334,20 @@ void test_predict_null_filter() {
     local_tearDown();
 }
 
+void test_predict_without_ready_orientation_uses_zero_control_input() {
+    local_setUp();
+    state->begin();
+
+    kalmanFilter->resetMockState();
+    state->predict(0.05);
+
+    TEST_ASSERT_TRUE(kalmanFilter->predict_called);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001, 0.0, kalmanFilter->last_control(0, 0));
+    TEST_ASSERT_FLOAT_WITHIN(0.0001, 0.0, kalmanFilter->last_control(1, 0));
+    TEST_ASSERT_FLOAT_WITHIN(0.0001, 0.0, kalmanFilter->last_control(2, 0));
+    local_tearDown();
+}
+
 void test_update_measurements_gps_only() {
     local_setUp();
     state->setGPSOrigin(34.0, -118.0, 100.0);
@@ -364,6 +385,18 @@ void test_update_measurements_baro_only() {
     TEST_ASSERT_FALSE(kalmanFilter->update_gps_baro_called);
 
     TEST_ASSERT_FLOAT_WITHIN(0.1, 50.0, kalmanFilter->last_baro_pz);
+    local_tearDown();
+}
+
+void test_update_measurements_baro_without_origin_defaults_to_zero_relative() {
+    local_setUp();
+    state->begin();
+
+    kalmanFilter->resetMockState();
+    state->updateBaroMeasurement(150.0);
+
+    TEST_ASSERT_TRUE(kalmanFilter->update_baro_called);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001, 0.0, kalmanFilter->last_baro_pz);
     local_tearDown();
 }
 
@@ -446,6 +479,49 @@ void test_update_measurements_null_filter() {
     // Should not crash
     s.updateGPSMeasurement(gpsPos, gpsVel);
     s.updateBaroMeasurement(100.0);
+    local_tearDown();
+}
+
+void test_update_orientation_with_mag_low_g() {
+    local_setUp();
+    for (int i = 0; i < 200; ++i) {
+        orientationFilter->update(Vector<3>(0, 0, 9.81), Vector<3>(0, 0, 0), Vector<3>(25, 0, 0), 0.01);
+    }
+
+    Quaternion before = state->getOrientation();
+    state->updateOrientation(Vector<3>(0.1, 0.0, 0.0), Vector<3>(0.0, 0.0, 9.81), Vector<3>(25.0, 0.0, 0.0), 0.01);
+    Quaternion after = state->getOrientation();
+
+    TEST_ASSERT_NOT_EQUAL(before.w(), after.w());
+    local_tearDown();
+}
+
+void test_update_orientation_with_mag_high_g_uses_gyro_path() {
+    local_setUp();
+    for (int i = 0; i < 200; ++i) {
+        orientationFilter->update(Vector<3>(0, 0, 9.81), Vector<3>(0, 0, 0), Vector<3>(25, 0, 0), 0.01);
+    }
+
+    state->updateOrientation(Vector<3>(0.2, 0.1, 0.0), Vector<3>(0.0, 0.0, 25.0), Vector<3>(25.0, 0.0, 0.0), 0.01);
+    Quaternion q = state->getOrientation();
+    TEST_ASSERT_NOT_NULL(&q);
+    local_tearDown();
+}
+
+void test_update_orientation_with_mag_null_filter() {
+    local_setUp();
+    State s(kalmanFilter, nullptr);
+    s.updateOrientation(Vector<3>(0, 0, 0), Vector<3>(0, 0, 9.81), Vector<3>(20, 0, 0), 0.01);
+    local_tearDown();
+}
+
+void test_update_with_default_time_uses_millis() {
+    local_setUp();
+    InspectableState testable(kalmanFilter, orientationFilter);
+    setMillis(1234);
+    testable.update(-1);
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 1.234, testable.getCurrentTimeForTest());
+    resetMillis();
     local_tearDown();
 }
 
@@ -595,12 +671,18 @@ void run_test_state_tests()
     RUN_TEST(test_predict_calls_kalman_filter);
     RUN_TEST(test_predict_updates_state_from_filter);
     RUN_TEST(test_predict_null_filter);
+    RUN_TEST(test_predict_without_ready_orientation_uses_zero_control_input);
     RUN_TEST(test_update_measurements_gps_only);
     RUN_TEST(test_update_measurements_baro_only);
+    RUN_TEST(test_update_measurements_baro_without_origin_defaults_to_zero_relative);
     RUN_TEST(test_update_measurements_gps_and_baro);
     RUN_TEST(test_update_measurements_no_sensors);
     RUN_TEST(test_update_measurements_updates_state_from_filter);
     RUN_TEST(test_update_measurements_null_filter);
+    RUN_TEST(test_update_orientation_with_mag_low_g);
+    RUN_TEST(test_update_orientation_with_mag_high_g_uses_gyro_path);
+    RUN_TEST(test_update_orientation_with_mag_null_filter);
+    RUN_TEST(test_update_with_default_time_uses_millis);
     RUN_TEST(test_getters_return_correct_values);
     RUN_TEST(test_get_orientation);
     RUN_TEST(test_get_acceleration);

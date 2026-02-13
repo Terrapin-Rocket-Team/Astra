@@ -247,6 +247,27 @@ void test_bbpattern_assignment_operator() {
     local_tearDown();
 }
 
+void test_bbpattern_self_assignment() {
+    local_setUp();
+    BBPattern pattern(100, 2, 50);
+    pattern = pattern;
+    TEST_ASSERT_TRUE(true);
+    local_tearDown();
+}
+
+void test_bbpattern_destructor_paths() {
+    local_setUp();
+    {
+        BBPattern emptyPattern;
+    }
+    {
+        BBPattern populatedPattern;
+        populatedPattern.a(50).a(100).a(150);
+    }
+    TEST_ASSERT_TRUE(true);
+    local_tearDown();
+}
+
 void test_aonoff_with_pattern() {
     local_setUp();
     BlinkBuzz bb;
@@ -411,6 +432,8 @@ void run_test_blinkbuzz_tests()
     RUN_TEST(test_bbpattern_add_duration);
     RUN_TEST(test_bbpattern_copy_constructor);
     RUN_TEST(test_bbpattern_assignment_operator);
+    RUN_TEST(test_bbpattern_self_assignment);
+    RUN_TEST(test_bbpattern_destructor_paths);
     RUN_TEST(test_aonoff_with_pattern);
     RUN_TEST(test_operations_before_init);
     RUN_TEST(test_multiple_pins_independent);
