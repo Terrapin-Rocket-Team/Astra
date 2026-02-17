@@ -49,7 +49,7 @@ namespace astra
     {
         if (this->loggingRate == loggingRate)
             return *this;
-        LOGI("Logging rate modified from %d to %d hz.", this->loggingRate, loggingRate);
+        LOGI("Logging rate modified from %0.3f to %0.3f hz.", this->loggingRate, loggingRate);
         this->loggingRate = loggingRate;
         this->loggingInterval = 1.0 / loggingRate;
         return *this;

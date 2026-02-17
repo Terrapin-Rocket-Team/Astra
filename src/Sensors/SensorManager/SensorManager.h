@@ -131,7 +131,27 @@ namespace astra
 
             initPrimary(accel, "Accelerometer", accelInitFailed);
             initPrimary(gyro, "Gyroscope", gyroInitFailed);
-            initPrimary(mag, "Magnetometer", magInitFailed);
+
+            // Magnetometer is optional for core state propagation.
+            // If it fails, continue with accel+gyro orientation updates.
+            if (mag)
+            {
+                int err = mag->begin();
+                if (err == 0)
+                    LOGI("Magnetometer (%s) initialized successfully.", mag->getName());
+                else
+                {
+                    LOGW("Magnetometer (%s) FAILED to initialize with error code: %d (continuing without mag)",
+                         mag->getName(), err);
+                    magInitFailed = true;
+                    mag = nullptr; // Ensure update path cannot accidentally use failed mag.
+                }
+            }
+            else
+            {
+                LOGW("No Magnetometer sensor defined.");
+            }
+
             initPrimary(baro, "Barometer", baroInitFailed);
             initPrimary(gps, "GPS", gpsInitFailed);
 

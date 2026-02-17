@@ -40,11 +40,34 @@ namespace astra
         if (!sink || !sink->ok())
             return;
 
-        if (sink->wantsPrefix() && _countReporters > 0 && _reporterRegistry[0]->getNumColumns() > 0)
+        bool hasAnyColumns = false;
+        for (int j = 0; j < _countReporters; j++)
+        {
+            if (_reporterRegistry[j] && _reporterRegistry[j]->getNumColumns() > 0)
+            {
+                hasAnyColumns = true;
+                break;
+            }
+        }
+
+        if (sink->wantsPrefix() && hasAnyColumns)
             sink->print("TELEM/");
+
+        auto hasNextReporterWithColumns = [&](int fromIdx) -> bool
+        {
+            for (int k = fromIdx + 1; k < _countReporters; k++)
+            {
+                if (_reporterRegistry[k] && _reporterRegistry[k]->getNumColumns() > 0)
+                    return true;
+            }
+            return false;
+        };
 
         for (int j = 0; j < _countReporters; j++)
         {
+            if (!_reporterRegistry[j] || _reporterRegistry[j]->getNumColumns() <= 0)
+                continue;
+
             DataPoint *d = _reporterRegistry[j]->getDataPoints();
             while (d != nullptr)
             {
@@ -53,7 +76,7 @@ namespace astra
                     sink->write(',');
                 d = d->next;
             }
-            if (j != _countReporters - 1)
+            if (hasNextReporterWithColumns(j))
                 sink->write(',');
             else
                 sink->write('\n');
@@ -81,19 +104,43 @@ namespace astra
 #ifdef NATIVE
         // On native builds, also output to stdout
         #ifndef NATIVE_NO_STDOUT_DATA
-        if (_countReporters > 0 && _reporterRegistry[0]->getNumColumns() > 0)
+        bool hasAnyColumns = false;
+        for (int j = 0; j < _countReporters; j++)
+        {
+            if (_reporterRegistry[j] && _reporterRegistry[j]->getNumColumns() > 0)
+            {
+                hasAnyColumns = true;
+                break;
+            }
+        }
+
+        if (hasAnyColumns)
         {
             stdoutPrint.print("TELEM/");
         }
+
+        auto hasNextReporterWithColumns = [&](int fromIdx) -> bool
+        {
+            for (int k = fromIdx + 1; k < _countReporters; k++)
+            {
+                if (_reporterRegistry[k] && _reporterRegistry[k]->getNumColumns() > 0)
+                    return true;
+            }
+            return false;
+        };
+
         for (int j = 0; j < _countReporters; ++j)
         {
+            if (!_reporterRegistry[j] || _reporterRegistry[j]->getNumColumns() <= 0)
+                continue;
+
             for (DataPoint *d = _reporterRegistry[j]->getDataPoints(); d != nullptr; d = d->next)
             {
                 d->emit(&stdoutPrint, d);
                 if (d != _reporterRegistry[j]->getLastPoint())
                     stdoutPrint.write(',');
             }
-            if (j != _countReporters - 1)
+            if (hasNextReporterWithColumns(j))
                 stdoutPrint.write(',');
             else
                 stdoutPrint.write('\n');
@@ -106,17 +153,41 @@ namespace astra
         {
             if (!_sinks[i]->ok())
                 continue;
-            if (_sinks[i]->wantsPrefix() && _countReporters > 0 && _reporterRegistry[0]->getNumColumns() > 0)
+
+            bool hasAnyColumns = false;
+            for (int j = 0; j < _countReporters; j++)
+            {
+                if (_reporterRegistry[j] && _reporterRegistry[j]->getNumColumns() > 0)
+                {
+                    hasAnyColumns = true;
+                    break;
+                }
+            }
+            if (_sinks[i]->wantsPrefix() && hasAnyColumns)
                 _sinks[i]->print("TELEM/");
+
+            auto hasNextReporterWithColumns = [&](int fromIdx) -> bool
+            {
+                for (int k = fromIdx + 1; k < _countReporters; k++)
+                {
+                    if (_reporterRegistry[k] && _reporterRegistry[k]->getNumColumns() > 0)
+                        return true;
+                }
+                return false;
+            };
+
             for (int j = 0; j < _countReporters; ++j)
             {
+                if (!_reporterRegistry[j] || _reporterRegistry[j]->getNumColumns() <= 0)
+                    continue;
+
                 for (DataPoint *d = _reporterRegistry[j]->getDataPoints(); d != nullptr; d = d->next)
                 {
                     d->emit(_sinks[i], d);
                     if (d != _reporterRegistry[j]->getLastPoint())
                         _sinks[i]->write(',');
                 }
-                if (j != _countReporters - 1)
+                if (hasNextReporterWithColumns(j))
                     _sinks[i]->write(',');
                 else
                     _sinks[i]->write('\n');
