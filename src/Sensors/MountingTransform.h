@@ -222,6 +222,42 @@ namespace astra
                     matrix[5] == 0 && matrix[6] == 0 && matrix[7] == 0);
         }
 
+        /**
+         * Compose this transform with another transform
+         * Returns a new MountingTransform representing: other * this
+         * (applies 'this' first, then 'other')
+         *
+         * Example: ROTATE_90_Z.compose(FLIP_YZ) means rotate 90° around Z, then flip YZ
+         */
+        MountingTransform compose(const MountingTransform& other) const
+        {
+            double result[9];
+
+            // Matrix multiplication: result = other.matrix * this.matrix
+            for (int row = 0; row < 3; row++)
+            {
+                for (int col = 0; col < 3; col++)
+                {
+                    result[row * 3 + col] = 0;
+                    for (int k = 0; k < 3; k++)
+                    {
+                        result[row * 3 + col] += other.matrix[row * 3 + k] * matrix[k * 3 + col];
+                    }
+                }
+            }
+
+            return MountingTransform(result);
+        }
+
+        /**
+         * Compose this transform with a preset orientation
+         * Convenience overload for: compose(MountingTransform(orientation))
+         */
+        MountingTransform compose(MountingOrientation orient) const
+        {
+            return compose(MountingTransform(orient));
+        }
+
     private:
         MountingOrientation orientation;
         double matrix[9];  // 3x3 row-major rotation matrix

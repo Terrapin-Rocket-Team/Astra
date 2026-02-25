@@ -24,6 +24,10 @@ namespace astra
         {
             orient.setOrientation(orientation);
         }
+        virtual void setMountingTransform(const MountingTransform& transform)
+        {
+            orient = transform;
+        }
         virtual MountingOrientation getMountingOrientation() const
         {
             return orient.getOrientation();
