@@ -31,7 +31,8 @@ namespace astra
         double altitudeASL = 0; // m
 
         // Health tracking for stuck-reading detection
-        static constexpr uint8_t HEALTH_BUFFER_SIZE = 3;
+        static constexpr uint8_t HEALTH_BUFFER_SIZE = 30;
+        static constexpr double STUCK_SPAN_EPSILON_HPA = 1e-6;
         CircBuffer<double> lastReadings;
         uint8_t consecutiveGoodReads = 0;
 

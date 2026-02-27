@@ -73,17 +73,20 @@ namespace astra
             return;
         }
 
-        bool allIdentical = true;
+        double minPressure = lastReadings[0];
+        double maxPressure = lastReadings[0];
         for (uint8_t i = 1; i < HEALTH_BUFFER_SIZE; i++)
         {
-            if (lastReadings[i] != lastReadings[0])
-            {
-                allIdentical = false;
-                break;
-            }
+            const double sample = lastReadings[i];
+            if (sample < minPressure)
+                minPressure = sample;
+            if (sample > maxPressure)
+                maxPressure = sample;
         }
 
-        if (allIdentical)
+        const bool pressureAppearsStuck = (maxPressure - minPressure) <= STUCK_SPAN_EPSILON_HPA;
+
+        if (pressureAppearsStuck)
         {
             if (healthy)
                 LOGW("Baro '%s' became unhealthy: stuck readings detected", getName());

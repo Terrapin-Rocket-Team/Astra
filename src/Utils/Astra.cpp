@@ -281,12 +281,10 @@ bool Astra::update(double timeSeconds)
     bool hasGyro = config->sensorManager.hasGyroUpdate();
     bool hasMag = config->sensorManager.hasMagUpdate();
 
-    // Check sensor health before using data
-    bool accelHealthy = !config->sensorManager.getAccelSource() || config->sensorManager.getAccelSource()->isHealthy();
-    bool gyroHealthy = !config->sensorManager.getGyroSource() || config->sensorManager.getGyroSource()->isHealthy();
+    // Mag health remains optional; accel/gyro health must not lock out state propagation.
     bool magHealthy = !config->sensorManager.getMagSource() || config->sensorManager.getMagSource()->isHealthy();
 
-    if ((hasAccel || hasGyro) && accelHealthy && gyroHealthy)
+    if (hasAccel || hasGyro)
     {
         // Update orientation with new IMU data
         Vector<3> gyro = config->sensorManager.getAngularVelocity();
@@ -318,16 +316,6 @@ bool Astra::update(double timeSeconds)
         lastTime = timeSeconds;
 
         // Clear IMU flags after consuming
-        if (hasAccel)
-            config->sensorManager.clearAccelUpdate();
-        if (hasGyro)
-            config->sensorManager.clearGyroUpdate();
-        if (hasMag)
-            config->sensorManager.clearMagUpdate();
-    }
-    else if ((hasAccel || hasGyro || hasMag) && (!accelHealthy || !gyroHealthy || !magHealthy))
-    {
-        // Clear flags even if unhealthy to prevent stale data from being used later
         if (hasAccel)
             config->sensorManager.clearAccelUpdate();
         if (hasGyro)
