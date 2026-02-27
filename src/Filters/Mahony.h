@@ -202,7 +202,7 @@ namespace astra
             Vector<3> eMag = mHoriz.cross(vMagHoriz);
 
             // Combine errors (mag gets lower weight)
-            double magWeight = 0.2;
+            double magWeight = 0.4; // Tunable parameter: how much to trust magnetometer vs accelerometer
             Vector<3> e = eAcc + (eMag * magWeight);
 
             // Apply PI feedback
@@ -327,6 +327,11 @@ namespace astra
             _biasX = _biasY = _biasZ = 0.0;
             _q = Quaternion(1.0, 0.0, 0.0, 0.0);
         }
+
+       
+    void setKp(double Kp) { _Kp = Kp; }
+    void setKi(double Ki) { _Ki = Ki; }
+ 
 
     private:
         void setBoardToBodyInternal(const MountingTransform &transform, const Quaternion &qBoardToBody, bool preserveEarth)
