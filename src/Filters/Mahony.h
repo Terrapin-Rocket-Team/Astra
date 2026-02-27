@@ -39,6 +39,8 @@ namespace astra
         {
         }
 
+        virtual ~MahonyAHRS() {}
+
         // ========================= Magnetometer Calibration =========================
 
         /**
