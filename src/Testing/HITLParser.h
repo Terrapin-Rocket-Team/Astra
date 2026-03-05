@@ -4,6 +4,7 @@
 #include "../Sensors/HITL/HITLSensorBuffer.h"
 #include "../RecordData/Logging/EventLogger.h"
 #include <Arduino.h>
+#include <cstdlib>
 
 namespace astra
 {
@@ -73,34 +74,74 @@ namespace astra
 
             // Get buffer instance
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
-
-            // Parse CSV data
+            // Parse CSV data with strtod/strtol for robust embedded behavior.
             // Format: timestamp,ax,ay,az,gx,gy,gz,mx,my,mz,pressure,temp,lat,lon,alt,fix,fixqual,heading
-            int itemsParsed = sscanf(data, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%d,%d,%lf",
-                                     &buffer.data.timestamp,
-                                     &buffer.data.accel.x(),
-                                     &buffer.data.accel.y(),
-                                     &buffer.data.accel.z(),
-                                     &buffer.data.gyro.x(),
-                                     &buffer.data.gyro.y(),
-                                     &buffer.data.gyro.z(),
-                                     &buffer.data.mag.x(),
-                                     &buffer.data.mag.y(),
-                                     &buffer.data.mag.z(),
-                                     &buffer.data.pressure,
-                                     &buffer.data.temperature,
-                                     &buffer.data.gps_lat,
-                                     &buffer.data.gps_lon,
-                                     &buffer.data.gps_alt,
-                                     (int *)&buffer.data.gps_fix,
-                                     &buffer.data.gps_fix_quality,
-                                     &buffer.data.gps_heading);
+            const char *p = data;
+            char *end = nullptr;
 
-            if (itemsParsed != 18)
+            auto parseDouble = [&](double &out) -> bool
             {
-                LOGE("HITL: Parse error, got %d items (expected 18)", itemsParsed);
+                out = strtod(p, &end);
+                if (end == p)
+                    return false;
+                p = end;
+                return true;
+            };
+
+            auto consumeComma = [&]() -> bool
+            {
+                if (*p != ',')
+                    return false;
+                ++p;
+                return true;
+            };
+
+            auto parseInt = [&](int &out) -> bool
+            {
+                long v = strtol(p, &end, 10);
+                if (end == p)
+                    return false;
+                out = static_cast<int>(v);
+                p = end;
+                return true;
+            };
+
+            int gpsFixInt = 0;
+            int gpsFixQuality = 0;
+
+            if (!parseDouble(buffer.data.timestamp) || !consumeComma() ||
+                !parseDouble(buffer.data.accel.x()) || !consumeComma() ||
+                !parseDouble(buffer.data.accel.y()) || !consumeComma() ||
+                !parseDouble(buffer.data.accel.z()) || !consumeComma() ||
+                !parseDouble(buffer.data.gyro.x()) || !consumeComma() ||
+                !parseDouble(buffer.data.gyro.y()) || !consumeComma() ||
+                !parseDouble(buffer.data.gyro.z()) || !consumeComma() ||
+                !parseDouble(buffer.data.mag.x()) || !consumeComma() ||
+                !parseDouble(buffer.data.mag.y()) || !consumeComma() ||
+                !parseDouble(buffer.data.mag.z()) || !consumeComma() ||
+                !parseDouble(buffer.data.pressure) || !consumeComma() ||
+                !parseDouble(buffer.data.temperature) || !consumeComma() ||
+                !parseDouble(buffer.data.gps_lat) || !consumeComma() ||
+                !parseDouble(buffer.data.gps_lon) || !consumeComma() ||
+                !parseDouble(buffer.data.gps_alt) || !consumeComma() ||
+                !parseInt(gpsFixInt) || !consumeComma() ||
+                !parseInt(gpsFixQuality) || !consumeComma() ||
+                !parseDouble(buffer.data.gps_heading))
+            {
+                LOGE("HITL: Parse error");
                 return false;
             }
+
+            while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+                ++p;
+            if (*p != '\0')
+            {
+                LOGE("HITL: Parse error trailing data");
+                return false;
+            }
+
+            buffer.data.gps_fix = (gpsFixInt != 0);
+            buffer.data.gps_fix_quality = gpsFixQuality;
 
             // Mark buffer as ready
             buffer.dataReady = true;
