@@ -27,9 +27,8 @@ void test_sitl_initial_state() {
 
 void test_sitl_connection_attempt() {
     local_setUp();
-    // NOTE: Skipping actual connection test because connectSITL has infinite retry loop
-    // The implementation needs a timeout parameter to be testable
-    // For now, we just verify the API exists by testing the connected state
+    // Serial.connectSITL still uses default infinite retry behavior.
+    // Bounded retry behavior is validated via direct SITLSocket tests.
     TEST_ASSERT_FALSE(Serial.isSITLConnected());
     local_tearDown();
 }

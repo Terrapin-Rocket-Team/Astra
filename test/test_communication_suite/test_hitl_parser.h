@@ -4,6 +4,11 @@
 #include <cstring>
 #include "Testing/HITLParser.h"
 #include "Sensors/HITL/HITLSensorBuffer.h"
+#include "Sensors/HITL/HITLAccel.h"
+#include "Sensors/HITL/HITLGyro.h"
+#include "Sensors/HITL/HITLMag.h"
+#include "Sensors/HITL/HITLBarometer.h"
+#include "Sensors/HITL/HITLGPS.h"
 
 using namespace astra;
 
@@ -14,6 +19,10 @@ void local_setUp(void) {
     // Reset HITL buffer before each test
     HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
     buffer.dataReady = false;
+    buffer.imu_valid = false;
+    buffer.mag_valid = false;
+    buffer.baro_valid = false;
+    buffer.gps_valid = false;
     memset(&buffer.data, 0, sizeof(buffer.data));
 }
 
@@ -32,6 +41,10 @@ void test_parse_valid_data_without_prefix() {
 
     HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
     TEST_ASSERT_TRUE(buffer.dataReady);
+    TEST_ASSERT_TRUE(buffer.imu_valid);
+    TEST_ASSERT_TRUE(buffer.mag_valid);
+    TEST_ASSERT_TRUE(buffer.baro_valid);
+    TEST_ASSERT_TRUE(buffer.gps_valid);
     TEST_ASSERT_FLOAT_WITHIN(0.001, 1.234, buffer.data.timestamp);
     TEST_ASSERT_FLOAT_WITHIN(0.001, 0.5, buffer.data.accel.x());
     TEST_ASSERT_FLOAT_WITHIN(0.001, 1.0, buffer.data.accel.y());
@@ -96,12 +109,17 @@ void test_parse_invalid_data_no_timestamp() {
 
 void test_parse_incomplete_data() {
     local_setUp();
-    const char* data = "1.0,2.0,3.0,4.0";  // Only 4 fields instead of 18
+    const char* data = "1.0,2.0,3.0,4.0,5.0,6.0";  // 6 fields is below minimum
     double timestamp;
 
     bool result = HITLParser::parse(data, timestamp);
 
     TEST_ASSERT_FALSE(result);
+    HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+    TEST_ASSERT_FALSE(buffer.imu_valid);
+    TEST_ASSERT_FALSE(buffer.mag_valid);
+    TEST_ASSERT_FALSE(buffer.baro_valid);
+    TEST_ASSERT_FALSE(buffer.gps_valid);
     local_tearDown();
 }
 
@@ -113,7 +131,60 @@ void test_parse_incomplete_data_17_fields() {
 
     bool result = HITLParser::parse(data, timestamp);
 
-    TEST_ASSERT_FALSE(result);
+    TEST_ASSERT_TRUE(result);
+    HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+    TEST_ASSERT_TRUE(buffer.imu_valid);
+    TEST_ASSERT_TRUE(buffer.mag_valid);
+    TEST_ASSERT_TRUE(buffer.baro_valid);
+    TEST_ASSERT_FALSE(buffer.gps_valid);
+    local_tearDown();
+}
+
+void test_parse_7_field_data_sets_only_imu_valid() {
+    local_setUp();
+    const char* data = "1.0,0.1,0.2,9.81,0.01,0.02,0.03";
+    double timestamp;
+
+    bool result = HITLParser::parse(data, timestamp);
+
+    TEST_ASSERT_TRUE(result);
+    HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+    TEST_ASSERT_TRUE(buffer.imu_valid);
+    TEST_ASSERT_FALSE(buffer.mag_valid);
+    TEST_ASSERT_FALSE(buffer.baro_valid);
+    TEST_ASSERT_FALSE(buffer.gps_valid);
+    local_tearDown();
+}
+
+void test_parse_10_field_data_sets_imu_and_mag_valid() {
+    local_setUp();
+    const char* data = "1.0,0.1,0.2,9.81,0.01,0.02,0.03,11.0,12.0,13.0";
+    double timestamp;
+
+    bool result = HITLParser::parse(data, timestamp);
+
+    TEST_ASSERT_TRUE(result);
+    HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+    TEST_ASSERT_TRUE(buffer.imu_valid);
+    TEST_ASSERT_TRUE(buffer.mag_valid);
+    TEST_ASSERT_FALSE(buffer.baro_valid);
+    TEST_ASSERT_FALSE(buffer.gps_valid);
+    local_tearDown();
+}
+
+void test_parse_12_field_data_sets_imu_mag_baro_valid() {
+    local_setUp();
+    const char* data = "1.0,0.1,0.2,9.81,0.01,0.02,0.03,11.0,12.0,13.0,1005.0,22.5";
+    double timestamp;
+
+    bool result = HITLParser::parse(data, timestamp);
+
+    TEST_ASSERT_TRUE(result);
+    HITLSensorBuffer& buffer = HITLSensorBuffer::instance();
+    TEST_ASSERT_TRUE(buffer.imu_valid);
+    TEST_ASSERT_TRUE(buffer.mag_valid);
+    TEST_ASSERT_TRUE(buffer.baro_valid);
+    TEST_ASSERT_FALSE(buffer.gps_valid);
     local_tearDown();
 }
 
@@ -629,6 +700,54 @@ void test_parse_magnetometer_calibration_data() {
     local_tearDown();
 }
 
+void test_hitl_sensors_return_error_before_first_valid_packet() {
+    local_setUp();
+    HITLAccel accel;
+    HITLGyro gyro;
+    HITLMag mag;
+    HITLBarometer baro;
+    HITLGPS gps;
+
+    TEST_ASSERT_EQUAL(0, accel.begin());
+    TEST_ASSERT_EQUAL(0, gyro.begin());
+    TEST_ASSERT_EQUAL(0, mag.begin());
+    TEST_ASSERT_EQUAL(0, baro.begin());
+    TEST_ASSERT_EQUAL(0, gps.begin());
+
+    TEST_ASSERT_NOT_EQUAL(0, accel.update());
+    TEST_ASSERT_NOT_EQUAL(0, gyro.update());
+    TEST_ASSERT_NOT_EQUAL(0, mag.update());
+    TEST_ASSERT_NOT_EQUAL(0, baro.update());
+    TEST_ASSERT_NOT_EQUAL(0, gps.update());
+    local_tearDown();
+}
+
+void test_hitl_sensors_follow_partial_group_validity() {
+    local_setUp();
+    HITLAccel accel;
+    HITLGyro gyro;
+    HITLMag mag;
+    HITLBarometer baro;
+    HITLGPS gps;
+
+    TEST_ASSERT_EQUAL(0, accel.begin());
+    TEST_ASSERT_EQUAL(0, gyro.begin());
+    TEST_ASSERT_EQUAL(0, mag.begin());
+    TEST_ASSERT_EQUAL(0, baro.begin());
+    TEST_ASSERT_EQUAL(0, gps.begin());
+
+    const char* data = "1.0,0.1,0.2,9.81,0.01,0.02,0.03";
+    double timestamp;
+    TEST_ASSERT_TRUE(HITLParser::parse(data, timestamp));
+
+    TEST_ASSERT_EQUAL(0, accel.update());
+    TEST_ASSERT_EQUAL(0, gyro.update());
+    TEST_ASSERT_NOT_EQUAL(0, mag.update());
+    TEST_ASSERT_NOT_EQUAL(0, baro.update());
+    TEST_ASSERT_NOT_EQUAL(0, gps.update());
+    local_tearDown();
+}
+
 void run_test_hitl_parser_tests()
 {
     RUN_TEST(test_parse_valid_data_without_prefix);
@@ -638,6 +757,9 @@ void run_test_hitl_parser_tests()
     RUN_TEST(test_parse_invalid_data_no_timestamp);
     RUN_TEST(test_parse_incomplete_data);
     RUN_TEST(test_parse_incomplete_data_17_fields);
+    RUN_TEST(test_parse_7_field_data_sets_only_imu_valid);
+    RUN_TEST(test_parse_10_field_data_sets_imu_and_mag_valid);
+    RUN_TEST(test_parse_12_field_data_sets_imu_mag_baro_valid);
     RUN_TEST(test_parse_malformed_data);
     RUN_TEST(test_parse_partially_malformed_data);
     RUN_TEST(test_parse_empty_string);
@@ -673,6 +795,8 @@ void run_test_hitl_parser_tests()
     RUN_TEST(test_parse_compass_navigation);
     RUN_TEST(test_parse_gps_fix_loss);
     RUN_TEST(test_parse_magnetometer_calibration_data);
+    RUN_TEST(test_hitl_sensors_return_error_before_first_valid_packet);
+    RUN_TEST(test_hitl_sensors_follow_partial_group_validity);
 }
 
 } // namespace test_hitl_parser

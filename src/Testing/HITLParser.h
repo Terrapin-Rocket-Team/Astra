@@ -73,6 +73,8 @@ namespace astra
 
             // Get buffer instance
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
+            int gpsFixInt = 0;
+            int gpsFixQuality = 0;
 
             // Parse CSV data
             // Format: timestamp,ax,ay,az,gx,gy,gz,mx,my,mz,pressure,temp,lat,lon,alt,fix,fixqual,heading
@@ -92,14 +94,28 @@ namespace astra
                                      &buffer.data.gps_lat,
                                      &buffer.data.gps_lon,
                                      &buffer.data.gps_alt,
-                                     (int *)&buffer.data.gps_fix,
-                                     &buffer.data.gps_fix_quality,
+                                     &gpsFixInt,
+                                     &gpsFixQuality,
                                      &buffer.data.gps_heading);
 
-            if (itemsParsed != 18)
+            if (itemsParsed < 7)
             {
-                LOGE("HITL: Parse error, got %d items (expected 18)", itemsParsed);
+                LOGE("HITL: Parse error, got %d items (expected at least 7)", itemsParsed);
                 return false;
+            }
+
+            buffer.imu_valid = (itemsParsed >= 7);
+            buffer.mag_valid = (itemsParsed >= 10);
+            buffer.baro_valid = (itemsParsed >= 12);
+            buffer.gps_valid = (itemsParsed >= 18);
+
+            if (itemsParsed >= 16)
+            {
+                buffer.data.gps_fix = (gpsFixInt != 0);
+            }
+            if (itemsParsed >= 17)
+            {
+                buffer.data.gps_fix_quality = gpsFixQuality;
             }
 
             // Mark buffer as ready

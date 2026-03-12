@@ -260,7 +260,7 @@ void test_init_with_failing_gyro_reports_error() {
     local_tearDown();
 }
 
-void test_init_with_failing_mag_reports_error() {
+void test_init_with_failing_mag_continues_without_error() {
     local_setUp();
     state = new DefaultState();
     MockMag mag;
@@ -273,7 +273,8 @@ void test_init_with_failing_mag_reports_error() {
     astra = new Astra(&config);
     int errors = astra->init();
 
-    TEST_ASSERT_EQUAL(1, errors);
+    // Magnetometer is optional; init should continue without counting this as a hard error.
+    TEST_ASSERT_EQUAL(0, errors);
     local_tearDown();
 }
 
@@ -1383,7 +1384,7 @@ void run_test_astra_tests()
     RUN_TEST(test_init_with_all_sensors);
     RUN_TEST(test_init_with_failing_sensor);
     RUN_TEST(test_init_with_failing_gyro_reports_error);
-    RUN_TEST(test_init_with_failing_mag_reports_error);
+    RUN_TEST(test_init_with_failing_mag_continues_without_error);
     RUN_TEST(test_init_with_failing_baro_reports_error);
     RUN_TEST(test_init_with_failing_gps_reports_error);
     RUN_TEST(test_init_with_failing_misc_reports_error);

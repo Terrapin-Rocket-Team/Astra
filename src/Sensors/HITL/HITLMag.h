@@ -48,6 +48,10 @@ namespace astra
         {
             // Read from HITL sensor buffer
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
+            if (!buffer.mag_valid)
+            {
+                return 1;
+            }
 
             // Update magnetic field vector
             mag = buffer.data.mag;

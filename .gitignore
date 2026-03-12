@@ -11,6 +11,7 @@
 .version_build_track.json
 compile_commands.json
 
+<<<<<<< Updated upstream
 # Local native/SITL diagnostics
 .pio_native_verbose.log
 sim_log_*.csv
@@ -18,3 +19,7 @@ sim_log_*.csv
 # Local coverage artifacts
 results/coverage/
 *.gcov
+=======
+#playing with some ai stuff
+.ai-loop/
+>>>>>>> Stashed changes

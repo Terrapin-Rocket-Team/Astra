@@ -47,6 +47,10 @@ namespace astra
         } data;
 
         bool dataReady; // True if data has been updated
+        bool imu_valid;  // True when accel/gyro fields are present in latest packet
+        bool mag_valid;  // True when magnetometer fields are present in latest packet
+        bool baro_valid; // True when barometer fields are present in latest packet
+        bool gps_valid;  // True when GPS fields are present in latest packet
 
         // Get singleton instance
         static HITLSensorBuffer &instance()
@@ -60,7 +64,7 @@ namespace astra
 
     private:
         // Singleton - private constructor
-        HITLSensorBuffer() : dataReady(false)
+        HITLSensorBuffer() : dataReady(false), imu_valid(false), mag_valid(false), baro_valid(false), gps_valid(false)
         {
             // Initialize with default values
             data.timestamp = 0.0;

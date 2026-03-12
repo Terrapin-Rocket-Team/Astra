@@ -49,6 +49,10 @@ namespace astra
         {
             // Read from HITL sensor buffer
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
+            if (!buffer.baro_valid)
+            {
+                return 1;
+            }
 
             // Update pressure and temperature
             pressure = buffer.data.pressure;
