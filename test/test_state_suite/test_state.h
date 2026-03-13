@@ -72,12 +72,6 @@ public:
     }
 };
 
-class InspectableState : public State {
-public:
-    InspectableState(LinearKalmanFilter *kf, MahonyAHRS *ahrs) : State(kf, ahrs) {}
-    double getCurrentTimeForTest() const { return currentTime; }
-};
-
 MockLinearKalmanFilter* kalmanFilter;
 MahonyAHRS* orientationFilter;
 State* state;
@@ -515,16 +509,6 @@ void test_update_orientation_with_mag_null_filter() {
     local_tearDown();
 }
 
-void test_update_with_default_time_uses_millis() {
-    local_setUp();
-    InspectableState testable(kalmanFilter, orientationFilter);
-    setMillis(1234);
-    testable.update(-1);
-    TEST_ASSERT_FLOAT_WITHIN(0.001, 1.234, testable.getCurrentTimeForTest());
-    resetMillis();
-    local_tearDown();
-}
-
 void test_getters_return_correct_values() {
     local_setUp();
     state->begin();
@@ -682,7 +666,6 @@ void run_test_state_tests()
     RUN_TEST(test_update_orientation_with_mag_low_g);
     RUN_TEST(test_update_orientation_with_mag_high_g_uses_gyro_path);
     RUN_TEST(test_update_orientation_with_mag_null_filter);
-    RUN_TEST(test_update_with_default_time_uses_millis);
     RUN_TEST(test_getters_return_correct_values);
     RUN_TEST(test_get_orientation);
     RUN_TEST(test_get_acceleration);

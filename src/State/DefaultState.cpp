@@ -31,9 +31,9 @@ namespace astra
         delete ownedOrientationFilter;
     }
 
-    int DefaultState::update(double newTime)
+    int DefaultState::update()
     {
-        return State::update(newTime);
+        return State::update();
     }
 
 } // namespace astra

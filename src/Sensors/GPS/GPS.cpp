@@ -143,13 +143,13 @@ void GPS::findTimeZone()
 
 #pragma region Sensor Virtual Function Implementations
 
-int GPS::update(double currentTime)
+int GPS::update()
 {
     if (!initialized)
         return -1;
 
     int err = read();
-    updateHealth(err, currentTime);
+    updateHealth(err);
     if (err != 0)
         return err;
 
@@ -181,9 +181,8 @@ int GPS::update(double currentTime)
     return 0;
 }
 
-void GPS::updateHealth(int readErr, double currentTime)
+void GPS::updateHealth(int readErr)
 {
-    (void)currentTime;
     // GPS health is based on hardware communication, not fix state.
     healthy = initialized && (readErr == 0);
 }

@@ -98,8 +98,9 @@ namespace astra
         virtual void setBaroOrigin(double altASL);
 
         // ========================= DataReporter Hook =========================
-        // Does not drive estimation. Keeps logging time in sync.
-        virtual int update(double currentTime = -1) override;
+        // Does not drive estimation. Override if a derived State wants to refresh
+        // additional logged fields before a telemetry line is emitted.
+        virtual int update() override;
 
         // ========================= State Getters =========================
 
@@ -115,9 +116,6 @@ namespace astra
         MahonyAHRS *getOrientationFilter() const { return orientationFilter; }
 
     protected:
-        double currentTime; // in s since uC turned on
-        double lastTime;
-
         // State variables (all in inertial frame)
         Vector<3> position;     // in m from launch position
         Vector<3> velocity;     // in m/s

@@ -44,13 +44,13 @@ namespace astra
         }
 
         // Returns 0 on success, library-specific error code on failure
-        virtual int update(double currentTime = -1) override
+        virtual int update() override
         {
             if (!initialized)
                 return -1;
 
             int err = read();
-            updateHealth(err, currentTime);
+            updateHealth(err);
             return err;
         }
     protected:
@@ -71,9 +71,8 @@ namespace astra
 
         // Update sensor health after each read(). Override in derived sensors
         // for custom policies (e.g. stuck-reading checks).
-        virtual void updateHealth(int readErr, double currentTime)
+        virtual void updateHealth(int readErr)
         {
-            (void)currentTime;
             healthy = initialized && (readErr == 0);
         }
 

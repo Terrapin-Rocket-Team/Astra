@@ -56,9 +56,8 @@ namespace astra
         virtual int begin() = 0;
 
         // Updates the reporter's fields by querying for new data (calls read() internally)
-        // @param currentTime - Current time in seconds (for SITL/HITL), -1 uses millis()
         // Returns 0 on success, library-specific error code on failure
-        virtual int update(double currentTime = -1) = 0;
+        virtual int update() = 0;
 
         virtual bool isInitialized() const { return initialized; } // Returns whether the reporter has been initialized or not
 

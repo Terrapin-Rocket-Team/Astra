@@ -18,7 +18,7 @@ class TestableHITLAccel : public HITLAccel
 {
 public:
     void setInitializedForTest(bool value) { initialized = value; }
-    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr, 0.0); }
+    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr); }
     bool getHealthForTest() const { return healthy; }
 };
 
@@ -26,7 +26,7 @@ class TestableHITLGyro : public HITLGyro
 {
 public:
     void setInitializedForTest(bool value) { initialized = value; }
-    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr, 0.0); }
+    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr); }
     bool getHealthForTest() const { return healthy; }
 };
 
@@ -34,7 +34,7 @@ class TestableHITLMag : public HITLMag
 {
 public:
     void setInitializedForTest(bool value) { initialized = value; }
-    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr, 0.0); }
+    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr); }
     bool getHealthForTest() const { return healthy; }
 };
 
@@ -42,7 +42,7 @@ class TestableHITLBarometer : public HITLBarometer
 {
 public:
     void setInitializedForTest(bool value) { initialized = value; }
-    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr, 0.0); }
+    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr); }
     bool getHealthForTest() const { return healthy; }
 };
 

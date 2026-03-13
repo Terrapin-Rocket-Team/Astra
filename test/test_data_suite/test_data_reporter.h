@@ -51,7 +51,7 @@ public:
         initialized = (beginResult == 0);
         return beginResult;
     }
-    int update(double currentTime = -1) override
+    int update() override
     {
         updateCalled = true;
         return updateResult;
@@ -503,11 +503,11 @@ void test_update_called(void)
     local_tearDown();
 }
 
-void test_update_with_time_parameter(void)
+void test_update_without_time_parameter(void)
 {
     local_setUp();
     TestReporter reporter;
-    reporter.update(123.456);
+    reporter.update();
 
     TEST_ASSERT_TRUE(reporter.updateCalled);
     local_tearDown();
@@ -657,7 +657,7 @@ void run_test_data_reporter_tests()
     RUN_TEST(test_begin_error_does_not_set_initialized);
     RUN_TEST(test_bool_operator);
     RUN_TEST(test_update_called);
-    RUN_TEST(test_update_with_time_parameter);
+    RUN_TEST(test_update_without_time_parameter);
     RUN_TEST(test_autoUpdate_default);
     RUN_TEST(test_setAutoUpdate);
     RUN_TEST(test_empty_reporter);

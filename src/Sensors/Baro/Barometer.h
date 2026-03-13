@@ -19,7 +19,7 @@ namespace astra
         static double calcAltitude(double pressure);
 
         // Sensor virtual functions - return 0 on success, error code on failure
-        virtual int update(double currentTime = -1) override;
+        virtual int update() override;
         virtual int begin() override;
 
     protected:
@@ -36,7 +36,7 @@ namespace astra
         CircBuffer<double> lastReadings;
         uint8_t consecutiveGoodReads = 0;
 
-        void updateHealth(int readErr, double currentTime) override;
+        void updateHealth(int readErr) override;
     };
 }
 #endif // BAROMETER_H

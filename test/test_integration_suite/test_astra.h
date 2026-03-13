@@ -62,8 +62,7 @@ public:
         return 0;
     }
 
-    int update(double currentTime = -1) override {
-        (void)currentTime;
+    int update() override {
         updateCount++;
         value += 1.0f;
         return 0;

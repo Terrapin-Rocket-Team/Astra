@@ -38,9 +38,8 @@ namespace astra
             return 0;
         }
 
-        void updateHealth(int readErr, double currentTime) override
+        void updateHealth(int readErr) override
         {
-            (void)currentTime;
             // In HITL, static pressure can be valid; only comms/read errors are unhealthy.
             healthy = initialized && (readErr == 0);
         }

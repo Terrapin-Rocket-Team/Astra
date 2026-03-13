@@ -46,7 +46,7 @@ namespace astra
         virtual ~DefaultState();
 
         // DataReporter hook (does not drive estimation)
-        virtual int update(double currentTime = -1) override;
+        virtual int update() override;
 
         // Access to the default filter (for advanced tuning)
         DefaultKalmanFilter *getDefaultKalmanFilter() { return ownedKalmanFilter; }

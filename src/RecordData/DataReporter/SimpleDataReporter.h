@@ -48,9 +48,8 @@ namespace astra
             return -1;
         }
 
-        int update(double currentTime = -1) override
+        int update() override
         {
-            (void)currentTime;
             if (_updateFunc)
             {
                 loggedVariable = _updateFunc();

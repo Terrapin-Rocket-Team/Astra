@@ -235,7 +235,7 @@ public:
         initialized = true;
         return 0;
     }
-    int update(double currentTime = -1) override
+    int update() override
     {
         return 0;
     }
@@ -259,7 +259,7 @@ public:
         initialized = true;
         return 0;
     }
-    int update(double currentTime = -1) override
+    int update() override
     {
         return 0;
     }
@@ -436,7 +436,7 @@ void test_empty_reporter_is_handled(void)
     public:
         explicit EmptyReporter(const char *n) : DataReporter(n) {}
         int begin() override { initialized = true; return 0; }
-        int update(double currentTime = -1) override { return 0; }
+        int update() override { return 0; }
     } empty("empty");
 
     MockSink sink(true);

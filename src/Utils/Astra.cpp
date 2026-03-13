@@ -283,8 +283,6 @@ bool Astra::update(double timeSeconds)
     if (timeSeconds == -1)
         timeSeconds = millis() / 1000.0;
 
-    double currentTime = timeSeconds;
-
     if (!config->state)
     {
         LOGW("No State provided; using DefaultState.");
@@ -293,8 +291,10 @@ bool Astra::update(double timeSeconds)
         config->state->begin();
     }
 
-    // Keep State reporter time synchronized for telemetry/logging.
-    config->state->update(timeSeconds);
+    if (config->state)
+    {
+        config->state->update();
+    }
 
     // =================== Sensor Update ===================
     // Update sensors every loop - each sensor's shouldUpdate() decides when to read

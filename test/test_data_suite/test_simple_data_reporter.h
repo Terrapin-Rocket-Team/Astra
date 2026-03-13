@@ -205,7 +205,7 @@ void test_simple_update_calls_callback(void)
     local_tearDown();
 }
 
-void test_simple_update_with_time_parameter(void)
+void test_simple_update_without_time_parameter(void)
 {
     local_setUp();
     SimpleDataReporter<float> reporter(
@@ -219,7 +219,7 @@ void test_simple_update_with_time_parameter(void)
     
     reporter.begin();
     
-    int result = reporter.update(123.456);
+    int result = reporter.update();
     
     TEST_ASSERT_TRUE(update_called);
     TEST_ASSERT_EQUAL(0, result);
@@ -510,7 +510,7 @@ void run_test_simple_data_reporter_tests()
     RUN_TEST(test_simple_begin_with_null_callback);
     RUN_TEST(test_simple_begin_with_failing_callback);
     RUN_TEST(test_simple_update_calls_callback);
-    RUN_TEST(test_simple_update_with_time_parameter);
+    RUN_TEST(test_simple_update_without_time_parameter);
     RUN_TEST(test_simple_update_with_null_callback);
     RUN_TEST(test_simple_update_modifies_logged_variable);
     RUN_TEST(test_simple_multiple_updates);

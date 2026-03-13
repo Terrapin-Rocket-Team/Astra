@@ -19,12 +19,9 @@ namespace astra
             LOGE("State requires an AHRS orientation filter! Cannot create State without orientation filter.");
         }
 
-        lastTime = 0;
-        currentTime = 0;
         this->filter = filter;
         this->orientationFilter = orientationFilter;
 
-        addColumn("%0.3f", &currentTime, "Time (s)");
         addColumn("%0.3f", &position.x(), "PX (m)");
         addColumn("%0.3f", &position.y(), "PY (m)");
         addColumn("%0.3f", &position.z(), "PZ (m)");
@@ -200,12 +197,8 @@ namespace astra
 
 #pragma region Update Functions
 
-    int State::update(double newTime)
+    int State::update()
     {
-        if (newTime == -1)
-            newTime = millis() / 1000.0;
-
-        currentTime = newTime;
         return 0;
     }
 

@@ -68,7 +68,7 @@ public:
         initialized = true;
         return 0;
     }
-    int update(double currentTime = -1) override
+    int update() override
     {
         return 0;
     }
