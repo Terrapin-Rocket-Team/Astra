@@ -26,6 +26,20 @@ Astra *Astra::activeHITLInstance = nullptr;
 #define ASTRA_VERSION "UNKNOWN"
 #endif
 
+#if defined(NATIVE)
+#ifndef PIO_UNIT_TESTING
+#ifndef UNIT_TEST
+#ifndef ASTRA_NATIVE_SITL_HOST
+#define ASTRA_NATIVE_SITL_HOST "localhost"
+#endif
+
+#ifndef ASTRA_NATIVE_SITL_PORT
+#define ASTRA_NATIVE_SITL_PORT 5555
+#endif
+#endif
+#endif
+#endif
+
 Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 {
 }
@@ -89,6 +103,30 @@ void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *s
 
 int Astra::init()
 {
+    if (!config)
+    {
+        LOGE("Cannot initialize Astra without a config.");
+        return -1;
+    }
+
+#if defined(NATIVE)
+#ifndef PIO_UNIT_TESTING
+#ifndef UNIT_TEST
+    // Native runs are always SITL-backed and talk to the configured TCP endpoint.
+    config->withHITL(true);
+
+    if (!Serial.isSITLConnected())
+    {
+        if (!Serial.connectSITL(ASTRA_NATIVE_SITL_HOST, ASTRA_NATIVE_SITL_PORT))
+        {
+            LOGE("Failed to connect to SITL at %s:%d", ASTRA_NATIVE_SITL_HOST, ASTRA_NATIVE_SITL_PORT);
+            return -1;
+        }
+    }
+#endif
+#endif
+#endif
+
     warnedDataLoggerUnavailable = false;
 
     // Configure event logger before any LOGI/LOGW output
