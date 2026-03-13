@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unity.h>
+#include <string>
 #include "Utils/Astra.h"
 #include "Utils/AstraConfig.h"
 #include "State/DefaultState.h"
@@ -37,15 +38,23 @@ public:
 class MockLogSink : public ILogSink {
 public:
     bool began = false;
+    std::string buffer;
     bool begin() override {
         began = true;
+        buffer.clear();
         return true;
     }
     bool end() override { return true; }
     bool ok() const override { return began; }
     bool wantsPrefix() const override { return false; }
-    size_t write(uint8_t) override { return 1; }
-    size_t write(const uint8_t*, size_t n) override { return n; }
+    size_t write(uint8_t c) override {
+        buffer.push_back(static_cast<char>(c));
+        return 1;
+    }
+    size_t write(const uint8_t* data, size_t n) override {
+        buffer.append(reinterpret_cast<const char *>(data), n);
+        return n;
+    }
     void flush() override {}
 };
 
@@ -279,6 +288,63 @@ void test_init_with_failing_mag_continues_without_error() {
 
     // Magnetometer is optional; init should continue without counting this as a hard error.
     TEST_ASSERT_EQUAL(0, errors);
+    local_tearDown();
+}
+
+void test_init_registers_configured_state_as_reporter() {
+    local_setUp();
+    state = new DefaultState();
+
+    AstraConfig config;
+    config.withState(state);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(0, errors);
+    TEST_ASSERT_EQUAL(2, DataLogger::instance().getNumReporters());
+    TEST_ASSERT_EQUAL_STRING("Time", DataLogger::instance().getReporters()[0]->getName());
+    TEST_ASSERT_EQUAL_PTR(state, DataLogger::instance().getReporters()[1]);
+    local_tearDown();
+}
+
+void test_init_registers_default_state_as_reporter_when_state_omitted() {
+    local_setUp();
+
+    AstraConfig config;
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(0, errors);
+    TEST_ASSERT_EQUAL(2, DataLogger::instance().getNumReporters());
+    TEST_ASSERT_EQUAL_STRING("Time", DataLogger::instance().getReporters()[0]->getName());
+    TEST_ASSERT_NOT_NULL(DataLogger::instance().getReporters()[1]);
+    local_tearDown();
+}
+
+void test_default_time_reporter_logs_sim_time() {
+    local_setUp();
+    state = new DefaultState();
+    MockLogSink sink;
+    ILogSink *sinks[] = {&sink};
+
+    AstraConfig config;
+    config.withState(state)
+          .withLoggingInterval(100)
+          .withDataLogs(sinks, 1);
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, sink.buffer.find("Time - Seconds"));
+
+    sink.buffer.clear();
+    astra->update(0.0);
+    astra->update(12.345);
+
+    TEST_ASSERT_TRUE(astra->didLog());
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, sink.buffer.find("12.345"));
     local_tearDown();
 }
 
@@ -1373,6 +1439,9 @@ void run_test_astra_tests()
     RUN_TEST(test_constructor_with_config);
     RUN_TEST(test_constructor_null_config);
     RUN_TEST(test_init_minimal_config);
+    RUN_TEST(test_init_registers_configured_state_as_reporter);
+    RUN_TEST(test_init_registers_default_state_as_reporter_when_state_omitted);
+    RUN_TEST(test_default_time_reporter_logs_sim_time);
     RUN_TEST(test_init_with_all_sensors);
     RUN_TEST(test_init_with_failing_sensor);
     RUN_TEST(test_init_with_failing_gyro_reports_error);

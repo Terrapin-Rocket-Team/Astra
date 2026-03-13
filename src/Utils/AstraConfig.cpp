@@ -367,7 +367,7 @@ namespace astra
         }
     }
 
-    void AstraConfig::registerResolvedReporters()
+    void AstraConfig::registerResolvedReporters(DataReporter *leadingReporter)
     {
         DataLogger::reset();
 
@@ -377,11 +377,13 @@ namespace astra
                 DataLogger::registerReporter(reporter);
         };
 
+        registerReporter(leadingReporter);
         registerReporter(accel);
         registerReporter(gyro);
         registerReporter(mag);
         registerReporter(baro);
         registerReporter(gps);
+        registerReporter(state);
 
         for (uint8_t i = 0; i < numMiscSensors; i++)
             registerReporter(miscSensors[i]);

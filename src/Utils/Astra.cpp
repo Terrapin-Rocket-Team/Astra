@@ -15,6 +15,7 @@
 #include "RecordData/Logging/DataLogger.h"
 #include "RecordData/Logging/EventLogger.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "RecordData/DataReporter/SimpleDataReporter.h"
 #include "Testing/HITLParser.h"
 #include <cmath>
 #include <cstring>
@@ -49,6 +50,12 @@ Astra::~Astra()
     {
         delete messageRouter;
         messageRouter = nullptr;
+    }
+
+    if (defaultTimeReporter)
+    {
+        delete defaultTimeReporter;
+        defaultTimeReporter = nullptr;
     }
 
     if (ownsState && config && config->state)
@@ -96,6 +103,33 @@ void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *s
     instance->inHITLDispatch = true;
     instance->update(simTime);
     instance->inHITLDispatch = false;
+}
+
+bool Astra::beginDefaultTimeReporter(void *context)
+{
+    return context != nullptr;
+}
+
+double Astra::updateDefaultTimeReporter(void *context)
+{
+    Astra *instance = static_cast<Astra *>(context);
+    return instance ? instance->currentUpdateTime : 0.0;
+}
+
+void Astra::ensureDefaultTimeReporter()
+{
+    if (defaultTimeReporter)
+        return;
+
+    defaultTimeReporter = new SimpleDataReporter<double>(
+        "Time",
+        "%0.3f",
+        "Seconds",
+        beginDefaultTimeReporter,
+        updateDefaultTimeReporter,
+        this,
+        0.0);
+    defaultTimeReporter->begin();
 }
 
 int Astra::init()
@@ -150,7 +184,17 @@ int Astra::init()
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
-    config->registerResolvedReporters();
+    // Initialize State early so it participates in reporter registration and
+    // telemetry header generation on the first logger configure.
+    if (!config->state)
+    {
+        LOGW("No State provided; using DefaultState.");
+        config->state = new DefaultState();
+        ownsState = true;
+    }
+
+    ensureDefaultTimeReporter();
+    config->registerResolvedReporters(defaultTimeReporter);
     DataLogger::configure(config->logs, config->numLogs);
 
     if (config->runtimeMode == AstraConfig::RuntimeMode::HITL)
@@ -212,13 +256,6 @@ int Astra::init()
 
     delay(10);
 
-    // Initialize State (create DefaultState if not provided)
-    if (!config->state)
-    {
-        LOGW("No State provided; using DefaultState.");
-        config->state = new DefaultState();
-        ownsState = true;
-    }
     if (config->state)
     {
         config->state->begin();
@@ -286,6 +323,8 @@ bool Astra::update(double timeSeconds)
     // If no time provided, use system time in seconds.
     if (timeSeconds == -1)
         timeSeconds = millis() / 1000.0;
+
+    currentUpdateTime = timeSeconds;
 
     if (!config->state)
     {

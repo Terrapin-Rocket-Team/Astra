@@ -15,6 +15,7 @@ static bool init_called = false;
 static bool update_called = false;
 static int init_call_count = 0;
 static int update_call_count = 0;
+static void *last_context = nullptr;
 
 // Test callback functions for float
 static bool floatInitCallback() {
@@ -61,6 +62,20 @@ static double doubleUpdateCallback() {
     return 3.14159;
 }
 
+static bool contextInitCallback(void *context) {
+    init_called = true;
+    init_call_count++;
+    last_context = context;
+    return context != nullptr;
+}
+
+static double contextUpdateCallback(void *context) {
+    update_called = true;
+    update_call_count++;
+    last_context = context;
+    return context ? *static_cast<double *>(context) : 0.0;
+}
+
 void local_setUp(void)
 {
     // Reset static counter and tracking variables
@@ -69,6 +84,7 @@ void local_setUp(void)
     update_called = false;
     init_call_count = 0;
     update_call_count = 0;
+    last_context = nullptr;
 }
 
 void local_tearDown(void)
@@ -351,6 +367,32 @@ void test_simple_double_type(void)
     local_tearDown();
 }
 
+void test_simple_context_callbacks(void)
+{
+    local_setUp();
+    double contextValue = 12.345;
+    SimpleDataReporter<double> reporter(
+        "ContextReporter",
+        "%.3f",
+        "seconds",
+        contextInitCallback,
+        contextUpdateCallback,
+        &contextValue,
+        0.0
+    );
+
+    TEST_ASSERT_EQUAL(0, reporter.begin());
+    TEST_ASSERT_EQUAL_PTR(&contextValue, last_context);
+
+    TEST_ASSERT_EQUAL(0, reporter.update());
+    TEST_ASSERT_EQUAL_PTR(&contextValue, last_context);
+
+    DataPoint *dp = reporter.getDataPoints();
+    const double *value = static_cast<const double *>(dp->data);
+    TEST_ASSERT_DOUBLE_WITHIN(0.0001, contextValue, *value);
+    local_tearDown();
+}
+
 void test_simple_default_value_initialization(void)
 {
     local_setUp();
@@ -516,6 +558,7 @@ void run_test_simple_data_reporter_tests()
     RUN_TEST(test_simple_multiple_updates);
     RUN_TEST(test_simple_int_type);
     RUN_TEST(test_simple_double_type);
+    RUN_TEST(test_simple_context_callbacks);
     RUN_TEST(test_simple_default_value_initialization);
     RUN_TEST(test_simple_custom_format_string);
     RUN_TEST(test_simple_custom_label);

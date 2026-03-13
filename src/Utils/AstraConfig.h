@@ -188,7 +188,7 @@ namespace astra
         void installHITLPrimarySensors();
         RuntimeMode resolveRuntimeMode() const;
         void prepareForRuntimeMode();
-        void registerResolvedReporters();
+        void registerResolvedReporters(DataReporter *leadingReporter = nullptr);
 
     protected:
         State *state = nullptr;

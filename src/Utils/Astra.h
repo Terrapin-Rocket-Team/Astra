@@ -11,6 +11,7 @@ namespace astra
     class GPS;
     class Barometer;
     class SensorManager;
+    class DataReporter;
 
     class Astra
     {
@@ -39,6 +40,8 @@ namespace astra
         bool inHITLDispatch = false;
         bool hitlBaselineEstablished = false;
         bool warnedDataLoggerUnavailable = false;
+        double currentUpdateTime = 0.0;
+        DataReporter *defaultTimeReporter = nullptr;
 
         // Status indicator state
         int initErrorCode = 0;  // 0=success, 1-6=specific sensor, 7+=multiple failures
@@ -46,9 +49,12 @@ namespace astra
         // Internal methods for status feedback
         void playInitFeedback(int errorCode);
         void updateStatusLEDs();
+        void ensureDefaultTimeReporter();
 
         static void handleCommandMessage(const char* message, const char* prefix, Stream* source);
         static void handleHITLMessage(const char* message, const char* prefix, Stream* source, void* context);
+        static bool beginDefaultTimeReporter(void *context);
+        static double updateDefaultTimeReporter(void *context);
     };
 }
 #endif
