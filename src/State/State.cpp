@@ -84,6 +84,11 @@ namespace astra
         }
     }
 
+    void State::setCurrentTime(double timeSeconds)
+    {
+        currentTimeSeconds = timeSeconds;
+    }
+
     void State::predict(double dt)
     {
         if (!filter || !orientationFilter)

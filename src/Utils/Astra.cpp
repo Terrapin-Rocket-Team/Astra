@@ -293,6 +293,7 @@ bool Astra::update(double timeSeconds)
 
     if (config->state)
     {
+        config->state->setCurrentTime(timeSeconds);
         config->state->update();
     }
 

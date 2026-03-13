@@ -97,6 +97,10 @@ namespace astra
          */
         virtual void setBaroOrigin(double altASL);
 
+        // Keep the state's current time synchronized with Astra's update clock
+        // without making time part of the DataReporter update() signature.
+        virtual void setCurrentTime(double timeSeconds);
+
         // ========================= DataReporter Hook =========================
         // Does not drive estimation. Override if a derived State wants to refresh
         // additional logged fields before a telemetry line is emitted.
@@ -110,6 +114,7 @@ namespace astra
         virtual Quaternion getOrientation() const { return orientation; }
         virtual Vector<2> getCoordinates() const { return coordinates; }   // lat lon in decimal degrees
         virtual double getHeading() const { return heading; }              // degrees
+        virtual double getCurrentTime() const { return currentTimeSeconds; }
 
         // ========================= Filter Control =========================
 
@@ -123,6 +128,7 @@ namespace astra
         Quaternion orientation; // body-to-earth rotation
         Vector<2> coordinates;  // in lat, lon
         double heading;         // in degrees
+        double currentTimeSeconds = 0.0;
         Vector<3> origin;       // in lat, lon, alt
 
         // Kalman Filter for position/velocity/acceleration estimation
