@@ -12,6 +12,7 @@
 #include "Sensors/Baro/Barometer.h"
 #include "Sensors/GPS/GPS.h"
 #include "Sensors/HITL/HITL.h"
+#include "RecordData/Logging/DataLogger.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "UnitTestSensors.h"
 
@@ -156,11 +157,15 @@ Astra* astra;
 void local_setUp(void) {
     state = nullptr;
     astra = nullptr;
+    DataLogger::reset();
+    Serial.clearBuffer();
 }
 
 void local_tearDown(void) {
     delete astra;
     delete state;
+    DataLogger::reset();
+    Serial.clearBuffer();
 }
 
 void test_constructor_with_config() {
@@ -770,7 +775,7 @@ void test_hitl_mode_enabled() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -785,7 +790,7 @@ void test_hitl_mode_requires_simulation_time() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     astra->init();
@@ -806,22 +811,9 @@ void test_hitl_update_flow_and_order() {
     local_setUp();
     state = new RecordingState();
 
-    HITLAccel accel;
-    HITLGyro gyro;
-    HITLBarometer baro;
-    HITLGPS gps;
-    accel.setUpdateRate(1000);
-    gyro.setUpdateRate(1000);
-    baro.setUpdateRate(1000);
-    gps.setUpdateRate(1000);
-
     AstraConfig config;
     config.withState(state)
-          .withAccel(&accel)
-          .withGyro(&gyro)
-          .withBaro(&baro)
-          .withGPS(&gps)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -880,7 +872,7 @@ void test_hitl_router_drives_core_update_from_serial() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -915,7 +907,8 @@ void test_logging_auto_updates_enabled_reporters() {
     AstraConfig config;
     config.withState(state)
           .withLoggingInterval(100)
-          .withDataLogs(sinks, 1);
+          .withDataLogs(sinks, 1)
+          .withReporter(&reporter);
 
     astra = new Astra(&config);
     TEST_ASSERT_EQUAL(0, astra->init());
@@ -951,7 +944,7 @@ void test_hitl_router_ignores_invalid_packet() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -1126,7 +1119,7 @@ void test_hitl_baro_origin_set_once_from_first_packet() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();

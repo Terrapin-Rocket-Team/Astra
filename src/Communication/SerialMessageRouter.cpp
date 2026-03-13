@@ -40,6 +40,29 @@ SerialMessageRouter::~SerialMessageRouter()
     }
 }
 
+void SerialMessageRouter::reset()
+{
+    if (interfaces) {
+        for (size_t i = 0; i < interfaceCount; i++) {
+            delete[] interfaces[i].buffer;
+            interfaces[i].buffer = nullptr;
+            interfaces[i].stream = nullptr;
+            interfaces[i].bufferPos = 0;
+            interfaces[i].bufferSize = 0;
+        }
+    }
+
+    if (listeners) {
+        for (size_t i = 0; i < listenerCount; i++) {
+            listeners[i] = PrefixListener();
+        }
+    }
+
+    interfaceCount = 0;
+    listenerCount = 0;
+    defaultHandler = nullptr;
+}
+
 SerialMessageRouter& SerialMessageRouter::withInterface(Stream* stream)
 {
     if (!stream || interfaceCount >= maxInterfaces) {
@@ -71,6 +94,17 @@ SerialMessageRouter& SerialMessageRouter::withListener(const char* prefix, Messa
 
     // Add new listener
     listeners[listenerCount] = PrefixListener(prefix, callback);
+    listenerCount++;
+    return *this;
+}
+
+SerialMessageRouter& SerialMessageRouter::withListener(const char* prefix, MessageCallbackWithContext callback, void* context)
+{
+    if (!prefix || !callback || listenerCount >= maxPrefixes) {
+        return *this;
+    }
+
+    listeners[listenerCount] = PrefixListener(prefix, callback, context);
     listenerCount++;
     return *this;
 }
@@ -149,7 +183,11 @@ void SerialMessageRouter::processLine(const char* line, Stream* source)
             const char* message = line + strlen(listener.prefix);
 
             // Call the callback
-            listener.callback(message, listener.prefix, source);
+            if (listener.callbackWithContext) {
+                listener.callbackWithContext(message, listener.prefix, source, listener.context);
+            } else if (listener.callback) {
+                listener.callback(message, listener.prefix, source);
+            }
 
             matched = true;
             break; // Only match first prefix (in registration order)

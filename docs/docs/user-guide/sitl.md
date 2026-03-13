@@ -27,5 +27,6 @@ SITL runs Astra natively on your PC and connects to a simulator over TCP.
 
 - SITL uses the HITL message format over TCP
 - The included example is in `examples/SITL_Example`
-- Use `Serial.connectSITL(host, port)` to connect
+- Native Astra connects automatically and waits until the simulator is available
+- Call `withHITL()` explicitly only when you want to override the default HITL sensors before `init()`
 

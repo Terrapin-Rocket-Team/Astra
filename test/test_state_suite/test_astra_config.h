@@ -458,19 +458,47 @@ void test_with_hitl_enabled() {
     local_setUp();
     AstraConfig config;
 
-    config.withHITL(true);
+    config.withHITL();
 
     TEST_ASSERT_NOT_NULL(&config);
     local_tearDown();
 }
 
-void test_with_hitl_disabled() {
+void test_with_hitl_replaces_all_primary_sensors() {
     local_setUp();
+    MockAccel accel;
+    MockGyro gyro;
+    MockMag mag;
+    MockBaro baro;
+    MockGPS gps;
     AstraConfig config;
 
-    config.withHITL(false);
+    config.withAccel(&accel)
+          .withGyro(&gyro)
+          .withMag(&mag)
+          .withBaro(&baro)
+          .withGPS(&gps)
+          .withHITL();
 
-    TEST_ASSERT_NOT_NULL(&config);
+    TEST_ASSERT_TRUE(config.getAccelSource() != &accel);
+    TEST_ASSERT_TRUE(config.getGyroSource() != &gyro);
+    TEST_ASSERT_TRUE(config.getMagSource() != &mag);
+    TEST_ASSERT_TRUE(config.getBaroSource() != &baro);
+    TEST_ASSERT_TRUE(config.getGPSSource() != &gps);
+    local_tearDown();
+}
+
+void test_with_sensor_after_hitl_overrides_default_sensor() {
+    local_setUp();
+    MockBaro baro;
+    AstraConfig config;
+
+    config.withHITL();
+    Barometer *defaultBaro = config.getBaroSource();
+    config.withBaro(&baro);
+
+    TEST_ASSERT_NOT_NULL(defaultBaro);
+    TEST_ASSERT_EQUAL_PTR(&baro, config.getBaroSource());
     local_tearDown();
 }
 
@@ -504,8 +532,7 @@ void test_complete_configuration_chain() {
           .withStatusLED(13)
           .withStatusBuzzer(9)
           .withGPSFixLED(12)
-          .withDataLogs(sinks, 1)
-          .withHITL(false);
+          .withDataLogs(sinks, 1);
 
     // Should successfully chain all configurations
     TEST_ASSERT_NOT_NULL(&config);
@@ -635,7 +662,8 @@ void run_test_astra_config_tests()
     RUN_TEST(test_with_data_logs_multiple);
     RUN_TEST(test_with_data_logs_max_capacity);
     RUN_TEST(test_with_hitl_enabled);
-    RUN_TEST(test_with_hitl_disabled);
+    RUN_TEST(test_with_hitl_replaces_all_primary_sensors);
+    RUN_TEST(test_with_sensor_after_hitl_overrides_default_sensor);
     RUN_TEST(test_complete_configuration_chain);
     RUN_TEST(test_imu_based_configuration);
     RUN_TEST(test_minimal_configuration);

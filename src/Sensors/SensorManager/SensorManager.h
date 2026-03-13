@@ -44,6 +44,30 @@ namespace astra
 
     public:
         // Configuration
+        void clearConfiguration()
+        {
+            accel = nullptr;
+            gyro = nullptr;
+            mag = nullptr;
+            baro = nullptr;
+            gps = nullptr;
+            accelUpdated = false;
+            gyroUpdated = false;
+            magUpdated = false;
+            baroUpdated = false;
+            gpsUpdated = false;
+            accelInitFailed = false;
+            gyroInitFailed = false;
+            magInitFailed = false;
+            baroInitFailed = false;
+            gpsInitFailed = false;
+            miscInitFailed = false;
+            for (uint8_t i = 0; i < MAX_MISC_SENSORS; i++)
+                miscSensors[i] = nullptr;
+            numMisc = 0;
+            ok = false;
+        }
+
         void setAccelSource(Accel *a) { accel = a; }
         void setGyroSource(Gyro *g) { gyro = g; }
         void setMagSource(Mag *m) { mag = m; }

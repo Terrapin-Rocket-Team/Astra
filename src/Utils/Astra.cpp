@@ -20,7 +20,6 @@
 #include <cstring>
 using namespace astra;
 BlinkBuzz bb;
-Astra *Astra::activeHITLInstance = nullptr;
 
 #ifndef ASTRA_VERSION
 #define ASTRA_VERSION "UNKNOWN"
@@ -46,9 +45,6 @@ Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 
 Astra::~Astra()
 {
-    if (activeHITLInstance == this)
-        activeHITLInstance = nullptr;
-
     if (messageRouter)
     {
         delete messageRouter;
@@ -83,12 +79,13 @@ void Astra::handleCommandMessage(const char *message, const char *prefix, Stream
     }
 }
 
-void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *source)
+void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *source, void *context)
 {
     (void)prefix;
     (void)source;
 
-    if (!activeHITLInstance || !message)
+    Astra *instance = static_cast<Astra *>(context);
+    if (!instance || !message)
         return;
 
     double simTime = 0.0;
@@ -96,9 +93,9 @@ void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *s
         return;
 
     // Avoid recursive router polling when this callback invokes update().
-    activeHITLInstance->inHITLDispatch = true;
-    activeHITLInstance->update(simTime);
-    activeHITLInstance->inHITLDispatch = false;
+    instance->inHITLDispatch = true;
+    instance->update(simTime);
+    instance->inHITLDispatch = false;
 }
 
 int Astra::init()
@@ -110,21 +107,23 @@ int Astra::init()
     }
 
 #if defined(NATIVE)
+    config->prepareForRuntimeMode();
 #ifndef PIO_UNIT_TESTING
 #ifndef UNIT_TEST
-    // Native runs are always SITL-backed and talk to the configured TCP endpoint.
-    config->withHITL(true);
-
-    if (!Serial.isSITLConnected())
+    if (config->runtimeMode == AstraConfig::RuntimeMode::SITL && !Serial.isSITLConnected())
     {
-        if (!Serial.connectSITL(ASTRA_NATIVE_SITL_HOST, ASTRA_NATIVE_SITL_PORT))
+        const char *sitlHost = config->sitlHostConfigured ? config->sitlHost : ASTRA_NATIVE_SITL_HOST;
+        const int sitlPort = config->sitlPort != 0 ? config->sitlPort : ASTRA_NATIVE_SITL_PORT;
+        if (!Serial.connectSITL(sitlHost, sitlPort))
         {
-            LOGE("Failed to connect to SITL at %s:%d", ASTRA_NATIVE_SITL_HOST, ASTRA_NATIVE_SITL_PORT);
+            LOGE("Failed to connect to SITL at %s:%d", sitlHost, sitlPort);
             return -1;
         }
     }
 #endif
 #endif
+#else
+    config->prepareForRuntimeMode();
 #endif
 
     warnedDataLoggerUnavailable = false;
@@ -151,19 +150,16 @@ int Astra::init()
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
-    // Ensure HITL reporters exist before DataLogger init so the emitted CSV
-    // header includes HITL sensor columns on startup.
-    if (config->hitlMode)
-    {
-        config->ensureHITLSensors();
-    }
-
-    // Logging next
+    config->registerResolvedReporters();
     DataLogger::configure(config->logs, config->numLogs);
-    // setup for HITL
-    if (config->hitlMode)
+
+    if (config->runtimeMode == AstraConfig::RuntimeMode::HITL)
     {
         LOGI("HITL mode enabled - sensors and state updates run event-driven. User must pass simulation time to update().");
+    }
+    else if (config->runtimeMode == AstraConfig::RuntimeMode::SITL)
+    {
+        LOGI("SITL mode enabled - Astra is waiting on native simulator packets.");
     }
 
     // Populate and initialize SensorManager from config
@@ -201,12 +197,17 @@ int Astra::init()
     // Setup SerialMessageRouter for command handling
     if (!messageRouter)
         messageRouter = new SerialMessageRouter(4, 8, 256);
+    else
+        messageRouter->reset();
+
     messageRouter->withInterface(&Serial)
         .withListener("CMD/", handleCommandMessage);
-    if (config->hitlMode)
+    if (config->runtimeMode == AstraConfig::RuntimeMode::HITL || config->runtimeMode == AstraConfig::RuntimeMode::SITL)
     {
-        activeHITLInstance = this;
-        messageRouter->withListener("HITL/", handleHITLMessage);
+        Stream *hitlStream = (config->runtimeMode == AstraConfig::RuntimeMode::SITL) ? &Serial : config->hitlInterface;
+        if (hitlStream)
+            messageRouter->withInterface(hitlStream);
+        messageRouter->withListener("HITL/", handleHITLMessage, this);
     }
 
     delay(10);
@@ -225,7 +226,7 @@ int Astra::init()
 
     // Set baro origin immediately in hardware mode.
     // In HITL mode, defer until the first valid simulation packet.
-    if (!config->hitlMode &&
+    if (config->runtimeMode == AstraConfig::RuntimeMode::Hardware &&
         config->sensorManager.getBaroSource() &&
         config->sensorManager.getBaroSource()->isInitialized())
     {
@@ -233,7 +234,8 @@ int Astra::init()
         if (config->state)
             config->state->setBaroOrigin(baroAlt);
     }
-    else if (config->hitlMode)
+    else if (config->runtimeMode == AstraConfig::RuntimeMode::HITL ||
+             config->runtimeMode == AstraConfig::RuntimeMode::SITL)
     {
         hitlBaselineEstablished = false;
     }
@@ -273,7 +275,9 @@ bool Astra::update(double timeSeconds)
     bb.update();
 
     // HITL is event-driven: if no simulation time is provided, only pump router.
-    if (config->hitlMode && timeSeconds == -1)
+    if ((config->runtimeMode == AstraConfig::RuntimeMode::HITL ||
+         config->runtimeMode == AstraConfig::RuntimeMode::SITL) &&
+        timeSeconds == -1)
     {
         updateStatusLEDs();
         return true;
@@ -302,7 +306,9 @@ bool Astra::update(double timeSeconds)
     config->sensorManager.update(timeSeconds);
 
     // In HITL mode, establish baro origin from the first valid packet.
-    if (config->hitlMode && !hitlBaselineEstablished && config->state)
+    if ((config->runtimeMode == AstraConfig::RuntimeMode::HITL ||
+         config->runtimeMode == AstraConfig::RuntimeMode::SITL) &&
+        !hitlBaselineEstablished && config->state)
     {
         Barometer *baroSource = config->sensorManager.getBaroSource();
         if (baroSource && baroSource->isInitialized())
@@ -426,7 +432,9 @@ bool Astra::update(double timeSeconds)
     // Logging update
 
     // HITL should emit a telemetry line every update for strict lock-step.
-    bool shouldLogNow = config->hitlMode || ((timeSeconds - lastLoggingUpdate) >= config->loggingInterval);
+    bool simulationMode = (config->runtimeMode == AstraConfig::RuntimeMode::HITL ||
+                           config->runtimeMode == AstraConfig::RuntimeMode::SITL);
+    bool shouldLogNow = simulationMode || ((timeSeconds - lastLoggingUpdate) >= config->loggingInterval);
     if (shouldLogNow)
     {
 

@@ -15,7 +15,10 @@
 #include "../Sensors/HITL/HITLBarometer.h"
 #include "../Sensors/HITL/HITLGPS.h"
 #include "../Sensors/SensorManager/SensorManager.h"
+#include "../RecordData/DataReporter/DataReporter.h"
 #include "../RecordData/Logging/EventLogger.h"
+#include "../RecordData/Logging/DataLogger.h"
+#include <cstring>
 
 namespace astra
 {
@@ -29,6 +32,7 @@ namespace astra
             eventLogs[i] = nullptr;
         }
         bbAsync = true;
+        hitlInterface = &Serial;
     }
 
     AstraConfig::~AstraConfig()
@@ -135,19 +139,55 @@ namespace astra
         this->numEventLogs = numLogs;
         return *this;
     }
-
-
-    AstraConfig &AstraConfig::withHITL(bool hitlEnabled)
+    AstraConfig &AstraConfig::withHITL()
     {
-        this->hitlMode = hitlEnabled;
-        if (hitlEnabled)
+        explicitHITLConfigured = true;
+        runtimeMode = RuntimeMode::HITL;
+        installHITLPrimarySensors();
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withHITLInterface(Stream *stream)
+    {
+        if (stream)
+            hitlInterface = stream;
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withSITLEndpoint(const char *host, uint16_t port)
+    {
+        if (host && host[0] != '\0')
         {
-            // In HITL, emit telemetry every update so lock-step simulators
-            // get a response for each injected sample.
-            this->loggingInterval = 0.0;
-            this->loggingRate = 0.0;
+            std::strncpy(sitlHost, host, SITL_HOST_MAX_LEN - 1);
+            sitlHost[SITL_HOST_MAX_LEN - 1] = '\0';
+            sitlHostConfigured = true;
+        }
+        sitlPort = port;
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withReporter(DataReporter *reporter)
+    {
+        if (!reporter)
+        {
+            LOGE("Cannot add null reporter.");
+            return *this;
         }
 
+        for (uint8_t i = 0; i < numReporters; i++)
+        {
+            if (reporters[i] == reporter)
+                return *this;
+        }
+
+        if (numReporters >= MAX_REPORTERS)
+        {
+            LOGW("Attempted to add reporter '%s', but the maximum number of reporters (%d) has been reached.",
+                 reporter->getName(), MAX_REPORTERS);
+            return *this;
+        }
+
+        reporters[numReporters++] = reporter;
         return *this;
     }
 
@@ -252,8 +292,7 @@ namespace astra
 
     void AstraConfig::populateSensorManager()
     {
-        if (hitlMode)
-            ensureHITLSensors();
+        sensorManager.clearConfiguration();
 
         // Populate SensorManager from individual sensor pointers
         if (accel)
@@ -281,36 +320,74 @@ namespace astra
 
     void AstraConfig::ensureHITLSensors()
     {
-        if (!accel)
+        if (!hitlAccelOwned)
+            hitlAccelOwned = new HITLAccel();
+        if (!hitlGyroOwned)
+            hitlGyroOwned = new HITLGyro();
+        if (!hitlMagOwned)
+            hitlMagOwned = new HITLMag();
+        if (!hitlBaroOwned)
+            hitlBaroOwned = new HITLBarometer();
+        if (!hitlGpsOwned)
+            hitlGpsOwned = new HITLGPS();
+    }
+
+    void AstraConfig::installHITLPrimarySensors()
+    {
+        ensureHITLSensors();
+        accel = hitlAccelOwned;
+        gyro = hitlGyroOwned;
+        mag = hitlMagOwned;
+        baro = hitlBaroOwned;
+        gps = hitlGpsOwned;
+    }
+
+    AstraConfig::RuntimeMode AstraConfig::resolveRuntimeMode() const
+    {
+#if defined(NATIVE) && !defined(PIO_UNIT_TESTING) && !defined(UNIT_TEST)
+        return RuntimeMode::SITL;
+#else
+        return runtimeMode;
+#endif
+    }
+
+    void AstraConfig::prepareForRuntimeMode()
+    {
+        runtimeMode = resolveRuntimeMode();
+        if (runtimeMode == RuntimeMode::HITL || runtimeMode == RuntimeMode::SITL)
         {
-            if (!hitlAccelOwned)
-                hitlAccelOwned = new HITLAccel();
-            accel = hitlAccelOwned;
+            if (!explicitHITLConfigured && runtimeMode == RuntimeMode::SITL)
+            {
+                installHITLPrimarySensors();
+            }
+            else if (explicitHITLConfigured)
+            {
+                ensureHITLSensors();
+            }
         }
-        if (!gyro)
+    }
+
+    void AstraConfig::registerResolvedReporters()
+    {
+        DataLogger::reset();
+
+        auto registerReporter = [](DataReporter *reporter)
         {
-            if (!hitlGyroOwned)
-                hitlGyroOwned = new HITLGyro();
-            gyro = hitlGyroOwned;
-        }
-        if (!mag)
-        {
-            if (!hitlMagOwned)
-                hitlMagOwned = new HITLMag();
-            mag = hitlMagOwned;
-        }
-        if (!baro)
-        {
-            if (!hitlBaroOwned)
-                hitlBaroOwned = new HITLBarometer();
-            baro = hitlBaroOwned;
-        }
-        if (!gps)
-        {
-            if (!hitlGpsOwned)
-                hitlGpsOwned = new HITLGPS();
-            gps = hitlGpsOwned;
-        }
+            if (reporter)
+                DataLogger::registerReporter(reporter);
+        };
+
+        registerReporter(accel);
+        registerReporter(gyro);
+        registerReporter(mag);
+        registerReporter(baro);
+        registerReporter(gps);
+
+        for (uint8_t i = 0; i < numMiscSensors; i++)
+            registerReporter(miscSensors[i]);
+
+        for (uint8_t i = 0; i < numReporters; i++)
+            registerReporter(reporters[i]);
     }
 
     AstraConfig &AstraConfig::withStatusLED(int pin)

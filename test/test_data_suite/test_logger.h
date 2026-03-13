@@ -290,10 +290,12 @@ static std::vector<std::string> splitLines(const std::string &s)
 
 void local_setUp(void)
 {
+    DataLogger::reset();
 }
 
 void local_tearDown(void)
 {
+    DataLogger::reset();
 }
 
 void test_header_single_reporter(void)
@@ -303,6 +305,7 @@ void test_header_single_reporter(void)
     FakeReporter rp("imu");
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
 
@@ -331,6 +334,7 @@ void test_append_line_single_reporter_values_and_commas(void)
 
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
     reset(sink);
@@ -368,6 +372,8 @@ void test_multi_reporter_header_and_row(void)
 
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&imu);
+    DataLogger::registerReporter(&pos);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
 
@@ -413,6 +419,7 @@ void test_unhealthy_sink_is_skipped(void)
 
     ILogSink *sinks[] = {&bad, &good};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 2);
     TEST_ASSERT_TRUE(DataLogger::available()); // 'any' will be true because good begins
 
@@ -442,6 +449,7 @@ void test_empty_reporter_is_handled(void)
     MockSink sink(true);
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&empty);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
 
@@ -464,6 +472,7 @@ void test_global_configure_and_instance(void)
     FakeReporter rp("imu");
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
 
@@ -482,6 +491,7 @@ void test_printHeaderTo_single_sink(void)
 
     ILogSink *sinks[] = {&sink1};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
 
@@ -516,6 +526,7 @@ void test_printHeaderTo_with_prefix(void)
 
     ILogSink *sinks[] = {&sinkWithPrefix};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
     reset(sinkWithPrefix);
@@ -539,6 +550,7 @@ void test_printHeaderTo_without_prefix(void)
 
     ILogSink *sinks[] = {&sinkNoPrefix};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
     reset(sinkNoPrefix);
@@ -563,6 +575,7 @@ void test_printHeaderTo_unhealthy_sink(void)
 
     ILogSink *sinks[] = {&unhealthySink};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
     // configure will fail because sink is unhealthy
     TEST_ASSERT_FALSE(DataLogger::available());
@@ -584,6 +597,8 @@ void test_printHeaderTo_multi_reporter(void)
 
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp1);
+    DataLogger::registerReporter(&rp2);
     DataLogger::configure(sinks, 1);
     TEST_ASSERT_TRUE(DataLogger::available());
     reset(sink);

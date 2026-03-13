@@ -1,5 +1,4 @@
 #include "DataReporter.h"
-#include "../Logging/DataLogger.h"
 
 using namespace astra;
 
@@ -19,14 +18,10 @@ DataReporter::DataReporter(const char *name)
         this->name = new char[len + 1];
         snprintf(this->name, len + 1, "%s", name);
     }
-
-    DataLogger::registerReporter(this);
 }
 
 DataReporter::~DataReporter()
 {
-    DataLogger::unregisterReporter(this);
-
     auto current = first;
     while (current != nullptr)
     {

@@ -88,118 +88,60 @@ This is the modern, clean approach that integrates with the centralized serial r
 
 #### 1. Include Headers
 ```cpp
-#include <Sensors/HITL/HITL.h>
-#include <Communication/SerialMessageRouter.h>
+#include <Utils/Astra.h>
+#include <State/DefaultState.h>
 
 using namespace astra;
 ```
 
-#### 2. Create HITL Sensors
+#### 2. Enable HITL
 ```cpp
-// Instead of hardware sensors:
-// DPS368* baro = new DPS368(&Wire, 0x77);
+DefaultState state;
 
-// Use HITL sensors:
-HITLBarometer* baro = new HITLBarometer();
-HITLAccel* accel = new HITLAccel();
-HITLGyro* gyro = new HITLGyro();
-HITLMag* mag = new HITLMag();
-HITLGPS* gps = new HITLGPS();
+AstraConfig config = AstraConfig()
+    .withState(&state)
+    .withHITL();
 
-// Build sensor array as usual
-Sensor* sensors[] = {baro, accel, gyro, mag, gps};
+Astra astraSys(&config);
 ```
 
-#### 3. Setup SerialMessageRouter
+#### 3. Optional: Override a Default HITL Sensor
 ```cpp
-SerialMessageRouter router;
-Astra* astraSys;  // Your Astra system instance
+config.withHITL();
 
-void handleHITL(const char* message, const char* prefix, Stream* source) {
-    double simTime;
-    if (HITLParser::parse(message, simTime)) {
-        // Update with simulation time (NOT millis()!)
-        astraSys->update(simTime);
-        // DataLogger automatically outputs "TELEM/" data
-    } else {
-        LOGE("HITL: Failed to parse packet");
-    }
-}
+Barometer* defaultBaro = config.getBaroSource();
+auto* wrappedBaro = new MyBaroDecorator(defaultBaro);
 
+// Ordered override: later calls replace the default HITL sensor.
+config.withBaro(wrappedBaro);
+```
+
+#### 4. Setup + Loop
+```cpp
 void setup() {
     Serial.begin(115200);
-
-    // Initialize your Astra system...
-    // astraSys = new Astra(&config);
-
-    // Configure router to handle HITL messages
-    router.withInterface(&Serial)
-          .withListener("HITL/", handleHITL);
+    astraSys.init();
 }
-```
 
-#### 4. Main Loop
-```cpp
 void loop() {
-    router.update();  // Automatically handles HITL/ messages
-
-    // Rest of your code...
+    // Astra owns HITL packet routing internally.
+    astraSys.update();
 }
 ```
-
-If you are using the full `Astra` system, you can register the listener on
-`Astra::getMessageRouter()` and skip calling `router.update()` manually.
 
 **Benefits:**
-- Clean separation of concerns
-- Easy to add other message types (CMD/, RAD/, etc.)
-- Automatic prefix handling
-- Works with multiple serial interfaces simultaneously
+- No manual HITL sensor instantiation
+- No manual `HITL/` listener registration
+- Ordered overrides let decorators wrap the default HITL sensors before `init()`
+- The same `withSensor()` calls work for hardware and simulation
 
 ---
 
-### Method 2: Manual Parsing (Legacy)
+### Advanced Usage
 
-This is the original approach without SerialMessageRouter.
-
-#### 1. Include HITL Header
-```cpp
-#include <Sensors/HITL/HITL.h>
-```
-
-#### 2. Create HITL Sensors
-```cpp
-HITLBarometer* baro = new HITLBarometer();
-HITLAccel* accel = new HITLAccel();
-HITLGyro* gyro = new HITLGyro();
-HITLMag* mag = new HITLMag();
-HITLGPS* gps = new HITLGPS();
-
-Sensor* sensors[] = {baro, accel, gyro, mag, gps};
-```
-
-#### 3. Main Loop
-```cpp
-void loop() {
-    // Check for HITL data
-    if (Serial.available()) {
-        String line = Serial.readStringUntil('\n');
-
-        if (line.startsWith("HITL/")) {
-            // Parse incoming sensor data
-            double simTime;
-            if (HITLParser::parseAndInject(line.c_str(), simTime)) {
-                // Update with simulation time (NOT millis()!)
-                astraSys->update(simTime);
-
-                // DataLogger automatically outputs "TELEM/" data
-            } else {
-                LOGE("HITL: Failed to parse packet");
-            }
-        }
-    }
-}
-```
+The raw `HITLAccel`, `HITLGyro`, `HITLMag`, `HITLBarometer`, and `HITLGPS`
+types still exist for tests and lower-level experiments, but normal Astra users
+should prefer `withHITL()` and let Astra own packet routing.
 
 ---
 

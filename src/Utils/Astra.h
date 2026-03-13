@@ -47,9 +47,8 @@ namespace astra
         void playInitFeedback(int errorCode);
         void updateStatusLEDs();
 
-        static Astra *activeHITLInstance;
         static void handleCommandMessage(const char* message, const char* prefix, Stream* source);
-        static void handleHITLMessage(const char* message, const char* prefix, Stream* source);
+        static void handleHITLMessage(const char* message, const char* prefix, Stream* source, void* context);
     };
 }
 #endif
