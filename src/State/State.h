@@ -121,10 +121,14 @@ namespace astra
         MahonyAHRS *getOrientationFilter() const { return orientationFilter; }
 
     protected:
+        void syncFromFilter();
+
         // State variables (all in inertial frame)
         Vector<3> position;     // in m from launch position
         Vector<3> velocity;     // in m/s
         Vector<3> acceleration; // in m/s^2
+        double positionZVariance = 0.0; // KF covariance diagonal term P(2,2)
+        double velocityZVariance = 0.0; // KF covariance diagonal term P(5,5)
         Quaternion orientation; // body-to-earth rotation
         Vector<2> coordinates;  // in lat, lon
         double heading;         // in degrees
