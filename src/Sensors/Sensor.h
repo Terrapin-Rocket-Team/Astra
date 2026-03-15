@@ -17,10 +17,10 @@ namespace astra
     public:
         virtual ~Sensor() {};
 
-        void setUpdateRate(double hz) { updateInterval = 1.0 / hz; }
+        virtual void setUpdateRate(double hz) { updateInterval = 1.0 / hz; }
 
         // currentTime in S. returns if enough time has passed that more data should be ready.
-        bool shouldUpdate(double currentTime)
+        virtual bool shouldUpdate(double currentTime)
         {
             if (currentTime - lastUpdateTime >= updateInterval)
             {
