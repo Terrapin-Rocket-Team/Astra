@@ -97,8 +97,8 @@
             ]
         },
         {
-            "owner": "stm32duino",
-            "name": "STM32duino STM32SD",
+            "name": "STM32EMMC",
+            "version": "https://github.com/DrewBrandt/STM32EMMC.git",
             "platforms": [
                 "ststm32"
             ]

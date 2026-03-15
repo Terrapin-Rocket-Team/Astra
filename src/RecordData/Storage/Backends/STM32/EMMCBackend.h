@@ -2,9 +2,6 @@
 #define STM32_EMMC_BACKEND_H
 
 #include "../../IStorage.h"
-#include "STM32File.h"
-#include <STM32SD.h>
-#include <ff.h> // For FA_OPEN_APPEND and other FatFs constants
 
 namespace astra
 {
@@ -12,7 +9,7 @@ namespace astra
     /**
      * @brief IStorage implementation for eMMC using STM32 MMC interface
      *
-     * Uses STM32SD library to access eMMC via MMC interface (4-bit mode).
+     * Uses STM32EMMC to access eMMC over the STM32 SDMMC interface.
      *
      * Pin configuration (hardcoded):
      * - PC8:  D0
@@ -28,85 +25,19 @@ namespace astra
         bool _initialized;
 
     public:
-        EMMCBackend() : _initialized(false) {}
+        EMMCBackend();
 
-        bool begin() override
-        {
-            // STM32SD.begin() initializes with default MMC pins
-            if (!SD.begin())
-            {
-                _initialized = false;
-                return false;
-            }
-            _initialized = true;
-            return true;
-        }
+        bool begin() override;
+        bool end() override;
+        bool ok() const override;
 
-        bool end() override
-        {
-            // STM32SD doesn't have end() method
-            _initialized = false;
-            return true;
-        }
+        IFile *openRead(const char *filename) override;
+        IFile *openWrite(const char *filename, bool append = true) override;
 
-        bool ok() const override
-        {
-            return _initialized;
-        }
-
-        IFile *openRead(const char *filename) override
-        {
-            if (!_initialized)
-                return nullptr;
-
-            File file = SD.open(filename, FILE_READ);
-            if (!file)
-                return nullptr;
-
-            return new STM32File(file);
-        }
-
-        IFile *openWrite(const char *filename, bool append = true) override
-        {
-            if (!_initialized)
-                return nullptr;
-
-            // STM32SD uses FatFs modes: FA_WRITE | FA_OPEN_APPEND for append
-            uint8_t mode = append ? (FILE_WRITE | FA_OPEN_APPEND) : (FILE_WRITE | FA_OPEN_ALWAYS);
-            File file = SD.open(filename, mode);
-            if (!file)
-                return nullptr;
-
-            return new STM32File(file);
-        }
-
-        bool exists(const char *filename) override
-        {
-            if (!_initialized)
-                return false;
-            return SD.exists(filename);
-        }
-
-        bool remove(const char *filename) override
-        {
-            if (!_initialized)
-                return false;
-            return SD.remove(filename);
-        }
-
-        bool mkdir(const char *path) override
-        {
-            if (!_initialized)
-                return false;
-            return SD.mkdir(path);
-        }
-
-        bool rmdir(const char *path) override
-        {
-            if (!_initialized)
-                return false;
-            return SD.rmdir(path);
-        }
+        bool exists(const char *filename) override;
+        bool remove(const char *filename) override;
+        bool mkdir(const char *path) override;
+        bool rmdir(const char *path) override;
     };
 
 } // namespace astra
