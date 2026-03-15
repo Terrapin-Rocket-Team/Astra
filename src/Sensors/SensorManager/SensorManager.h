@@ -207,7 +207,14 @@ namespace astra
         }
 
         void update(double currentTime)
-        {
+        {            
+            // Update misc sensors first, they can be composite sensors that feed into the primary sensors (e.g. an IMU that contains children)
+            for (uint8_t i = 0; i < numMisc; i++)
+            {
+                if (miscSensors[i] && miscSensors[i]->shouldUpdate(currentTime))
+                    miscSensors[i]->update();
+            }
+            
             // Update primary sensors only if their update interval has elapsed
             if (accel && accel->shouldUpdate(currentTime))
             {
@@ -239,12 +246,7 @@ namespace astra
                 gpsUpdated = true;
             }
 
-            // Update misc sensors
-            for (uint8_t i = 0; i < numMisc; i++)
-            {
-                if (miscSensors[i] && miscSensors[i]->shouldUpdate(currentTime))
-                    miscSensors[i]->update();
-            }
+
         }
 
         /**
