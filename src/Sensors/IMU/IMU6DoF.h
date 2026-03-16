@@ -82,10 +82,7 @@ namespace astra
     class IMU6DoF : public RotatableSensor
     {
     public:
-        virtual ~IMU6DoF()
-        {
-            setUpdateRate(100);
-        }
+        virtual ~IMU6DoF() {}
 
         // Get the contained accelerometer sensor object
         Accel *getAccelSensor() { return &accelComponent; }
@@ -102,6 +99,13 @@ namespace astra
             RotatableSensor::setMountingOrientation(orientation);
             accelComponent.setMountingOrientation(orientation);
             gyroComponent.setMountingOrientation(orientation);
+        }
+
+        virtual void setMountingTransform(const MountingTransform& transform) override
+        {
+            RotatableSensor::setMountingTransform(transform);
+            accelComponent.setMountingTransform(transform);
+            gyroComponent.setMountingTransform(transform);
         }
 
         // Override begin to also mark components as initialized
@@ -122,6 +126,7 @@ namespace astra
               accelComponent(&acc, name),
               gyroComponent(&angVel, name)
         {
+            setUpdateRate(100);
             // Add IMU's own data columns
             addColumn("%0.3f", &acc.x(), "Acc X (m/s^2)");
             addColumn("%0.3f", &acc.y(), "Acc Y (m/s^2)");

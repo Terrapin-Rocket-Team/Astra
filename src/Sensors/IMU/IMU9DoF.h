@@ -129,6 +129,14 @@ namespace astra
             magComponent.setMountingOrientation(orientation);
         }
 
+        virtual void setMountingTransform(const MountingTransform& transform) override
+        {
+            RotatableSensor::setMountingTransform(transform);
+            accelComponent.setMountingTransform(transform);
+            gyroComponent.setMountingTransform(transform);
+            magComponent.setMountingTransform(transform);
+        }
+
         // Override begin to also mark components as initialized
         int begin() override
         {

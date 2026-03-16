@@ -42,8 +42,10 @@ namespace astra
                 return;
             }
 
+            const Vector<3> currentReading = getAccel();
+
             // Store current reading in circular buffer
-            lastReadings.push(acc);
+            lastReadings.push(currentReading);
 
             // Only check for stuck readings after buffer is full
             if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)

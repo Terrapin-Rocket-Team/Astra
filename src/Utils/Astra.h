@@ -51,7 +51,7 @@ namespace astra
         void updateStatusLEDs();
         void ensureDefaultTimeReporter();
 
-        static void handleCommandMessage(const char* message, const char* prefix, Stream* source);
+        static void handleCommandMessage(const char* message, const char* prefix, Stream* source, void* context);
         static void handleHITLMessage(const char* message, const char* prefix, Stream* source, void* context);
         static bool beginDefaultTimeReporter(void *context);
         static double updateDefaultTimeReporter(void *context);

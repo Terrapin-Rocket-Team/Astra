@@ -65,13 +65,22 @@ Astra::~Astra()
     }
 }
 
-void Astra::handleCommandMessage(const char *message, const char *prefix, Stream *source)
+void Astra::handleCommandMessage(const char *message, const char *prefix, Stream *source, void *context)
 {
+    (void)prefix;
+
+    Astra *instance = static_cast<Astra *>(context);
     if (!message || !source)
         return;
 
+    const char *payload = message;
+    while (*payload == ' ')
+    {
+        ++payload;
+    }
+
     // Check if command is "HEADER"
-    if (strcmp(message, "HEADER") == 0)
+    if (strcmp(payload, "HEADER") == 0)
     {
         // Create a temporary PrintLog wrapper to send header to the requesting stream
         PrintLog tempLog(*source, true); // true = wants prefix
@@ -82,6 +91,50 @@ void Astra::handleCommandMessage(const char *message, const char *prefix, Stream
                 DataLogger::instance().printHeaderTo(&tempLog);
             }
             tempLog.end();
+        }
+        return;
+    }
+
+    if (strncmp(payload, "PING", 4) == 0 && (payload[4] == '\0' || payload[4] == ' '))
+    {
+        const char *name = payload + 4;
+        while (*name == ' ')
+        {
+            ++name;
+        }
+
+        const char *systemName = (instance && instance->config && instance->config->getName() &&
+                                  instance->config->getName()[0] != '\0')
+                                     ? instance->config->getName()
+                                     : "Astra";
+        source->print("CMD/PONG ");
+        source->println(systemName);
+        if (*name != '\0')
+        {
+            LOGI("Pinged by '%s'", name);
+        }
+        else
+        {
+            LOGI("Pinged by unknown sender");
+        }
+        return;
+    }
+
+    if (strncmp(payload, "PONG", 4) == 0 && (payload[4] == '\0' || payload[4] == ' '))
+    {
+        const char *name = payload + 4;
+        while (*name == ' ')
+        {
+            ++name;
+        }
+
+        if (*name != '\0')
+        {
+            LOGI("Received ACK from '%s'", name);
+        }
+        else
+        {
+            LOGI("Received ACK");
         }
     }
 }
@@ -170,7 +223,11 @@ int Astra::init()
 
     LOGI("Initializing Astra version %s", ASTRA_VERSION);
 #ifdef ENV_STM
-    Wire.begin(PB9, PB8); // stm32
+    Wire.setSDA(PB9);
+    Wire.setSCL(PB8);
+    Wire.begin();
+    Wire.setClock(400000);
+    LOGI("I2C configured: SDA=PB9 SCL=PB8 @ 400kHz");
 #else
     Wire.begin();
 #endif
@@ -245,7 +302,7 @@ int Astra::init()
         messageRouter->reset();
 
     messageRouter->withInterface(&Serial)
-        .withListener("CMD/", handleCommandMessage);
+        .withListener("CMD/", handleCommandMessage, this);
     if (config->runtimeMode == AstraConfig::RuntimeMode::HITL || config->runtimeMode == AstraConfig::RuntimeMode::SITL)
     {
         Stream *hitlStream = (config->runtimeMode == AstraConfig::RuntimeMode::SITL) ? &Serial : config->hitlInterface;

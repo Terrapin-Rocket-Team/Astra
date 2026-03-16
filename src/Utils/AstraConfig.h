@@ -166,6 +166,9 @@ namespace astra
         // Register an explicit non-sensor reporter that Astra should include in telemetry.
         AstraConfig &withReporter(DataReporter *reporter);
 
+        // Set a system name used for identification in command responses.
+        AstraConfig &withName(const char *name);
+
         // Expose the currently configured primary sensors so callers can wrap the
         // default HITL sensors before init() and then override them with withSensor().
         Accel *getAccelSource() const { return accel; }
@@ -173,6 +176,7 @@ namespace astra
         Mag *getMagSource() const { return mag; }
         Barometer *getBaroSource() const { return baro; }
         GPS *getGPSSource() const { return gps; }
+        const char *getName() const { return systemName; }
 
         // Lock out barometric measurement updates into the KF above a Mach threshold.
         // Useful to avoid transonic/supersonic pressure distortions corrupting vertical state.
@@ -222,6 +226,8 @@ namespace astra
         Stream *hitlInterface = nullptr;
         static constexpr size_t SITL_HOST_MAX_LEN = 128;
         char sitlHost[SITL_HOST_MAX_LEN] = {0};
+        static constexpr size_t SYSTEM_NAME_MAX_LEN = 32;
+        char systemName[SYSTEM_NAME_MAX_LEN] = {0};
         bool sitlHostConfigured = false;
         uint16_t sitlPort = 0;
         bool baroMachLockoutEnabled = false;

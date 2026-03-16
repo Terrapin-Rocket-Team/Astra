@@ -33,6 +33,8 @@ namespace astra
         }
         bbAsync = true;
         hitlInterface = &Serial;
+        std::strncpy(systemName, "Astra", SYSTEM_NAME_MAX_LEN - 1);
+        systemName[SYSTEM_NAME_MAX_LEN - 1] = '\0';
     }
 
     AstraConfig::~AstraConfig()
@@ -188,6 +190,19 @@ namespace astra
         }
 
         reporters[numReporters++] = reporter;
+        return *this;
+    }
+
+    AstraConfig &AstraConfig::withName(const char *name)
+    {
+        if (!name || name[0] == '\0')
+        {
+            LOGW("Attempted to set an empty Astra system name. Keeping '%s'.", systemName);
+            return *this;
+        }
+
+        std::strncpy(systemName, name, SYSTEM_NAME_MAX_LEN - 1);
+        systemName[SYSTEM_NAME_MAX_LEN - 1] = '\0';
         return *this;
     }
 

@@ -160,7 +160,6 @@ void SerialMessageRouter::update()
                 else {
                     // Buffer overflow - reset and skip this line
                     iface.bufferPos = 0;
-                    // Could add error logging here if needed
                 }
             }
         }

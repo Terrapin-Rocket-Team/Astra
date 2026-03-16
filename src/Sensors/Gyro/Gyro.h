@@ -42,7 +42,8 @@ namespace astra
                 return;
             }
 
-            lastReadings.push(angVel);
+            const Vector<3> currentReading = getAngVel();
+            lastReadings.push(currentReading);
 
             if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)
             {
