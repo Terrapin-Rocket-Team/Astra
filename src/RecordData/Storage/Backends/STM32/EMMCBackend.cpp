@@ -1,5 +1,5 @@
 #include "EMMCBackend.h"
-
+#ifdef ENV_STM
 #include <STM32EMMC.h>
 #include <ff.h>
 
@@ -164,3 +164,4 @@ namespace astra
     }
 
 } // namespace astra
+#endif
