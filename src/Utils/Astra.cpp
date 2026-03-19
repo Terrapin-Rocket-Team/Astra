@@ -142,14 +142,30 @@ void Astra::handleCommandMessage(const char *message, const char *prefix, Stream
 void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *source, void *context)
 {
     (void)prefix;
-    (void)source;
 
     Astra *instance = static_cast<Astra *>(context);
-    if (!instance || !message)
+    if (!instance || !message || !source)
         return;
 
+    const char *payload = message;
+    while (*payload == ' ')
+    {
+        ++payload;
+    }
+
+    if (strcmp(payload, "READY?") == 0)
+    {
+        if (instance->config &&
+            instance->config->runtimeMode == AstraConfig::RuntimeMode::HITL &&
+            instance->hitlUpdateStarted)
+        {
+            source->println("HITL READY");
+        }
+        return;
+    }
+
     double simTime = 0.0;
-    if (!HITLParser::parse(message, simTime))
+    if (!HITLParser::parse(payload, simTime))
         return;
 
     // Avoid recursive router polling when this callback invokes update().
@@ -382,6 +398,10 @@ bool Astra::update(double timeSeconds)
         timeSeconds = millis() / 1000.0;
 
     currentUpdateTime = timeSeconds;
+    if (config->runtimeMode == AstraConfig::RuntimeMode::HITL)
+    {
+        hitlUpdateStarted = true;
+    }
 
     if (!config->state)
     {

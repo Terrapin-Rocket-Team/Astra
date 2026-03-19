@@ -38,6 +38,7 @@ namespace astra
         SerialMessageRouter *messageRouter = nullptr;
         bool ownsState = false;
         bool inHITLDispatch = false;
+        bool hitlUpdateStarted = false;
         bool hitlBaselineEstablished = false;
         bool warnedDataLoggerUnavailable = false;
         double currentUpdateTime = 0.0;
