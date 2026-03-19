@@ -960,6 +960,33 @@ void test_hitl_router_drives_core_update_from_serial() {
     local_tearDown();
 }
 
+void test_hitl_ready_probe_waits_for_first_timed_update() {
+    local_setUp();
+    state = new RecordingState();
+
+    AstraConfig config;
+    config.withState(state)
+          .withHITL();
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+
+    Serial.simulateInput("HITL/READY?\n");
+    TEST_ASSERT_TRUE(astra->update());
+    TEST_ASSERT_EQUAL_MESSAGE('\0', Serial.fakeBuffer[0], "HITL READY should not be emitted before the first timed update");
+
+    Serial.clearBuffer();
+    Serial.simulateInput("HITL/0.25,1.0,2.0,3.0,0.1,0.2,0.3,10.0,20.0,30.0,901.0,15.0,37.0,-122.0,100.0,1,8,45.0\n");
+    TEST_ASSERT_TRUE(astra->update());
+
+    Serial.clearBuffer();
+    Serial.simulateInput("HITL/READY?\n");
+    TEST_ASSERT_TRUE(astra->update());
+    TEST_ASSERT_NOT_EQUAL_MESSAGE('\0', Serial.fakeBuffer[0], "HITL READY should be emitted after the first timed HITL update");
+    TEST_ASSERT_NOT_EQUAL(nullptr, strstr(Serial.fakeBuffer, "HITL READY"));
+    local_tearDown();
+}
+
 void test_logging_auto_updates_enabled_reporters() {
     local_setUp();
     state = new DefaultState();
@@ -1484,6 +1511,7 @@ void run_test_astra_tests()
     RUN_TEST(test_hitl_mode_requires_simulation_time);
     RUN_TEST(test_hitl_update_flow_and_order);
     RUN_TEST(test_hitl_router_drives_core_update_from_serial);
+    RUN_TEST(test_hitl_ready_probe_waits_for_first_timed_update);
     RUN_TEST(test_hitl_router_ignores_invalid_packet);
     RUN_TEST(test_hitl_baro_origin_set_once_from_first_packet);
     RUN_TEST(test_complete_update_cycle);
