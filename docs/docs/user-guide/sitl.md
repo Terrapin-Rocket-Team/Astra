@@ -16,7 +16,8 @@ SITL runs Astra natively on your PC and connects to a simulator over TCP.
    pio run -e native
    ```
 
-3. Run the program:
+3. Run the program: <br/>
+   
    If you're on Linux/MacOS:
    ```bash
    .pio/build/native/program.exe
