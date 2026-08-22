@@ -134,7 +134,10 @@ namespace astra
 
             while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
                 ++p;
-            if (*p != '\0')
+            // Preserve the original protocol's forward-compatible behavior:
+            // explicitly comma-delimited extension fields may follow the
+            // required 18 fields. Reject text attached to the heading itself.
+            if (*p != '\0' && *p != ',')
             {
                 LOGE("HITL: Parse error trailing data");
                 return false;

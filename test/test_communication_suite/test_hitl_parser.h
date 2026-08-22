@@ -175,6 +175,15 @@ void test_parse_extra_fields() {
     local_tearDown();
 }
 
+void test_parse_rejects_text_attached_to_heading() {
+    local_setUp();
+    const char* data = "1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,11.0,12.0,13.0,14.0,15.0,1,8,90.0oops";
+    double timestamp;
+
+    TEST_ASSERT_FALSE(HITLParser::parse(data, timestamp));
+    local_tearDown();
+}
+
 void test_parseAndInject_valid_with_prefix() {
     local_setUp();
     const char* line = "HITL/3.14,1.0,2.0,3.0,0.1,0.2,0.3,10.0,20.0,30.0,1015.0,22.0,45.0,-123.0,200.0,1,10,180.0";
@@ -643,6 +652,7 @@ void run_test_hitl_parser_tests()
     RUN_TEST(test_parse_empty_string);
     RUN_TEST(test_parse_whitespace_only);
     RUN_TEST(test_parse_extra_fields);
+    RUN_TEST(test_parse_rejects_text_attached_to_heading);
     RUN_TEST(test_parseAndInject_valid_with_prefix);
     RUN_TEST(test_parseAndInject_without_timestamp);
     RUN_TEST(test_parseAndInject_invalid_prefix);

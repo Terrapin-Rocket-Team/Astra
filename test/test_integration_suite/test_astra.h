@@ -260,7 +260,7 @@ void test_init_with_failing_gyro_reports_error() {
     local_tearDown();
 }
 
-void test_init_with_failing_mag_reports_error() {
+void test_init_with_failing_mag_degrades_gracefully() {
     local_setUp();
     state = new DefaultState();
     MockMag mag;
@@ -273,7 +273,10 @@ void test_init_with_failing_mag_reports_error() {
     astra = new Astra(&config);
     int errors = astra->init();
 
-    TEST_ASSERT_EQUAL(1, errors);
+    // Magnetometer failure is degraded operation, not a fatal init error:
+    // Astra continues with the accelerometer/gyroscope orientation path.
+    TEST_ASSERT_EQUAL(0, errors);
+    TEST_ASSERT_FALSE(mag.isInitialized());
     local_tearDown();
 }
 
@@ -1383,7 +1386,7 @@ void run_test_astra_tests()
     RUN_TEST(test_init_with_all_sensors);
     RUN_TEST(test_init_with_failing_sensor);
     RUN_TEST(test_init_with_failing_gyro_reports_error);
-    RUN_TEST(test_init_with_failing_mag_reports_error);
+    RUN_TEST(test_init_with_failing_mag_degrades_gracefully);
     RUN_TEST(test_init_with_failing_baro_reports_error);
     RUN_TEST(test_init_with_failing_gps_reports_error);
     RUN_TEST(test_init_with_failing_misc_reports_error);

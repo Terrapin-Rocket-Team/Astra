@@ -50,7 +50,14 @@ namespace astra
             }
         }
 
-        if (sink->wantsPrefix() && hasAnyColumns)
+        if (!hasAnyColumns)
+        {
+            sink->write('\n');
+            sink->flush();
+            return;
+        }
+
+        if (sink->wantsPrefix())
             sink->print("TELEM/");
 
         auto hasNextReporterWithColumns = [&](int fromIdx) -> bool
@@ -163,7 +170,15 @@ namespace astra
                     break;
                 }
             }
-            if (_sinks[i]->wantsPrefix() && hasAnyColumns)
+
+            if (!hasAnyColumns)
+            {
+                _sinks[i]->write('\n');
+                _sinks[i]->flush();
+                continue;
+            }
+
+            if (_sinks[i]->wantsPrefix())
                 _sinks[i]->print("TELEM/");
 
             auto hasNextReporterWithColumns = [&](int fromIdx) -> bool

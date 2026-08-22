@@ -12,7 +12,10 @@ from dataclasses import dataclass
 from typing import Tuple, Optional, List, Dict
 
 # --- CONFIGURATION ---
-MAX_WORKERS = max(1, multiprocessing.cpu_count() - 2)
+# Concurrent PlatformIO processes contend over archive/cache files on Windows,
+# even with per-suite build directories. Keep Windows deterministic while
+# retaining parallel execution in Linux CI.
+MAX_WORKERS = 1 if sys.platform == "win32" else max(1, multiprocessing.cpu_count() - 2)
 MAX_RETRIES = 3 
 TEST_DIR = "test"
 PARALLEL_BUILD_BASE = os.path.join(os.getcwd(), ".pio", "build_parallel")
