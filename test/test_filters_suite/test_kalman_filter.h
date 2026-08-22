@@ -715,6 +715,27 @@ void test_updateGPSBaro_uses_default_noise_when_negative(void) {
     local_tearDown();
 }
 
+void test_custom_measurement_update_changes_selected_state(void) {
+    local_setUp();
+    TestableKalmanFilter kf;
+    kf.initialize();
+
+    double hData[6] = {0, 0, 1, 0, 0, 0};
+    double rData[1] = {1.0};
+    double zData[1] = {25.0};
+    Matrix H(1, 6, hData);
+    Matrix R(1, 1, rData);
+    Matrix z(1, 1, zData);
+
+    kf.update(z, H, R);
+    Matrix state = kf.getState();
+
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 0.0, state.get(0, 0));
+    TEST_ASSERT_FLOAT_WITHIN(0.001, 0.0, state.get(1, 0));
+    TEST_ASSERT_GREATER_THAN(0.0, state.get(2, 0));
+    local_tearDown();
+}
+
 void run_test_kalman_filter_tests()
 {
     RUN_TEST(test_default_kalman_constructor);
@@ -745,6 +766,7 @@ void run_test_kalman_filter_tests()
     RUN_TEST(test_updateGPS_uses_default_noise_when_negative);
     RUN_TEST(test_updateBaro_uses_default_noise_when_negative);
     RUN_TEST(test_updateGPSBaro_uses_default_noise_when_negative);
+    RUN_TEST(test_custom_measurement_update_changes_selected_state);
 }
 
 } // namespace test_kalman_filter

@@ -26,13 +26,21 @@ Waiting for Astra flight software to connect...
 
 ### 2. Build and Run the Flight Software
 
-In another terminal:
+In another terminal, build the native program:
 ```bash
-# Build for native
 pio run -e native
+```
 
-# Run the example
-.pio/build/native/program.exe
+Run it on Linux or macOS:
+
+```bash
+./.pio/build/native/program
+```
+
+Or on Windows PowerShell:
+
+```powershell
+.\.pio\build\native\program.exe
 ```
 
 ### 3. Watch the Data Flow

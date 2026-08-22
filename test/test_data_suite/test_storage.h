@@ -7,6 +7,7 @@
 #include <cstring>
 #include "RecordData/Storage/IStorage.h"
 #include "RecordData/Storage/IFile.h"
+#include "RecordData/Storage/StorageFactory.h"
 
 using namespace astra;
 
@@ -710,6 +711,15 @@ void test_storage_large_file(void)
     local_tearDown();
 }
 
+#ifdef NATIVE
+void test_storage_factory_returns_null_on_native(void)
+{
+    local_setUp();
+    TEST_ASSERT_NULL(StorageFactory::create(StorageBackend::NONE));
+    local_tearDown();
+}
+#endif
+
 void run_test_storage_tests()
 {
     RUN_TEST(test_file_default_state);
@@ -745,6 +755,9 @@ void run_test_storage_tests()
     RUN_TEST(test_storage_reopen_file_multiple_times);
     RUN_TEST(test_storage_write_read_binary_data);
     RUN_TEST(test_storage_large_file);
+#ifdef NATIVE
+    RUN_TEST(test_storage_factory_returns_null_on_native);
+#endif
 }
 
 } // namespace test_storage

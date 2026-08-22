@@ -24,11 +24,22 @@ Simulator (Python/MATLAB) → TCP → Native Serial Mock → SerialMessageRouter
 python sitl_simulator.py --sim parabolic
 ```
 
-### 2) Build + Run Native
+### 2) Build Native
 
 ```bash
 pio run -e native
-.pio/build/native/program
+```
+
+Run it on Linux or macOS:
+
+```bash
+./.pio/build/native/program
+```
+
+Or on Windows PowerShell:
+
+```powershell
+.\.pio\build\native\program.exe
 ```
 
 ---

@@ -764,6 +764,18 @@ void test_file_log_sink_write_after_end_returns_zero(void)
     local_tearDown();
 }
 
+void test_file_log_sink_write_before_begin_returns_zero(void)
+{
+    local_setUp();
+    MemoryStorage backend;
+    FileLogSink sink("pending.csv", &backend);
+
+    TEST_ASSERT_EQUAL(0, sink.write(static_cast<uint8_t>('X')));
+    uint8_t buffer[2] = {'1', '2'};
+    TEST_ASSERT_EQUAL(0, sink.write(buffer, 2));
+    local_tearDown();
+}
+
 void run_test_logger_tests()
 {
     RUN_TEST(test_header_single_reporter);
@@ -786,6 +798,7 @@ void run_test_logger_tests()
     RUN_TEST(test_file_log_sink_allocates_suffix_when_filename_exists);
     RUN_TEST(test_file_log_sink_no_extension_suffix_path);
     RUN_TEST(test_file_log_sink_write_after_end_returns_zero);
+    RUN_TEST(test_file_log_sink_write_before_begin_returns_zero);
 }
 
 } // namespace test_logger
