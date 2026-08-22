@@ -3,7 +3,8 @@ site_name: Astra Documentation
 site_url: https://terrapin-rocket-team.github.io/Astra/
 repo_url: https://github.com/Terrapin-Rocket-Team/Astra
 repo_name: Terrapin-Rocket-Team/Astra
-repo_version: "0.2"
+extra:
+  repo_version: "0.2"
 theme:
   icon:
     repo: fontawesome/brands/github

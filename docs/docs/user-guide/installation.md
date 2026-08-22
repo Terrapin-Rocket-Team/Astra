@@ -10,9 +10,14 @@ This guide assumes you are using PlatformIO with the Arduino framework.
 
 ## Prerequisites
 
-- VS Code + PlatformIO extension
+- Git
+- PlatformIO Core, or VS Code with the PlatformIO extension
 - A supported board (Teensy, STM32, ESP32)
 - Basic C++ familiarity
+
+For native SITL builds, install a C++ compiler as well. The team-supported
+setup and diagnostic commands are documented in
+[Astra-Support](https://github.com/Terrapin-Rocket-Team/Astra-Support#install-cli).
 
 ---
 
@@ -69,7 +74,8 @@ To run on your desktop for SITL testing, create a native environment:
 platform = native
 lib_compat_mode = off
 lib_deps =
-  https://github.com/DrewBrandt/NativeTestMocks.git
+  https://github.com/Terrapin-Rocket-Team/Astra.git#main
+  https://github.com/Terrapin-Rocket-Team/Astra-Support.git#main
 build_flags =
   -D NATIVE=1
   -D ARDUINO=100
@@ -97,4 +103,14 @@ void loop() {
 ```
 
 Build using PlatformIO. If the build succeeds, Astra is installed correctly.
+
+For a team checkout, run the maintained repository-wide check instead:
+
+```bash
+astra-support doctor --project .
+astra-support test --project . --clean --no-progress
+```
+
+This check builds the supported embedded and native environments. It does not
+upload firmware or prove that attached sensors, radios, or storage work.
 

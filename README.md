@@ -71,10 +71,15 @@ project examples and these required build flags:
 
 ## Docs
 
-Start here:
-- `docs/docs/index.md`
-- `docs/docs/user-guide/installation.md`
-- `docs/docs/user-guide/basic-use.md`
+The published user guide is at
+[terrapin-rocket-team.github.io/Astra](https://terrapin-rocket-team.github.io/Astra/).
+Start with the [installation guide](docs/docs/user-guide/installation.md) and
+[basic usage](docs/docs/user-guide/basic-use.md).
+
+Astra documents the reusable library. Rocket flight stages and recovery logic
+belong to [Astra-Rocket](https://github.com/Terrapin-Rocket-Team/Astra-Rocket),
+while complete flight-computer integration belongs to
+[SRAD-Avionics](https://github.com/Terrapin-Rocket-Team/SRAD-Avionics).
 
 ## Contributor Checks
 

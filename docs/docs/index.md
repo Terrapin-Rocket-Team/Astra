@@ -57,3 +57,17 @@ Astra is the Terrapin Rocket Team's modular flight software library for embedded
 - [Basic Usage](user-guide/basic-use.md)
 - [Astra System](user-guide/utils/mmfssys.md)
 - [Sensors & Interfaces](user-guide/ifaces/sensor.md)
+
+## Related Projects
+
+Astra is the reusable bottom layer of the current flight-software stack:
+
+- [Astra-Rocket](https://terrapin-rocket-team.github.io/Astra-Rocket/) adds
+  rocket flight stages, flight-oriented defaults, and ARC command handling.
+- [Astra-Support](https://github.com/Terrapin-Rocket-Team/Astra-Support) provides
+  the shared setup, test, and simulation CLI.
+- [SRAD-Avionics](https://github.com/Terrapin-Rocket-Team/SRAD-Avionics) owns the
+  board-specific firmware and end-to-end integration procedure.
+
+Keep Astra API details here. Do not copy them into downstream documentation;
+downstream guides should link back to the relevant Astra page.

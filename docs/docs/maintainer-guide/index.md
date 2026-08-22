@@ -21,7 +21,7 @@ Edit pages under `docs/docs/`, then verify locally.
 When you cut a release:
 
 1. Update `library.json` version
-2. Update `docs/mkdocs.yml` `repo_version`
+2. Update `docs/mkdocs.yml` `extra.repo_version`
 3. Tag the release in Git
 
 ---
