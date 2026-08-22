@@ -90,21 +90,12 @@ DefaultState state;
 
 ---
 
-## Extending State
+## Mission Logic
 
-You can subclass `State` to add custom logic (launch detection, staging, etc.).
-
-```cpp
-class RocketState : public State {
-public:
-    RocketState(LinearKalmanFilter* f, MahonyAHRS* a) : State(f, a) {}
-
-    void updateCustomLogic() {
-        if (getAcceleration().z() > 20) {
-            LOGI("Launch detected");
-        }
-    }
-};
-```
+`State` is the estimation layer; it does not automatically run arbitrary
+mission callbacks. Read its outputs from your application or mission-state
+layer after `Astra::update()`. Rocket flight-phase detection and deployment
+control belong in [Astra-Rocket](https://terrapin-rocket-team.github.io/Astra-Rocket/),
+not in a custom Astra `State` subclass.
 
 ---

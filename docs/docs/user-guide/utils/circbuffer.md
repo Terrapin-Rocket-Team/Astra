@@ -49,7 +49,7 @@ public:
 ### Creating a Buffer
 
 ```cpp
-#include <CircBuffer.h>
+#include <Utils/CircBuffer.h>
 
 // Buffer for 100 double values
 CircBuffer<double> pressureBuffer(100);

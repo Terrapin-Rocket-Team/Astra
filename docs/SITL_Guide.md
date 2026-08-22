@@ -18,28 +18,20 @@ Simulator (Python/MATLAB) → TCP → Native Serial Mock → SerialMessageRouter
 
 ## Quick Start
 
-### 1) Start the Simulator
+Install Astra-Support as described in its
+[README](https://github.com/Terrapin-Rocket-Team/Astra-Support), then run from
+this repository:
 
 ```bash
-python sitl_simulator.py --sim parabolic
+astra-support sim list --project .
+astra-support sim run --project . --mode sitl --source physics
 ```
 
-### 2) Build Native
+The runner builds the native target, starts it, feeds lock-step simulation data,
+and writes the simulation log. The equivalent compatibility shortcut is:
 
 ```bash
-pio run -e native
-```
-
-Run it on Linux or macOS:
-
-```bash
-./.pio/build/native/program
-```
-
-Or on Windows PowerShell:
-
-```powershell
-.\.pio\build\native\program.exe
+astra-support sitl -C . -s physics
 ```
 
 ---
@@ -76,4 +68,6 @@ void loop() {
 - Call `withHITL()` explicitly on native only if you want the default HITL sensors materialized early so a decorator can wrap them before `init()`
 - HITL messages use the format described in `src/Sensors/HITL/README.md`
 - See `examples/SITL_Example/` for a complete implementation
+- Astra-Support is the maintained simulation harness; this repository does not
+  contain a standalone `sitl_simulator.py`
 

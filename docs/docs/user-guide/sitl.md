@@ -6,34 +6,31 @@ SITL runs Astra natively on your PC and connects to a simulator over TCP.
 
 ## Quick Start
 
-1. Start the simulator:
-   ```bash
-   python sitl_simulator.py --sim parabolic
-   ```
+From the Astra repository, use the simulation runner installed by
+[Astra-Support](https://github.com/Terrapin-Rocket-Team/Astra-Support):
 
-2. Build for native:
-   ```bash
-   pio run -e native
-   ```
+```bash
+astra-support sim list --project .
+astra-support sim run --project . --mode sitl --source physics
+```
 
-3. Run the program.
+The runner builds the `native` PlatformIO environment, starts the resulting
+flight-software process, supplies simulated sensor packets, and records the
+session. The compatibility shortcut is:
 
-   On Linux or macOS:
-   ```bash
-   ./.pio/build/native/program
-   ```
-
-   On Windows PowerShell:
-   ```powershell
-   .\.pio\build\native\program.exe
-   ```
+```bash
+astra-support sitl -C . -s physics
+```
 
 ---
 
 ## Notes
 
 - SITL uses the HITL message format over TCP
-- The included example is in `examples/SITL_Example`
-- Native Astra connects automatically and waits until the simulator is available
+- The native firmware example is in `examples/SITL_Example`
+- Astra-Support is the maintained simulator and process launcher; Astra does not
+  contain a standalone `sitl_simulator.py`
+- Native Astra connects to the endpoint configured by the runner and waits until
+  it is available
 - Call `withHITL()` explicitly only when you want to override the default HITL sensors before `init()`
 

@@ -22,7 +22,7 @@ BlinkBuzz can be used standalone or with `AstraConfig`. The only difference is i
 ### With AstraConfig (Recommended)
 
 ```cpp
-#include <Astra.h>
+#include <Utils/Astra.h>
 
 int GPS_STATUS_PIN = 25;
 
@@ -56,7 +56,7 @@ void loop() {
 If you prefer standalone usage, initialize manually:
 
 ```cpp
-#include <BlinkBuzz.h>
+#include <BlinkBuzz/BlinkBuzz.h>
 
 int allowedPins[] = {LED_BUILTIN, 33};
 // Note: `bb` is already defined by the library; you do not need to define it.
@@ -91,7 +91,7 @@ void loop() {
 Synchronous calls block execution until the pattern completes. Use these in `setup()` for initialization feedback, or when async mode is disabled.
 
 ```cpp
-#include <BlinkBuzz.h>
+#include <BlinkBuzz/BlinkBuzz.h>
 
 void setup() {
     // Hold pin on/off
@@ -213,21 +213,19 @@ void loop() {
 ### Stage Change Notifications
 
 ```cpp
-class CustomState : public State {
-    void update(double currentTime) override {
-        State::update(currentTime);
+int lastStage = 0;
 
-        int newStage = determineStage();
-        if (newStage != stage) {
-            stage = newStage;
+void loop() {
+    system.update();
 
-            // Beep N times for stage N
-            bb.aonoff(BUZZER, 200, stage);
-
-            LOGI("Entered stage %d", stage);
-        }
+    int newStage = determineStage();
+    if (newStage != lastStage) {
+        lastStage = newStage;
+        bb.clearQueue(BUZZER);
+        bb.aonoff(BUZZER, 200, newStage);
+        LOGI("Entered stage %d", newStage);
     }
-};
+}
 ```
 
 ### Armed Status Pattern

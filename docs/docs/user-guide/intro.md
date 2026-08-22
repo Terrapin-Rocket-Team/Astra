@@ -30,7 +30,7 @@ Sensors → Astra → State → DataLogger
 - Sensors update at their own rates
 - `Astra` tracks updates and sensor health internally
 - `State` consumes vectors (gyro/accel/GPS/baro) and estimates pose
-- `DataLogger` writes CSV telemetry from all `DataReporter`s
+- `DataLogger` writes CSV telemetry from reporters registered by the configuration
 
 ---
 
@@ -38,7 +38,7 @@ Sensors → Astra → State → DataLogger
 
 **DataReporter**
 - Any class that registers columns for telemetry logging
-- Sensors and State inherit from it automatically
+- Sensors and State inherit from it; standalone reporters use `withReporter()`
 
 **Sensor Health**
 - Base sensor classes track communication failures and stuck readings

@@ -1,145 +1,43 @@
 # SITL Example
 
-This example demonstrates Software-In-The-Loop (SITL) simulation with Astra.
+This example is the native Astra flight-software process used for
+Software-In-The-Loop testing. It receives simulated sensor data over TCP,
+updates Astra's HITL sensors and state estimator, and returns `TELEM/` data.
 
-## What This Demonstrates
+## Run It
 
-- Connecting to an external simulator via TCP
-- Using HITL sensors to read simulated data
-- Sending telemetry back to the simulator
-- Running flight software natively without hardware
-
-## Quick Start
-
-### 1. Start the Python Simulator
-
-In one terminal:
-```bash
-python sitl_simulator.py --sim parabolic
-```
-
-You should see:
-```
-SITL Simulator listening on 0.0.0.0:5555
-Waiting for Astra flight software to connect...
-```
-
-### 2. Build and Run the Flight Software
-
-In another terminal, build the native program:
-```bash
-pio run -e native
-```
-
-Run it on Linux or macOS:
+Install
+[Astra-Support](https://github.com/Terrapin-Rocket-Team/Astra-Support), then run
+from the Astra repository root:
 
 ```bash
-./.pio/build/native/program
+astra-support sim list --project .
+astra-support sim run --project . --mode sitl --source physics
 ```
 
-Or on Windows PowerShell:
+The runner builds the `native` PlatformIO environment, launches this example,
+feeds it simulation packets, and records the session. The compatibility shortcut
+is:
 
-```powershell
-.\.pio\build\native\program.exe
-```
-
-### 3. Watch the Data Flow
-
-The flight software will:
-1. Connect to the simulator
-2. Receive HITL/ messages with sensor data
-3. Process the data through HITL sensors + Astra
-4. Send TELEM/ CSV messages back (DataLogger)
-
-You'll see output like:
-```
-TELEM/State - PX (m),...,HITL_Accelerometer - Acc X (m/s^2),...
-TELEM/0.000,0.000,...,0.000,...
-...
-```
-
-## Available Simulators
-
-The Python harness includes several built-in simulators:
-
-### Static Simulator
 ```bash
-python sitl_simulator.py --sim static
-```
-Returns constant sensor values. Good for testing connections.
-
-### Parabolic Simulator
-```bash
-python sitl_simulator.py --sim parabolic
-```
-Simulates a simple ballistic trajectory:
-- Sits on pad until t=2s
-- Launches vertically at 100 m/s
-- Falls back down
-- Lands at t≈22s
-
-## Customizing
-
-### Create Your Own Simulator
-
-Extend the `SITLSimulator` class in [sitl_simulator.py](../../sitl_simulator.py):
-
-```python
-class CustomSimulator(SITLSimulator):
-    def generate_sensor_data(self, t):
-        # Your physics here
-        ax, ay, az = compute_acceleration(t)
-        # ... other sensors ...
-
-        return f"{t},{ax},{ay},{az},..."
+astra-support sitl -C . -s physics
 ```
 
-### Modify the Flight Software
+The firmware intentionally calls only `g_sys.update()` in its loop. Astra owns
+the `HITL/` listener, parses each packet, and performs the update using simulation
+time. Do not add a second HITL listener or call the message router separately.
 
-Edit [SITL_Example.cpp](SITL_Example.cpp) to:
-- Add more sensors
-- Implement your flight computer logic
-- Change telemetry format
-- Add state machines
+## Modify the Flight Software
 
-## Integration with GUI
-
-The TCP interface makes it easy to build a monitoring GUI:
-
-```python
-import socket
-
-# Connect to flight software
-sock = socket.socket()
-sock.connect(('localhost', 5555))
-
-# Send sensor data
-sock.send(b"HITL/1.0,0,0,-9.81,...\n")
-
-# Receive telemetry
-data = sock.recv(1024)
-print(f"Received: {data}")
-```
+Edit `SITL_Example.cpp` to change the configured state, log sinks, or other Astra
+components. Project-specific simulation sources belong in an
+`astra_support_sim.py` hook at the consumer project root; see the Astra-Support
+README for that interface.
 
 ## Troubleshooting
 
-**"Failed to connect to SITL simulator"**
-- Make sure the Python simulator is running first
-- Check that port 5555 isn't blocked by firewall
-- Try connecting to "127.0.0.1" instead of "localhost"
-
-**No data appearing**
-- Verify the simulator is sending HITL/ messages
-- Check that `router.update()` is being called in loop()
-- Add debug prints in the HITL/ listener callback
-
-**Flight software crashes**
-- Check that all HITL sensors are properly initialized
-- Verify the HITL message format matches the parser
-
-## Next Steps
-
-- Integrate with JSBSim for 6DOF simulation
-- Build a PyQt GUI for real-time visualization
-- Run Monte Carlo simulations
-- Export data for analysis in MATLAB/Python
+- Run `astra-support doctor --project .` to check the toolchain.
+- Use `astra-support sim list --project .` to confirm available sources.
+- Check that TCP port 5555 is available if the native process cannot connect.
+- Keep the packet format synchronized with `src/Sensors/HITL/README.md` when
+  implementing a custom source.

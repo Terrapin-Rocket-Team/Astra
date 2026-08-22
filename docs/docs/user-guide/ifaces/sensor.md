@@ -19,7 +19,7 @@ Sensors implement **`init()`** and **`read()`** internally. `begin()` and `updat
 
 ```cpp
 int begin();
-int update(double currentTime = -1);
+int update();
 void setUpdateRate(double hz);
 bool isHealthy() const;
 bool isInitialized() const;
@@ -72,9 +72,6 @@ public:
         addColumn("%.2f", &value, "value");
     }
 
-    int begin() override { return init(); }
-    int update(double currentTime = -1) override { return read(); }
-
 protected:
     int init() override {
         // Hardware init
@@ -90,6 +87,10 @@ private:
     float value = 0.0f;
 };
 ```
+
+Do not override `begin()` or `update()` for the usual sensor case. The base
+implementation calls `init()` and `read()`, tracks initialization and health,
+and integrates with the configured update rate.
 
 ---
 

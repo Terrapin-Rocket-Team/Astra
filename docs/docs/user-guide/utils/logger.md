@@ -39,7 +39,10 @@ LOGE("Barometer init failed");
 
 ## DataLogger (TELEM/)
 
-`DataLogger` writes CSV telemetry from every `DataReporter`. Sensors and `State` register automatically.
+`DataLogger` writes CSV telemetry from its registered `DataReporter`s. During
+`Astra::init()`, Astra registers configured primary sensors, miscellaneous
+sensors, `State`, its default time reporter, and reporters supplied through
+`AstraConfig::withReporter()`.
 
 ### Configure via AstraConfig
 
@@ -49,12 +52,16 @@ ILogSink* telemSinks[] = { &telemFile };
 
 AstraConfig config = AstraConfig()
     .withState(&state)
+    .withReporter(&batteryMonitor)
     .withDataLogs(telemSinks, 1);
 ```
 
 ### Header Timing
 
-The telemetry header is written **once** at logger initialization. Ensure all `DataReporter`s are constructed before `Astra::init()` (or before `DataLogger::configure()` if used directly).
+The telemetry header is written **once** at logger initialization. Add every
+standalone reporter with `withReporter()` before `Astra::init()`. If using
+`DataLogger` directly, call `DataLogger::registerReporter()` before configuring
+the logger.
 
 ---
 

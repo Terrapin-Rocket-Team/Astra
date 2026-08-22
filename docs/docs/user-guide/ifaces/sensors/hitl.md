@@ -38,22 +38,21 @@ Units:
 
 ---
 
-## Parser + Router
+## Astra Integration
 
-Use `SerialMessageRouter` to handle incoming HITL lines:
+Enable the simulated sensor set and select its input stream through
+`AstraConfig`:
 
 ```cpp
-router.withInterface(&Serial)
-      .withListener("HITL/", [](const char* msg, const char* prefix, Stream* src) {
-          double simTime;
-          if (HITLParser::parse(msg, simTime)) {
-              sys.update(simTime);
-          }
-      });
+AstraConfig config = AstraConfig()
+    .withHITL()
+    .withHITLInterface(&Serial);
 ```
 
-If you use the full Astra system, register the listener on
-`sys.getMessageRouter()` and **skip calling** `router.update()` yourself.
+Astra owns the `HITL/` listener and parser when using the full system. The
+application loop only calls `sys.update()`. Use `HITLParser` and
+`HITLSensorBuffer` directly only when building a lower-level integration without
+`Astra`.
 
 ---
 

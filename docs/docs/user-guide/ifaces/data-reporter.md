@@ -11,7 +11,7 @@ Sensors and `State` already inherit from `DataReporter`.
 1. Create a `DataReporter`
 2. Register columns in the constructor
 3. Implement `begin()` and `update()`
-4. The reporter auto-registers with `DataLogger`
+4. Add it to `AstraConfig` with `withReporter()`
 
 `DataLogger` will call `update()` automatically **if `autoUpdate` is true**.
 
@@ -33,7 +33,7 @@ public:
 
     int begin() override { return 0; }
 
-    int update(double currentTime = -1) override {
+    int update() override {
         voltage = readVoltage();
         tempC = readTemp();
         return 0;
@@ -48,7 +48,20 @@ private:
 };
 ```
 
-Construct this before `Astra::init()` so the header includes its columns.
+Register the reporter before `Astra::init()` so Astra initializes it and includes
+its columns in the telemetry header:
+
+```cpp
+BatteryMonitor battery;
+
+AstraConfig config = AstraConfig()
+    .withReporter(&battery);
+```
+
+Configured primary sensors, miscellaneous sensors, `State`, and Astra's default
+time reporter are registered during `Astra::init()`. Standalone reporters are not
+discovered globally; pass each one with `withReporter()` or register it with
+`DataLogger::registerReporter()` when using `DataLogger` without Astra.
 
 ---
 

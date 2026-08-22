@@ -9,7 +9,9 @@ If you want a custom filter stack, pass your own `State`.
 
 ## Telemetry header missing or incomplete
 
-Make sure all `DataReporter` objects are constructed **before** `Astra::init()` so the header includes their columns.
+Add every standalone `DataReporter` with `AstraConfig::withReporter()` before
+`Astra::init()`. Astra automatically registers the sensors and `State` supplied
+through its configuration.
 
 ---
 
@@ -31,6 +33,6 @@ You may need a clear sky view and time to lock.
 
 ## Coordinate frame confusion
 
-`State` uses **ENU** (East, North, Up).  
-Some older docs mention NEU or NED; those are outdated.
+`State` outputs use **ENU** (East, North, Up). Raw GPS velocity from
+`GPS::getVel()` is NED and is converted before it reaches the State outputs.
 

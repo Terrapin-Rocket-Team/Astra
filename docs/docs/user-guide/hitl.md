@@ -30,17 +30,27 @@ Units:
 
 ---
 
-## Router Integration (Recommended)
+## Configure Astra
 
 ```cpp
-auto* router = sys.getMessageRouter();
-router->withListener("HITL/", [](const char* msg, const char* prefix, Stream* src) {
-    double simTime;
-    if (HITLParser::parse(msg, simTime)) {
-        sys.update(simTime);
-    }
-});
+AstraConfig config = AstraConfig()
+    .withHITL()
+    .withHITLInterface(&Serial);
+
+Astra sys(&config);
+
+void setup() {
+    Serial.begin(115200);
+    sys.init();
+}
+
+void loop() {
+    sys.update();
+}
 ```
 
-Because Astra already updates its router, you do not need to call `router->update()` manually.
+`withHITL()` installs Astra-owned HITL sensor defaults. `withHITLInterface()`
+selects the stream carrying the packets. Astra creates the message router,
+parses `HITL/` packets, and performs the simulation-time update internally; do
+not register a second `HITL/` listener or call the router separately.
 

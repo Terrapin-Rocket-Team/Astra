@@ -34,7 +34,7 @@ Astra is the Terrapin Rocket Team's modular flight software library for embedded
 - `AstraConfig` wires sensors, log sinks, status LEDs, and HITL mode
 
 **Sensors**
-- Sensors are `DataReporter`s (auto-registered for logging)
+- Sensors are `DataReporter`s; Astra registers the sensors supplied in its configuration
 - `Astra` updates sensors on their own rates and uses the latest healthy data
 
 **State Estimation**
