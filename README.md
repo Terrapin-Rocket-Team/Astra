@@ -46,7 +46,23 @@ void loop() {
 
 ## Platform Setup
 
-This library is designed for PlatformIO. See the docs for example `platformio.ini` configs and build flags:
+This library is designed for PlatformIO. For a new development machine, first
+install the shared support CLI and a native C++ compiler by following the
+[Astra-Support setup instructions](https://github.com/Terrapin-Rocket-Team/Astra-Support#install-cli).
+
+From the Astra repository root, verify the toolchain and run the maintained
+build/test matrix with:
+
+```bash
+astra-support doctor --project .
+astra-support test --project . --clean --no-progress
+```
+
+The test command downloads the required PlatformIO platforms and library
+dependencies. The initial run can take several minutes.
+
+See the [installation guide](docs/docs/user-guide/installation.md) for consumer
+project examples and these required build flags:
 
 - `ENV_TEENSY`
 - `ENV_STM`
@@ -59,3 +75,15 @@ Start here:
 - `docs/docs/index.md`
 - `docs/docs/user-guide/installation.md`
 - `docs/docs/user-guide/basic-use.md`
+
+## Contributor Checks
+
+The supported handoff check is:
+
+```bash
+astra-support test --project . --clean --no-progress
+```
+
+It builds the Teensy 4.1, STM32H723, ESP32-S3, and native environments and runs
+the native Unity test suites. Hardware upload and HITL tests require the
+corresponding device and are not part of this command.
