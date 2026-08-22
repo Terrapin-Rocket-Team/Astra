@@ -18,7 +18,7 @@ class TestableHITLAccel : public HITLAccel
 {
 public:
     void setInitializedForTest(bool value) { initialized = value; }
-    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr, 0.0); }
+    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr); }
     bool getHealthForTest() const { return healthy; }
 };
 
@@ -26,7 +26,7 @@ class TestableHITLGyro : public HITLGyro
 {
 public:
     void setInitializedForTest(bool value) { initialized = value; }
-    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr, 0.0); }
+    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr); }
     bool getHealthForTest() const { return healthy; }
 };
 
@@ -34,7 +34,7 @@ class TestableHITLMag : public HITLMag
 {
 public:
     void setInitializedForTest(bool value) { initialized = value; }
-    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr, 0.0); }
+    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr); }
     bool getHealthForTest() const { return healthy; }
 };
 
@@ -42,7 +42,7 @@ class TestableHITLBarometer : public HITLBarometer
 {
 public:
     void setInitializedForTest(bool value) { initialized = value; }
-    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr, 0.0); }
+    void applyUpdateHealthForTest(int readErr) { updateHealth(readErr); }
     bool getHealthForTest() const { return healthy; }
 };
 
@@ -56,6 +56,10 @@ void local_setUp(void)
 {
     HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
     buffer.dataReady = false;
+    buffer.imu_valid = false;
+    buffer.mag_valid = false;
+    buffer.baro_valid = false;
+    buffer.gps_valid = false;
     memset(&buffer.data, 0, sizeof(buffer.data));
 }
 
@@ -150,6 +154,7 @@ void test_hitl_gps_first_fix_only_once()
     buffer.data.gps_fix = 0;
     buffer.data.gps_fix_quality = 0;
     buffer.data.gps_heading = 0.0;
+    buffer.gps_valid = true;
     TEST_ASSERT_EQUAL(0, gps.update());
     TEST_ASSERT_FALSE(gps.hasFirstFixForTest());
     TEST_ASSERT_FALSE(gps.getHasFix());

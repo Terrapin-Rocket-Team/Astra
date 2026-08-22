@@ -13,6 +13,7 @@ namespace astra
  * @param source Pointer to the Stream that received the message
  */
 typedef void (*MessageCallback)(const char* message, const char* prefix, Stream* source);
+typedef void (*MessageCallbackWithContext)(const char* message, const char* prefix, Stream* source, void* context);
 
 /**
  * Represents a single prefix listener configuration
@@ -20,9 +21,13 @@ typedef void (*MessageCallback)(const char* message, const char* prefix, Stream*
 struct PrefixListener {
     const char* prefix;
     MessageCallback callback;
+    MessageCallbackWithContext callbackWithContext;
+    void* context;
 
-    PrefixListener() : prefix(nullptr), callback(nullptr) {}
-    PrefixListener(const char* p, MessageCallback cb) : prefix(p), callback(cb) {}
+    PrefixListener() : prefix(nullptr), callback(nullptr), callbackWithContext(nullptr), context(nullptr) {}
+    PrefixListener(const char* p, MessageCallback cb) : prefix(p), callback(cb), callbackWithContext(nullptr), context(nullptr) {}
+    PrefixListener(const char* p, MessageCallbackWithContext cb, void* ctx)
+        : prefix(p), callback(nullptr), callbackWithContext(cb), context(ctx) {}
 };
 
 /**
@@ -81,6 +86,12 @@ public:
     SerialMessageRouter& withListener(const char* prefix, MessageCallback callback);
 
     /**
+     * Register a prefix listener with caller-provided context.
+     * Useful for instance-bound dispatch without global singletons.
+     */
+    SerialMessageRouter& withListener(const char* prefix, MessageCallbackWithContext callback, void* context);
+
+    /**
      * Set the line delimiter character (default: '\n')
      * @param delim The delimiter character
      * @return Reference to this for method chaining
@@ -93,6 +104,11 @@ public:
      * @return Reference to this for method chaining
      */
     SerialMessageRouter& withDefaultHandler(MessageCallback callback);
+
+    /**
+     * Clear all registered interfaces, listeners, and buffered input state.
+     */
+    void reset();
 
     /**
      * Main update function - call this in your loop()

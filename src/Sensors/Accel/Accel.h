@@ -13,13 +13,13 @@ namespace astra
         virtual Vector<3> getAccel() const;
 
         // Override update to add health tracking
-        int update(double currentTime = -1) override
+        int update() override
         {
             if (!initialized)
                 return -1;  // Don't attempt read if not initialized
 
             int err = read();  // Calls derived hardware class read()
-            updateHealth(err, currentTime);
+            updateHealth(err);
             return err;
         }
 
@@ -32,9 +32,8 @@ namespace astra
         CircBuffer<Vector<3>> lastReadings;
         uint8_t consecutiveGoodReads = 0;
 
-        void updateHealth(int readErr, double currentTime) override
+        void updateHealth(int readErr) override
         {
-            (void)currentTime;
             if (readErr != 0)
             {
                 healthy = false;
@@ -43,8 +42,10 @@ namespace astra
                 return;
             }
 
+            const Vector<3> currentReading = getAccel();
+
             // Store current reading in circular buffer
-            lastReadings.push(acc);
+            lastReadings.push(currentReading);
 
             // Only check for stuck readings after buffer is full
             if (consecutiveGoodReads < HEALTH_BUFFER_SIZE - 1)

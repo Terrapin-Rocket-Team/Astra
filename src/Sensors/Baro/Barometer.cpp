@@ -38,13 +38,13 @@ namespace astra
 
 #pragma region Sensor Virtual Function Implementations
 
-    int Barometer::update(double currentTime)
+    int Barometer::update()
     {
         if (!initialized)
             return -1;
 
         int err = read();
-        updateHealth(err, currentTime);
+        updateHealth(err);
         if (err != 0)
             return err;
 
@@ -53,9 +53,8 @@ namespace astra
         return 0;
     }
 
-    void Barometer::updateHealth(int readErr, double currentTime)
+    void Barometer::updateHealth(int readErr)
     {
-        (void)currentTime;
         if (readErr != 0)
         {
             healthy = false;

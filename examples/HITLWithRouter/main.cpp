@@ -1,6 +1,4 @@
 #include <Arduino.h>
-#include "Sensors/HITL/HITL.h"
-#include "Communication/SerialMessageRouter.h"
 #include "Utils/Astra.h"
 #include "State/DefaultState.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
@@ -9,26 +7,12 @@
 using namespace astra;
 
 /**
- * HITL Example with SerialMessageRouter
+ * Plug-and-play HITL example.
  *
- * This example demonstrates how to use the HITL framework with the
- * SerialMessageRouter for clean, centralized serial message handling.
- *
- * The router automatically:
- * - Listens for HITL/ messages on Serial
- * - Strips the prefix and passes data to handleHITL
- * - Allows easy addition of other message types (CMD/, RAD/, etc.)
- *
+ * Astra owns the default HITL sensor bundle and the internal HITL/ router.
  * Desktop simulation sends: HITL/timestamp,ax,ay,az,...\n
- * Flight computer responds: TELEM/<csv>\n (DataLogger)
+ * Flight computer responds: TELEM/<csv>\n via DataLogger.
  */
-
-// Create HITL sensors (drop-in replacements for hardware sensors)
-HITLBarometer baro;
-HITLAccel accel;
-HITLGyro gyro;
-HITLMag mag;
-HITLGPS gps;
 
 // Default state estimation (uses built-in filters)
 DefaultState hitlState;
@@ -41,81 +25,13 @@ ILogSink *eventSinks[] = {&eventLog};
 
 // Astra system configuration
 AstraConfig config = AstraConfig()
-                         .withHITL(true)
+                         .withHITL()
                          .withState(&hitlState)
-                         .withAccel(&accel)
-                         .withGyro(&gyro)
-                         .withMag(&mag)
-                         .withBaro(&baro)
-                         .withGPS(&gps)
                          .withDataLogs(telemSinks, 1)
                          .withEventLogs(eventSinks, 1)
                          .withBBPin(LED_BUILTIN);
 
 Astra sys(&config);
-
-// SerialMessageRouter for handling all incoming messages
-SerialMessageRouter router;
-
-//------------------------------------------------------------------------------
-// Message Handlers
-//------------------------------------------------------------------------------
-
-/**
- * Handle incoming HITL simulation data
- * Called automatically by router when "HITL/" message arrives
- */
-void handleHITL(const char *message, const char *prefix, Stream *source)
-{
-    double simTime;
-
-    // Parse the CSV data (prefix already stripped by router)
-    if (HITLParser::parse(message, simTime))
-    {
-        // Update system with simulation time (NOT millis()!)
-        sys.update(simTime);
-    }
-    else
-    {
-        LOGE("HITL: Failed to parse packet");
-    }
-}
-
-/**
- * Handle ground station commands
- * Called when "CMD/" message arrives
- */
-void handleCommand(const char *message, const char *prefix, Stream *source)
-{
-    LOGI("CMD: %s", message);
-
-    if (strcmp(message, "STATUS") == 0)
-    {
-        // Send status back on the same interface
-        source->printf("STATUS: Sim running, alt=%.2fm\n", hitlState.getPosition().z());
-    }
-    else if (strcmp(message, "PING") == 0)
-    {
-        source->println("PONG");
-    }
-    else if (strcmp(message, "RESET") == 0)
-    {
-        LOGW("Reset command received - resetting HITL buffer");
-        HITLSensorBuffer::instance().dataReady = false;
-    }
-    else
-    {
-        LOGW("Unknown command: %s", message);
-    }
-}
-
-/**
- * Default handler for unrecognized messages
- */
-void handleUnknown(const char *message, const char *prefix, Stream *source)
-{
-    LOGW("Unknown message type: %s", message);
-}
 
 //------------------------------------------------------------------------------
 // Setup & Loop
@@ -129,15 +45,11 @@ void setup()
     delay(1000);
 
     LOGI("===========================================");
-    LOGI(" HITL Example with SerialMessageRouter");
+    LOGI(" Plug-and-play HITL Example");
     LOGI("===========================================");
     LOGI("");
-    LOGI("Listening for messages:");
-    LOGI("  HITL/timestamp,ax,ay,az,...  - Simulation data");
-    LOGI("  CMD/STATUS                   - Get status");
-    LOGI("  CMD/PING                     - Ping test");
-    LOGI("  CMD/RESET                    - Reset HITL buffer");
-    LOGI("");
+    LOGI("Astra now owns HITL sensor creation and HITL/ routing.");
+    LOGI("Send HITL/timestamp,... packets to Serial and call sys.update() in loop().");
 
     // Initialize Astra system
     int err = sys.init();
@@ -149,25 +61,13 @@ void setup()
     {
         LOGI("Astra system initialized");
     }
-
-    // Configure SerialMessageRouter
-    router.withInterface(&Serial)
-        .withListener("HITL/", handleHITL)
-        .withListener("CMD/", handleCommand)
-        .withDefaultHandler(handleUnknown);
-
-    LOGI("Router configured with %d interfaces and %d listeners",
-         router.getInterfaceCount(), router.getListenerCount());
-    LOGI("");
     LOGI("Ready! Waiting for HITL data...");
 }
 
 void loop()
 {
-    // Update the router - handles all serial message routing
-    router.update();
-
-    // DataLogger automatically outputs TELEM/ CSV at the configured logging rate
+    // Astra handles HITL routing internally and emits TELEM/ for each valid packet.
+    sys.update();
 }
 
 /*

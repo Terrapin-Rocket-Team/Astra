@@ -15,15 +15,29 @@
 #include "RecordData/Logging/DataLogger.h"
 #include "RecordData/Logging/EventLogger.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
+#include "RecordData/DataReporter/SimpleDataReporter.h"
 #include "Testing/HITLParser.h"
 #include <cmath>
 #include <cstring>
 using namespace astra;
 BlinkBuzz bb;
-Astra *Astra::activeHITLInstance = nullptr;
 
 #ifndef ASTRA_VERSION
 #define ASTRA_VERSION "UNKNOWN"
+#endif
+
+#if defined(NATIVE)
+#ifndef PIO_UNIT_TESTING
+#ifndef UNIT_TEST
+#ifndef ASTRA_NATIVE_SITL_HOST
+#define ASTRA_NATIVE_SITL_HOST "localhost"
+#endif
+
+#ifndef ASTRA_NATIVE_SITL_PORT
+#define ASTRA_NATIVE_SITL_PORT 5555
+#endif
+#endif
+#endif
 #endif
 
 Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
@@ -32,13 +46,16 @@ Astra::Astra(AstraConfig *config) : config(config), messageRouter(nullptr)
 
 Astra::~Astra()
 {
-    if (activeHITLInstance == this)
-        activeHITLInstance = nullptr;
-
     if (messageRouter)
     {
         delete messageRouter;
         messageRouter = nullptr;
+    }
+
+    if (defaultTimeReporter)
+    {
+        delete defaultTimeReporter;
+        defaultTimeReporter = nullptr;
     }
 
     if (ownsState && config && config->state)
@@ -48,13 +65,22 @@ Astra::~Astra()
     }
 }
 
-void Astra::handleCommandMessage(const char *message, const char *prefix, Stream *source)
+void Astra::handleCommandMessage(const char *message, const char *prefix, Stream *source, void *context)
 {
+    (void)prefix;
+
+    Astra *instance = static_cast<Astra *>(context);
     if (!message || !source)
         return;
 
+    const char *payload = message;
+    while (*payload == ' ')
+    {
+        ++payload;
+    }
+
     // Check if command is "HEADER"
-    if (strcmp(message, "HEADER") == 0)
+    if (strcmp(payload, "HEADER") == 0)
     {
         // Create a temporary PrintLog wrapper to send header to the requesting stream
         PrintLog tempLog(*source, true); // true = wants prefix
@@ -66,29 +92,143 @@ void Astra::handleCommandMessage(const char *message, const char *prefix, Stream
             }
             tempLog.end();
         }
+        return;
+    }
+
+    if (strncmp(payload, "PING", 4) == 0 && (payload[4] == '\0' || payload[4] == ' '))
+    {
+        const char *name = payload + 4;
+        while (*name == ' ')
+        {
+            ++name;
+        }
+
+        const char *systemName = (instance && instance->config && instance->config->getName() &&
+                                  instance->config->getName()[0] != '\0')
+                                     ? instance->config->getName()
+                                     : "Astra";
+        source->print("CMD/PONG ");
+        source->println(systemName);
+        if (*name != '\0')
+        {
+            LOGI("Pinged by '%s'", name);
+        }
+        else
+        {
+            LOGI("Pinged by unknown sender");
+        }
+        return;
+    }
+
+    if (strncmp(payload, "PONG", 4) == 0 && (payload[4] == '\0' || payload[4] == ' '))
+    {
+        const char *name = payload + 4;
+        while (*name == ' ')
+        {
+            ++name;
+        }
+
+        if (*name != '\0')
+        {
+            LOGI("Received ACK from '%s'", name);
+        }
+        else
+        {
+            LOGI("Received ACK");
+        }
     }
 }
 
-void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *source)
+void Astra::handleHITLMessage(const char *message, const char *prefix, Stream *source, void *context)
 {
     (void)prefix;
-    (void)source;
 
-    if (!activeHITLInstance || !message)
+    Astra *instance = static_cast<Astra *>(context);
+    if (!instance || !message || !source)
         return;
 
+    const char *payload = message;
+    while (*payload == ' ')
+    {
+        ++payload;
+    }
+
+    if (strcmp(payload, "READY?") == 0)
+    {
+        if (instance->config &&
+            instance->config->runtimeMode == AstraConfig::RuntimeMode::HITL &&
+            instance->hitlUpdateStarted)
+        {
+            source->println("HITL READY");
+        }
+        return;
+    }
+
     double simTime = 0.0;
-    if (!HITLParser::parse(message, simTime))
+    if (!HITLParser::parse(payload, simTime))
         return;
 
     // Avoid recursive router polling when this callback invokes update().
-    activeHITLInstance->inHITLDispatch = true;
-    activeHITLInstance->update(simTime);
-    activeHITLInstance->inHITLDispatch = false;
+    instance->inHITLDispatch = true;
+    instance->update(simTime);
+    instance->inHITLDispatch = false;
+}
+
+bool Astra::beginDefaultTimeReporter(void *context)
+{
+    return context != nullptr;
+}
+
+double Astra::updateDefaultTimeReporter(void *context)
+{
+    Astra *instance = static_cast<Astra *>(context);
+    return instance ? instance->currentUpdateTime : 0.0;
+}
+
+void Astra::ensureDefaultTimeReporter()
+{
+    if (defaultTimeReporter)
+        return;
+
+    defaultTimeReporter = new SimpleDataReporter<double>(
+        "Time",
+        "%0.3f",
+        "Seconds",
+        beginDefaultTimeReporter,
+        updateDefaultTimeReporter,
+        this,
+        0.0);
+    defaultTimeReporter->begin();
 }
 
 int Astra::init()
 {
+    if (!config)
+    {
+        LOGE("Cannot initialize Astra without a config.");
+        return -1;
+    }
+
+#if defined(NATIVE)
+    config->prepareForRuntimeMode();
+#ifndef PIO_UNIT_TESTING
+#ifndef UNIT_TEST
+    if (config->runtimeMode == AstraConfig::RuntimeMode::SITL && !Serial.isSITLConnected())
+    {
+        const char *sitlHost = config->sitlHostConfigured ? config->sitlHost : ASTRA_NATIVE_SITL_HOST;
+        const int sitlPort = config->sitlPort != 0 ? config->sitlPort : ASTRA_NATIVE_SITL_PORT;
+        if (!Serial.connectSITL(sitlHost, sitlPort))
+        {
+            LOGE("Failed to connect to SITL at %s:%d", sitlHost, sitlPort);
+            return -1;
+        }
+    }
+#endif
+#endif
+#else
+    config->prepareForRuntimeMode();
+#endif
+
     warnedDataLoggerUnavailable = false;
 
     // Configure event logger before any LOGI/LOGW output
@@ -99,7 +239,11 @@ int Astra::init()
 
     LOGI("Initializing Astra version %s", ASTRA_VERSION);
 #ifdef ENV_STM
-    Wire.begin(PB9, PB8); // stm32
+    Wire.setSDA(PB9);
+    Wire.setSCL(PB8);
+    Wire.begin();
+    Wire.setClock(400000);
+    LOGI("I2C configured: SDA=PB9 SCL=PB8 @ 400kHz");
 #else
     Wire.begin();
 #endif
@@ -113,19 +257,26 @@ int Astra::init()
     }
     bb.init(config->pins, pins, config->bbAsync, config->maxQueueSize);
 
-    // Ensure HITL reporters exist before DataLogger init so the emitted CSV
-    // header includes HITL sensor columns on startup.
-    if (config->hitlMode)
+    // Initialize State early so it participates in reporter registration and
+    // telemetry header generation on the first logger configure.
+    if (!config->state)
     {
-        config->ensureHITLSensors();
+        LOGW("No State provided; using DefaultState.");
+        config->state = new DefaultState();
+        ownsState = true;
     }
 
-    // Logging next
+    ensureDefaultTimeReporter();
+    config->registerResolvedReporters(defaultTimeReporter);
     DataLogger::configure(config->logs, config->numLogs);
-    // setup for HITL
-    if (config->hitlMode)
+
+    if (config->runtimeMode == AstraConfig::RuntimeMode::HITL)
     {
         LOGI("HITL mode enabled - sensors and state updates run event-driven. User must pass simulation time to update().");
+    }
+    else if (config->runtimeMode == AstraConfig::RuntimeMode::SITL)
+    {
+        LOGI("SITL mode enabled - Astra is waiting on native simulator packets.");
     }
 
     // Populate and initialize SensorManager from config
@@ -163,23 +314,21 @@ int Astra::init()
     // Setup SerialMessageRouter for command handling
     if (!messageRouter)
         messageRouter = new SerialMessageRouter(4, 8, 256);
+    else
+        messageRouter->reset();
+
     messageRouter->withInterface(&Serial)
-        .withListener("CMD/", handleCommandMessage);
-    if (config->hitlMode)
+        .withListener("CMD/", handleCommandMessage, this);
+    if (config->runtimeMode == AstraConfig::RuntimeMode::HITL || config->runtimeMode == AstraConfig::RuntimeMode::SITL)
     {
-        activeHITLInstance = this;
-        messageRouter->withListener("HITL/", handleHITLMessage);
+        Stream *hitlStream = (config->runtimeMode == AstraConfig::RuntimeMode::SITL) ? &Serial : config->hitlInterface;
+        if (hitlStream)
+            messageRouter->withInterface(hitlStream);
+        messageRouter->withListener("HITL/", handleHITLMessage, this);
     }
 
     delay(10);
 
-    // Initialize State (create DefaultState if not provided)
-    if (!config->state)
-    {
-        LOGW("No State provided; using DefaultState.");
-        config->state = new DefaultState();
-        ownsState = true;
-    }
     if (config->state)
     {
         config->state->begin();
@@ -187,7 +336,7 @@ int Astra::init()
 
     // Set baro origin immediately in hardware mode.
     // In HITL mode, defer until the first valid simulation packet.
-    if (!config->hitlMode &&
+    if (config->runtimeMode == AstraConfig::RuntimeMode::Hardware &&
         config->sensorManager.getBaroSource() &&
         config->sensorManager.getBaroSource()->isInitialized())
     {
@@ -195,7 +344,8 @@ int Astra::init()
         if (config->state)
             config->state->setBaroOrigin(baroAlt);
     }
-    else if (config->hitlMode)
+    else if (config->runtimeMode == AstraConfig::RuntimeMode::HITL ||
+             config->runtimeMode == AstraConfig::RuntimeMode::SITL)
     {
         hitlBaselineEstablished = false;
     }
@@ -235,7 +385,9 @@ bool Astra::update(double timeSeconds)
     bb.update();
 
     // HITL is event-driven: if no simulation time is provided, only pump router.
-    if (config->hitlMode && timeSeconds == -1)
+    if ((config->runtimeMode == AstraConfig::RuntimeMode::HITL ||
+         config->runtimeMode == AstraConfig::RuntimeMode::SITL) &&
+        timeSeconds == -1)
     {
         updateStatusLEDs();
         return true;
@@ -245,7 +397,11 @@ bool Astra::update(double timeSeconds)
     if (timeSeconds == -1)
         timeSeconds = millis() / 1000.0;
 
-    double currentTime = timeSeconds;
+    currentUpdateTime = timeSeconds;
+    if (config->runtimeMode == AstraConfig::RuntimeMode::HITL)
+    {
+        hitlUpdateStarted = true;
+    }
 
     if (!config->state)
     {
@@ -255,15 +411,20 @@ bool Astra::update(double timeSeconds)
         config->state->begin();
     }
 
-    // Keep State reporter time synchronized for telemetry/logging.
-    config->state->update(timeSeconds);
+    if (config->state)
+    {
+        config->state->setCurrentTime(timeSeconds);
+        config->state->update();
+    }
 
     // =================== Sensor Update ===================
     // Update sensors every loop - each sensor's shouldUpdate() decides when to read
     config->sensorManager.update(timeSeconds);
 
     // In HITL mode, establish baro origin from the first valid packet.
-    if (config->hitlMode && !hitlBaselineEstablished && config->state)
+    if ((config->runtimeMode == AstraConfig::RuntimeMode::HITL ||
+         config->runtimeMode == AstraConfig::RuntimeMode::SITL) &&
+        !hitlBaselineEstablished && config->state)
     {
         Barometer *baroSource = config->sensorManager.getBaroSource();
         if (baroSource && baroSource->isInitialized())
@@ -387,7 +548,9 @@ bool Astra::update(double timeSeconds)
     // Logging update
 
     // HITL should emit a telemetry line every update for strict lock-step.
-    bool shouldLogNow = config->hitlMode || ((timeSeconds - lastLoggingUpdate) >= config->loggingInterval);
+    bool simulationMode = (config->runtimeMode == AstraConfig::RuntimeMode::HITL ||
+                           config->runtimeMode == AstraConfig::RuntimeMode::SITL);
+    bool shouldLogNow = simulationMode || ((timeSeconds - lastLoggingUpdate) >= config->loggingInterval);
     if (shouldLogNow)
     {
 

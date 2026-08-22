@@ -37,9 +37,8 @@ namespace astra
             return 0;
         }
 
-        void updateHealth(int readErr, double currentTime) override
+        void updateHealth(int readErr) override
         {
-            (void)currentTime;
             // In HITL, static values can be valid; only comms/read errors are unhealthy.
             healthy = initialized && (readErr == 0);
         }
@@ -48,6 +47,10 @@ namespace astra
         {
             // Read from HITL sensor buffer
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
+            if (!buffer.imu_valid)
+            {
+                return 1;
+            }
 
             // Update angular velocity vector
             angVel = buffer.data.gyro;

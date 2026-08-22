@@ -17,10 +17,10 @@ namespace astra
     public:
         virtual ~Sensor() {};
 
-        void setUpdateRate(double hz) { updateInterval = 1.0 / hz; }
+        virtual void setUpdateRate(double hz) { updateInterval = 1.0 / hz; }
 
         // currentTime in S. returns if enough time has passed that more data should be ready.
-        bool shouldUpdate(double currentTime)
+        virtual bool shouldUpdate(double currentTime)
         {
             if (currentTime - lastUpdateTime >= updateInterval)
             {
@@ -44,13 +44,13 @@ namespace astra
         }
 
         // Returns 0 on success, library-specific error code on failure
-        virtual int update(double currentTime = -1) override
+        virtual int update() override
         {
             if (!initialized)
                 return -1;
 
             int err = read();
-            updateHealth(err, currentTime);
+            updateHealth(err);
             return err;
         }
     protected:
@@ -71,9 +71,8 @@ namespace astra
 
         // Update sensor health after each read(). Override in derived sensors
         // for custom policies (e.g. stuck-reading checks).
-        virtual void updateHealth(int readErr, double currentTime)
+        virtual void updateHealth(int readErr)
         {
-            (void)currentTime;
             healthy = initialized && (readErr == 0);
         }
 

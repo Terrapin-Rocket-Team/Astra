@@ -36,47 +36,23 @@ pio run -e native
 ## Minimal SITL Loop (Native)
 
 ```cpp
-#include <Sensors/HITL/HITL.h>
-#include <Communication/SerialMessageRouter.h>
 #include <Utils/Astra.h>
 #include <State/DefaultState.h>
 
 using namespace astra;
 
-HITLBarometer baro;
-HITLAccel accel;
-HITLGyro gyro;
-HITLMag mag;
-HITLGPS gps;
-
 DefaultState state;
 AstraConfig config = AstraConfig()
-    .withAccel(&accel)
-    .withGyro(&gyro)
-    .withMag(&mag)
-    .withBaro(&baro)
-    .withGPS(&gps)
-    .withState(&state)
-    .withHITL(true);
+    .withState(&state);
 
 Astra sys(&config);
-SerialMessageRouter router;
 
 void setup() {
-    Serial.connectSITL("localhost", 5555);
     sys.init();
-
-    router.withInterface(&Serial)
-          .withListener("HITL/", [](const char* msg, const char*, Stream*) {
-              double simTime;
-              if (HITLParser::parse(msg, simTime)) {
-                  sys.update(simTime);
-              }
-          });
 }
 
 void loop() {
-    router.update();
+    sys.update();
 }
 ```
 
@@ -84,7 +60,9 @@ void loop() {
 
 ## Notes
 
-- `Serial.connectSITL()` is provided by the native Serial mock
+- Native Astra runs auto-connect to the configured SITL endpoint and wait until a simulator is available
+- Native Astra also owns `HITL/` routing internally; callers just run `sys.update()`
+- Call `withHITL()` explicitly on native only if you want the default HITL sensors materialized early so a decorator can wrap them before `init()`
 - HITL messages use the format described in `src/Sensors/HITL/README.md`
 - See `examples/SITL_Example/` for a complete implementation
 

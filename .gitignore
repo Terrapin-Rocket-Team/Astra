@@ -18,3 +18,9 @@ sim_log_*.csv
 # Local coverage artifacts
 results/coverage/
 *.gcov
+
+# Local AI-loop experiments
+.ai-loop/
+
+# Local PlatformIO state
+.platformio-local/

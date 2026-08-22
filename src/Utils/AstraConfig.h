@@ -1,6 +1,7 @@
 #ifndef Astra_CONFIG_H
 #define Astra_CONFIG_H
 
+#include <Arduino.h>
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "Sensors/SensorManager/SensorManager.h"
 #include <stdint.h>
@@ -28,6 +29,13 @@ namespace astra
         friend class Astra;
 
     public:
+        enum class RuntimeMode : uint8_t
+        {
+            Hardware = 0,
+            HITL,
+            SITL
+        };
+
         // Add state to Astra's knowledge.
         // If omitted, Astra will create a DefaultState.
         AstraConfig &withState(State *state);
@@ -143,11 +151,32 @@ namespace astra
         // No default. If not set, EventLogger must be configured manually.
         AstraConfig &withEventLogs(ILogSink **logs, uint8_t numLogs);
 
-        // Enable HITL (Hardware-In-The-Loop) mode
-        // When enabled, Astra configures all update intervals to 0 for maximum simulation speed
-        // The user must pass simulation time to update(simTimeMs)
-        // Default `false`
-        AstraConfig &withHITL(bool hitlEnabled);
+        // Enable HITL (Hardware-In-The-Loop) mode.
+        // This eagerly replaces all primary sensors with Astra-owned HITL defaults.
+        // Any later withSensor()/withIMU() call overrides the corresponding default.
+        AstraConfig &withHITL();
+
+        // Configure which interface Astra should monitor for HITL packets in embedded mode.
+        // Defaults to Serial when unset.
+        AstraConfig &withHITLInterface(Stream *stream);
+
+        // Override the SITL TCP endpoint used by native runs.
+        AstraConfig &withSITLEndpoint(const char *host, uint16_t port);
+
+        // Register an explicit non-sensor reporter that Astra should include in telemetry.
+        AstraConfig &withReporter(DataReporter *reporter);
+
+        // Set a system name used for identification in command responses.
+        AstraConfig &withName(const char *name);
+
+        // Expose the currently configured primary sensors so callers can wrap the
+        // default HITL sensors before init() and then override them with withSensor().
+        Accel *getAccelSource() const { return accel; }
+        Gyro *getGyroSource() const { return gyro; }
+        Mag *getMagSource() const { return mag; }
+        Barometer *getBaroSource() const { return baro; }
+        GPS *getGPSSource() const { return gps; }
+        const char *getName() const { return systemName; }
 
         // Lock out barometric measurement updates into the KF above a Mach threshold.
         // Useful to avoid transonic/supersonic pressure distortions corrupting vertical state.
@@ -160,6 +189,10 @@ namespace astra
         // Internal method called by Astra to populate SensorManager from individual sensor pointers
         void populateSensorManager();
         void ensureHITLSensors();
+        void installHITLPrimarySensors();
+        RuntimeMode resolveRuntimeMode() const;
+        void prepareForRuntimeMode();
+        void registerResolvedReporters(DataReporter *leadingReporter = nullptr);
 
     protected:
         State *state = nullptr;
@@ -188,7 +221,15 @@ namespace astra
         double loggingInterval = 0.100; // in seconds (100ms = 10Hz)
         double loggingRate = 10;        // in hz
 
-        bool hitlMode = false;          // HITL mode enabled
+        RuntimeMode runtimeMode = RuntimeMode::Hardware;
+        bool explicitHITLConfigured = false;
+        Stream *hitlInterface = nullptr;
+        static constexpr size_t SITL_HOST_MAX_LEN = 128;
+        char sitlHost[SITL_HOST_MAX_LEN] = {0};
+        static constexpr size_t SYSTEM_NAME_MAX_LEN = 32;
+        char systemName[SYSTEM_NAME_MAX_LEN] = {0};
+        bool sitlHostConfigured = false;
+        uint16_t sitlPort = 0;
         bool baroMachLockoutEnabled = false;
         double baroMachLockoutThreshold = 0.7;
         HITLAccel *hitlAccelOwned = nullptr;
@@ -196,13 +237,14 @@ namespace astra
         HITLMag *hitlMagOwned = nullptr;
         HITLBarometer *hitlBaroOwned = nullptr;
         HITLGPS *hitlGpsOwned = nullptr;
+        static constexpr uint8_t MAX_REPORTERS = 32;
+        DataReporter *reporters[MAX_REPORTERS] = {nullptr};
+        uint8_t numReporters = 0;
 
         // Status indicator pins
         int statusLED = -1;      // Main status LED for init diagnostics
         int statusBuzzer = -1;   // Buzzer for init feedback
         int gpsFixLED = -1;      // GPS fix indicator LED
-
-        uint8_t numReporters = 0;
     };
 }
 #endif

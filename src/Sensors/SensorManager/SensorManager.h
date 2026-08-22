@@ -44,6 +44,30 @@ namespace astra
 
     public:
         // Configuration
+        void clearConfiguration()
+        {
+            accel = nullptr;
+            gyro = nullptr;
+            mag = nullptr;
+            baro = nullptr;
+            gps = nullptr;
+            accelUpdated = false;
+            gyroUpdated = false;
+            magUpdated = false;
+            baroUpdated = false;
+            gpsUpdated = false;
+            accelInitFailed = false;
+            gyroInitFailed = false;
+            magInitFailed = false;
+            baroInitFailed = false;
+            gpsInitFailed = false;
+            miscInitFailed = false;
+            for (uint8_t i = 0; i < MAX_MISC_SENSORS; i++)
+                miscSensors[i] = nullptr;
+            numMisc = 0;
+            ok = false;
+        }
+
         void setAccelSource(Accel *a) { accel = a; }
         void setGyroSource(Gyro *g) { gyro = g; }
         void setMagSource(Mag *m) { mag = m; }
@@ -183,7 +207,14 @@ namespace astra
         }
 
         void update(double currentTime)
-        {
+        {            
+            // Update misc sensors first, they can be composite sensors that feed into the primary sensors (e.g. an IMU that contains children)
+            for (uint8_t i = 0; i < numMisc; i++)
+            {
+                if (miscSensors[i] && miscSensors[i]->shouldUpdate(currentTime))
+                    miscSensors[i]->update();
+            }
+            
             // Update primary sensors only if their update interval has elapsed
             if (accel && accel->shouldUpdate(currentTime))
             {
@@ -215,12 +246,7 @@ namespace astra
                 gpsUpdated = true;
             }
 
-            // Update misc sensors
-            for (uint8_t i = 0; i < numMisc; i++)
-            {
-                if (miscSensors[i] && miscSensors[i]->shouldUpdate(currentTime))
-                    miscSensors[i]->update();
-            }
+
         }
 
         /**

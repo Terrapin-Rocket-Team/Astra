@@ -88,14 +88,6 @@ namespace astra
                 return true;
             };
 
-            auto consumeComma = [&]() -> bool
-            {
-                if (*p != ',')
-                    return false;
-                ++p;
-                return true;
-            };
-
             auto parseInt = [&](int &out) -> bool
             {
                 long v = strtol(p, &end, 10);
@@ -109,43 +101,71 @@ namespace astra
             int gpsFixInt = 0;
             int gpsFixQuality = 0;
 
-            if (!parseDouble(buffer.data.timestamp) || !consumeComma() ||
-                !parseDouble(buffer.data.accel.x()) || !consumeComma() ||
-                !parseDouble(buffer.data.accel.y()) || !consumeComma() ||
-                !parseDouble(buffer.data.accel.z()) || !consumeComma() ||
-                !parseDouble(buffer.data.gyro.x()) || !consumeComma() ||
-                !parseDouble(buffer.data.gyro.y()) || !consumeComma() ||
-                !parseDouble(buffer.data.gyro.z()) || !consumeComma() ||
-                !parseDouble(buffer.data.mag.x()) || !consumeComma() ||
-                !parseDouble(buffer.data.mag.y()) || !consumeComma() ||
-                !parseDouble(buffer.data.mag.z()) || !consumeComma() ||
-                !parseDouble(buffer.data.pressure) || !consumeComma() ||
-                !parseDouble(buffer.data.temperature) || !consumeComma() ||
-                !parseDouble(buffer.data.gps_lat) || !consumeComma() ||
-                !parseDouble(buffer.data.gps_lon) || !consumeComma() ||
-                !parseDouble(buffer.data.gps_alt) || !consumeComma() ||
-                !parseInt(gpsFixInt) || !consumeComma() ||
-                !parseInt(gpsFixQuality) || !consumeComma() ||
-                !parseDouble(buffer.data.gps_heading))
-            {
-                LOGE("HITL: Parse error");
-                return false;
-            }
+            double *doubleFields[] = {
+                &buffer.data.timestamp,
+                &buffer.data.accel.x(), &buffer.data.accel.y(), &buffer.data.accel.z(),
+                &buffer.data.gyro.x(), &buffer.data.gyro.y(), &buffer.data.gyro.z(),
+                &buffer.data.mag.x(), &buffer.data.mag.y(), &buffer.data.mag.z(),
+                &buffer.data.pressure, &buffer.data.temperature,
+                &buffer.data.gps_lat, &buffer.data.gps_lon, &buffer.data.gps_alt};
 
-            while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+            int itemsParsed = 0;
+            for (; itemsParsed < 18; ++itemsParsed)
+            {
+                bool parsed = itemsParsed < 15
+                                  ? parseDouble(*doubleFields[itemsParsed])
+                                  : (itemsParsed == 15 ? parseInt(gpsFixInt)
+                                                       : (itemsParsed == 16 ? parseInt(gpsFixQuality)
+                                                                            : parseDouble(buffer.data.gps_heading)));
+                if (!parsed)
+                {
+                    LOGE("HITL: Parse error at item %d", itemsParsed + 1);
+                    return false;
+                }
+
+                while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+                    ++p;
+
+                if (*p == '\0')
+                {
+                    ++itemsParsed;
+                    break;
+                }
+                if (*p != ',')
+                {
+                    LOGE("HITL: Parse error trailing data");
+                    return false;
+                }
+
+                // A comma after the complete packet starts a forward-compatible
+                // extension. Before then, it must introduce another valid field.
+                if (itemsParsed == 17)
+                {
+                    ++itemsParsed;
+                    break;
+                }
                 ++p;
-            // Preserve the original protocol's forward-compatible behavior:
-            // explicitly comma-delimited extension fields may follow the
-            // required 18 fields. Reject text attached to the heading itself.
-            if (*p != '\0' && *p != ',')
+            }
+
+            if (itemsParsed < 7)
             {
-                LOGE("HITL: Parse error trailing data");
+                LOGE("HITL: Parse error, got %d items (expected at least 7)", itemsParsed);
                 return false;
             }
 
-            buffer.data.gps_fix = (gpsFixInt != 0);
-            buffer.data.gps_fix_quality = gpsFixQuality;
+            buffer.imu_valid = (itemsParsed >= 7);
+            buffer.mag_valid = (itemsParsed >= 10);
+            buffer.baro_valid = (itemsParsed >= 12);
+            buffer.gps_valid = (itemsParsed >= 18);
 
+            if (itemsParsed >= 16)
+            {
+                buffer.data.gps_fix = (gpsFixInt != 0);
+            }
+            if (itemsParsed >= 17)
+            {
+                buffer.data.gps_fix_quality = gpsFixQuality;
+            }
             // Mark buffer as ready
             buffer.dataReady = true;
 

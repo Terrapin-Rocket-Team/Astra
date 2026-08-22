@@ -15,7 +15,7 @@ namespace astra
         virtual int getFixQual() const;
         virtual double getHeading() const;
         virtual bool getHasFix() const;
-        virtual int update(double currentTime = -1) override;
+        virtual int update() override;
         virtual int begin() override;
         virtual Vector<3> getDisplacement(Vector<3> origin) const;
 
@@ -50,7 +50,7 @@ namespace astra
         uint16_t year = 0;
         int8_t hrOffset = 0;
 
-        void updateHealth(int readErr, double currentTime) override;
+        void updateHealth(int readErr) override;
     };
 }
 

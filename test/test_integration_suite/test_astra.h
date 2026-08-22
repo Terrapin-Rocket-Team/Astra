@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unity.h>
+#include <string>
 #include "Utils/Astra.h"
 #include "Utils/AstraConfig.h"
 #include "State/DefaultState.h"
@@ -12,6 +13,7 @@
 #include "Sensors/Baro/Barometer.h"
 #include "Sensors/GPS/GPS.h"
 #include "Sensors/HITL/HITL.h"
+#include "RecordData/Logging/DataLogger.h"
 #include "RecordData/Logging/LoggingBackend/ILogSink.h"
 #include "UnitTestSensors.h"
 
@@ -36,15 +38,23 @@ public:
 class MockLogSink : public ILogSink {
 public:
     bool began = false;
+    std::string buffer;
     bool begin() override {
         began = true;
+        buffer.clear();
         return true;
     }
     bool end() override { return true; }
     bool ok() const override { return began; }
     bool wantsPrefix() const override { return false; }
-    size_t write(uint8_t) override { return 1; }
-    size_t write(const uint8_t*, size_t n) override { return n; }
+    size_t write(uint8_t c) override {
+        buffer.push_back(static_cast<char>(c));
+        return 1;
+    }
+    size_t write(const uint8_t* data, size_t n) override {
+        buffer.append(reinterpret_cast<const char *>(data), n);
+        return n;
+    }
     void flush() override {}
 };
 
@@ -62,8 +72,7 @@ public:
         return 0;
     }
 
-    int update(double currentTime = -1) override {
-        (void)currentTime;
+    int update() override {
         updateCount++;
         value += 1.0f;
         return 0;
@@ -157,11 +166,15 @@ Astra* astra;
 void local_setUp(void) {
     state = nullptr;
     astra = nullptr;
+    DataLogger::reset();
+    Serial.clearBuffer();
 }
 
 void local_tearDown(void) {
     delete astra;
     delete state;
+    DataLogger::reset();
+    Serial.clearBuffer();
 }
 
 void test_constructor_with_config() {
@@ -277,6 +290,63 @@ void test_init_with_failing_mag_degrades_gracefully() {
     // Astra continues with the accelerometer/gyroscope orientation path.
     TEST_ASSERT_EQUAL(0, errors);
     TEST_ASSERT_FALSE(mag.isInitialized());
+    local_tearDown();
+}
+
+void test_init_registers_configured_state_as_reporter() {
+    local_setUp();
+    state = new DefaultState();
+
+    AstraConfig config;
+    config.withState(state);
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(0, errors);
+    TEST_ASSERT_EQUAL(2, DataLogger::instance().getNumReporters());
+    TEST_ASSERT_EQUAL_STRING("Time", DataLogger::instance().getReporters()[0]->getName());
+    TEST_ASSERT_EQUAL_PTR(state, DataLogger::instance().getReporters()[1]);
+    local_tearDown();
+}
+
+void test_init_registers_default_state_as_reporter_when_state_omitted() {
+    local_setUp();
+
+    AstraConfig config;
+
+    astra = new Astra(&config);
+    int errors = astra->init();
+
+    TEST_ASSERT_EQUAL(0, errors);
+    TEST_ASSERT_EQUAL(2, DataLogger::instance().getNumReporters());
+    TEST_ASSERT_EQUAL_STRING("Time", DataLogger::instance().getReporters()[0]->getName());
+    TEST_ASSERT_NOT_NULL(DataLogger::instance().getReporters()[1]);
+    local_tearDown();
+}
+
+void test_default_time_reporter_logs_sim_time() {
+    local_setUp();
+    state = new DefaultState();
+    MockLogSink sink;
+    ILogSink *sinks[] = {&sink};
+
+    AstraConfig config;
+    config.withState(state)
+          .withLoggingInterval(100)
+          .withDataLogs(sinks, 1);
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, sink.buffer.find("Time - Seconds"));
+
+    sink.buffer.clear();
+    astra->update(0.0);
+    astra->update(12.345);
+
+    TEST_ASSERT_TRUE(astra->didLog());
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, sink.buffer.find("12.345"));
     local_tearDown();
 }
 
@@ -773,7 +843,7 @@ void test_hitl_mode_enabled() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -788,7 +858,7 @@ void test_hitl_mode_requires_simulation_time() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     astra->init();
@@ -809,22 +879,9 @@ void test_hitl_update_flow_and_order() {
     local_setUp();
     state = new RecordingState();
 
-    HITLAccel accel;
-    HITLGyro gyro;
-    HITLBarometer baro;
-    HITLGPS gps;
-    accel.setUpdateRate(1000);
-    gyro.setUpdateRate(1000);
-    baro.setUpdateRate(1000);
-    gps.setUpdateRate(1000);
-
     AstraConfig config;
     config.withState(state)
-          .withAccel(&accel)
-          .withGyro(&gyro)
-          .withBaro(&baro)
-          .withGPS(&gps)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -883,7 +940,7 @@ void test_hitl_router_drives_core_update_from_serial() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -905,6 +962,33 @@ void test_hitl_router_drives_core_update_from_serial() {
     local_tearDown();
 }
 
+void test_hitl_ready_probe_waits_for_first_timed_update() {
+    local_setUp();
+    state = new RecordingState();
+
+    AstraConfig config;
+    config.withState(state)
+          .withHITL();
+
+    astra = new Astra(&config);
+    TEST_ASSERT_EQUAL(0, astra->init());
+
+    Serial.simulateInput("HITL/READY?\n");
+    TEST_ASSERT_TRUE(astra->update());
+    TEST_ASSERT_EQUAL_MESSAGE('\0', Serial.fakeBuffer[0], "HITL READY should not be emitted before the first timed update");
+
+    Serial.clearBuffer();
+    Serial.simulateInput("HITL/0.25,1.0,2.0,3.0,0.1,0.2,0.3,10.0,20.0,30.0,901.0,15.0,37.0,-122.0,100.0,1,8,45.0\n");
+    TEST_ASSERT_TRUE(astra->update());
+
+    Serial.clearBuffer();
+    Serial.simulateInput("HITL/READY?\n");
+    TEST_ASSERT_TRUE(astra->update());
+    TEST_ASSERT_NOT_EQUAL_MESSAGE('\0', Serial.fakeBuffer[0], "HITL READY should be emitted after the first timed HITL update");
+    TEST_ASSERT_NOT_EQUAL(nullptr, strstr(Serial.fakeBuffer, "HITL READY"));
+    local_tearDown();
+}
+
 void test_logging_auto_updates_enabled_reporters() {
     local_setUp();
     state = new DefaultState();
@@ -918,7 +1002,8 @@ void test_logging_auto_updates_enabled_reporters() {
     AstraConfig config;
     config.withState(state)
           .withLoggingInterval(100)
-          .withDataLogs(sinks, 1);
+          .withDataLogs(sinks, 1)
+          .withReporter(&reporter);
 
     astra = new Astra(&config);
     TEST_ASSERT_EQUAL(0, astra->init());
@@ -954,7 +1039,7 @@ void test_hitl_router_ignores_invalid_packet() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -1129,7 +1214,7 @@ void test_hitl_baro_origin_set_once_from_first_packet() {
 
     AstraConfig config;
     config.withState(state)
-          .withHITL(true);
+          .withHITL();
 
     astra = new Astra(&config);
     int errors = astra->init();
@@ -1383,6 +1468,9 @@ void run_test_astra_tests()
     RUN_TEST(test_constructor_with_config);
     RUN_TEST(test_constructor_null_config);
     RUN_TEST(test_init_minimal_config);
+    RUN_TEST(test_init_registers_configured_state_as_reporter);
+    RUN_TEST(test_init_registers_default_state_as_reporter_when_state_omitted);
+    RUN_TEST(test_default_time_reporter_logs_sim_time);
     RUN_TEST(test_init_with_all_sensors);
     RUN_TEST(test_init_with_failing_sensor);
     RUN_TEST(test_init_with_failing_gyro_reports_error);
@@ -1425,6 +1513,7 @@ void run_test_astra_tests()
     RUN_TEST(test_hitl_mode_requires_simulation_time);
     RUN_TEST(test_hitl_update_flow_and_order);
     RUN_TEST(test_hitl_router_drives_core_update_from_serial);
+    RUN_TEST(test_hitl_ready_probe_waits_for_first_timed_update);
     RUN_TEST(test_hitl_router_ignores_invalid_packet);
     RUN_TEST(test_hitl_baro_origin_set_once_from_first_packet);
     RUN_TEST(test_complete_update_cycle);

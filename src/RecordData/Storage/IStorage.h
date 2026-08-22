@@ -15,8 +15,8 @@ namespace astra
     enum class StorageBackend
     {
 #if defined(ENV_STM)
-        EMMC,           // eMMC via STM32SD MMC interface
-        SD_CARD,        // SD card (SDMMC via STM32SD)
+        EMMC,           // eMMC via STM32EMMC
+        SD_CARD,        // SD card via STM32SD
         INTERNAL_FLASH, // Onboard flash (future)
 #elif defined(ENV_ESP)
         SD_CARD,        // SD card (SDMMC 4-bit via ESP-IDF)

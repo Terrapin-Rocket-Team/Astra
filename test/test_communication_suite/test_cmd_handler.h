@@ -68,7 +68,7 @@ public:
         initialized = true;
         return 0;
     }
-    int update(double currentTime = -1) override
+    int update() override
     {
         return 0;
     }
@@ -144,6 +144,7 @@ void test_cmd_header_basic()
     FakeReporter rp("test");
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
 
     // Setup SerialMessageRouter with CMD/ listener
@@ -182,6 +183,7 @@ void test_cmd_header_multiple_requests()
     FakeReporter rp("sensor");
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
 
     // Setup router
@@ -217,6 +219,7 @@ void test_cmd_unknown_command()
     FakeReporter rp("test");
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
 
     // Setup router
@@ -245,6 +248,8 @@ void test_cmd_header_with_multiple_reporters()
     FakeReporter rp2("gyro");
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp1);
+    DataLogger::registerReporter(&rp2);
     DataLogger::configure(sinks, 1);
 
     // Setup router
@@ -277,6 +282,7 @@ void test_cmd_header_only_to_requesting_stream()
     FakeReporter rp("test");
     ILogSink *sinks[] = {&sink};
 
+    DataLogger::registerReporter(&rp);
     DataLogger::configure(sinks, 1);
 
     // Setup router with both streams

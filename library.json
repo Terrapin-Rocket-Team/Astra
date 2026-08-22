@@ -77,15 +77,6 @@
             "owner": "sparkfun"
         },
         {
-            "name": "SdFat",
-            "version": "https://github.com/greiman/SdFat.git#2.3.1",
-            "platforms": [
-                "teensy",
-                "ststm32",
-                "espressif32"
-            ]
-        },
-        {
             "name": "MS5611",
             "version": "https://github.com/RobTillaart/MS5611.git#0.4.1"
         },
@@ -106,8 +97,8 @@
             ]
         },
         {
-            "owner": "stm32duino",
-            "name": "STM32duino STM32SD",
+            "name": "STM32EMMC",
+            "version": "https://github.com/DrewBrandt/STM32EMMC.git",
             "platforms": [
                 "ststm32"
             ]

@@ -16,7 +16,9 @@ namespace astra
     {
     public:
         using BeginFuncCB = bool (*)();
-        using UpdateFuncCB = T(*)();
+        using UpdateFuncCB = T (*)();
+        using BeginFuncWithContextCB = bool (*)(void *);
+        using UpdateFuncWithContextCB = T (*)(void *);
         /**
          * @brief Construct a new Simple Data Reporter with function callbacks
          *
@@ -35,10 +37,28 @@ namespace astra
         {
             addColumn(fmt, &loggedVariable, label);
         }
+
+        SimpleDataReporter(
+            const char *name,
+            const char *fmt,
+            const char *label,
+            BeginFuncWithContextCB beginFunc,
+            UpdateFuncWithContextCB updateFunc,
+            void *context,
+            T defaultValue = T{}) :
+            DataReporter(name), _beginFuncWithContext(beginFunc), _updateFuncWithContext(updateFunc), _context(context), loggedVariable(defaultValue)
+        {
+            addColumn(fmt, &loggedVariable, label);
+        }
         virtual ~SimpleDataReporter() = default;
 
         int begin() override
         {
+            if (_beginFuncWithContext)
+            {
+                initialized = _beginFuncWithContext(_context);
+                return initialized ? 0 : -1;
+            }
             if (_beginFunc)
             {
                 initialized = _beginFunc();
@@ -48,9 +68,13 @@ namespace astra
             return -1;
         }
 
-        int update(double currentTime = -1) override
+        int update() override
         {
-            (void)currentTime;
+            if (_updateFuncWithContext)
+            {
+                loggedVariable = _updateFuncWithContext(_context);
+                return 0;
+            }
             if (_updateFunc)
             {
                 loggedVariable = _updateFunc();
@@ -60,8 +84,11 @@ namespace astra
         }
 
     private:
-        BeginFuncCB _beginFunc;
-        UpdateFuncCB _updateFunc;
+        BeginFuncCB _beginFunc = nullptr;
+        UpdateFuncCB _updateFunc = nullptr;
+        BeginFuncWithContextCB _beginFuncWithContext = nullptr;
+        UpdateFuncWithContextCB _updateFuncWithContext = nullptr;
+        void *_context = nullptr;
         T loggedVariable;
     };
     

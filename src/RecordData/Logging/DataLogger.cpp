@@ -23,7 +23,12 @@ static StdoutPrint stdoutPrint;
 
 namespace astra
 {
-    DataLogger DataLogger::_global{};
+    static DataLogger &globalLogger()
+    {
+        // Intentionally leaked to avoid static destruction order issues at shutdown.
+        static DataLogger *logger = new DataLogger();
+        return *logger;
+    }
 
     DataLogger::DataLogger()
         : _sinks(nullptr), _countSinks(0), _countReporters(0), _reporterRegistry{}, _ok(false)
@@ -214,9 +219,10 @@ namespace astra
 
     void DataLogger::configure(ILogSink **sinks, uint8_t numSinks)
     {
-        _global._sinks = sinks;
-        _global._countSinks = numSinks;
-        _global.init();
+        auto &logger = globalLogger();
+        logger._sinks = sinks;
+        logger._countSinks = numSinks;
+        logger.init();
     }
 
     bool DataLogger::registerReporter(DataReporter *reporter)
@@ -224,16 +230,18 @@ namespace astra
         if (!reporter)
             return false;
 
-        if (_global._countReporters >= MAX_REPORTERS)
+        auto &logger = globalLogger();
+
+        if (logger._countReporters >= MAX_REPORTERS)
             return false;
 
-        for (uint8_t i = 0; i < _global._countReporters; i++)
+        for (uint8_t i = 0; i < logger._countReporters; i++)
         {
-            if (_global._reporterRegistry[i] == reporter)
+            if (logger._reporterRegistry[i] == reporter)
                 return false;
         }
 
-        _global._reporterRegistry[_global._countReporters++] = reporter;
+        logger._reporterRegistry[logger._countReporters++] = reporter;
         return true;
     }
 
@@ -242,16 +250,18 @@ namespace astra
         if (!reporter)
             return false;
 
-        for (uint8_t i = 0; i < _global._countReporters; i++)
+        auto &logger = globalLogger();
+
+        for (uint8_t i = 0; i < logger._countReporters; i++)
         {
-            if (_global._reporterRegistry[i] == reporter)
+            if (logger._reporterRegistry[i] == reporter)
             {
-                for (uint8_t j = i; j < _global._countReporters - 1; j++)
+                for (uint8_t j = i; j < logger._countReporters - 1; j++)
                 {
-                    _global._reporterRegistry[j] = _global._reporterRegistry[j + 1];
+                    logger._reporterRegistry[j] = logger._reporterRegistry[j + 1];
                 }
-                _global._countReporters--;
-                _global._reporterRegistry[_global._countReporters] = nullptr;
+                logger._countReporters--;
+                logger._reporterRegistry[logger._countReporters] = nullptr;
                 return true;
             }
         }
@@ -260,23 +270,24 @@ namespace astra
 
     DataLogger &DataLogger::instance()
     {
-        return _global;
+        return globalLogger();
     }
 
     bool DataLogger::available()
     {
-        return _global._ok;
+        return globalLogger()._ok;
     }
 
     void DataLogger::reset()
     {
-        _global._sinks = nullptr;
-        _global._countSinks = 0;
-        _global._countReporters = 0;
+        auto &logger = globalLogger();
+        logger._sinks = nullptr;
+        logger._countSinks = 0;
+        logger._countReporters = 0;
         for (uint8_t i = 0; i < MAX_REPORTERS; i++)
         {
-            _global._reporterRegistry[i] = nullptr;
+            logger._reporterRegistry[i] = nullptr;
         }
-        _global._ok = false;
+        logger._ok = false;
     }
 }

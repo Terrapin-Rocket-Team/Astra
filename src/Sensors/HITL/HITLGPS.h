@@ -45,6 +45,10 @@ namespace astra
         {
             // Read from HITL sensor buffer
             HITLSensorBuffer &buffer = HITLSensorBuffer::instance();
+            if (!buffer.gps_valid)
+            {
+                return 1;
+            }
 
             // Update position (lat, lon, alt)
             position.x() = buffer.data.gps_lat;

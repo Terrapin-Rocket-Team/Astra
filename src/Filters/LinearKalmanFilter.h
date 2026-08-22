@@ -48,6 +48,7 @@ public:
 
     // Get current state estimate
     virtual Matrix getState() const { return X; }
+    virtual Matrix getCovariance() const { return P; }
 
     // Get noise parameters (used as defaults when updateGPS/updateBaro called with -1)
     // Subclasses should override these if they store noise parameters

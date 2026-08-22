@@ -73,6 +73,10 @@ Configures telemetry CSV sinks for `DataLogger`. Event logs are configured separ
 
 Configures sinks for `EventLogger` during `Astra::init()`.
 
+**`withReporter(DataReporter* reporter)`**
+
+Registers a standalone reporter that Astra should include in telemetry.
+
 ---
 
 ### Logging Cadence
@@ -112,9 +116,13 @@ Init feedback patterns:
 
 ### HITL Mode
 
-**`withHITL(bool enabled)`**
+**`withHITL()`**
 
-Flags the system as HITL. Use this when you pass simulation time into `update(simTimeSeconds)`.
+Replaces all primary sensors with Astra-owned HITL defaults. Any later
+`withAccel()`, `withGyro()`, `withMag()`, `withBaro()`, `withGPS()`,
+`with6DoFIMU()`, or `with9DoFIMU()` call overrides the corresponding HITL
+sensor. This is the intended hook for wrapping the default HITL sensors with
+decorators before `init()`.
 
 ---
 

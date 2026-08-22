@@ -20,15 +20,6 @@ static Astra g_sys(&g_config);
 void setup()
 {
     Serial.begin(115200);
-    if (Serial.connectSITL("localhost", 5555))
-    {
-        Serial.println("Connected to SITL");
-    }
-    else
-    {
-        Serial.println("Failed to connect to SITL");
-        return;
-    }
 
     while (!Serial && millis() < 5000)
     {
@@ -41,12 +32,11 @@ void setup()
     Serial.println("===========================================");
     Serial.println();
 
-    g_config.withHITL(true)
-        .withState(&g_state)
+    g_config.withState(&g_state)
         .withDataLogs(g_telemSinks, 1)
         .withEventLogs(g_eventSinks, 1);
 
-    Serial.println("Initializing HITL mode...");
+    Serial.println("Initializing native SITL mode...");
     int err = g_sys.init();
     if (err != 0)
     {

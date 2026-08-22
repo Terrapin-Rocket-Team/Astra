@@ -97,9 +97,14 @@ namespace astra
          */
         virtual void setBaroOrigin(double altASL);
 
+        // Keep the state's current time synchronized with Astra's update clock
+        // without making time part of the DataReporter update() signature.
+        virtual void setCurrentTime(double timeSeconds);
+
         // ========================= DataReporter Hook =========================
-        // Does not drive estimation. Keeps logging time in sync.
-        virtual int update(double currentTime = -1) override;
+        // Does not drive estimation. Override if a derived State wants to refresh
+        // additional logged fields before a telemetry line is emitted.
+        virtual int update() override;
 
         // ========================= State Getters =========================
 
@@ -109,22 +114,25 @@ namespace astra
         virtual Quaternion getOrientation() const { return orientation; }
         virtual Vector<2> getCoordinates() const { return coordinates; }   // lat lon in decimal degrees
         virtual double getHeading() const { return heading; }              // degrees
+        virtual double getCurrentTime() const { return currentTimeSeconds; }
 
         // ========================= Filter Control =========================
 
         MahonyAHRS *getOrientationFilter() const { return orientationFilter; }
 
     protected:
-        double currentTime; // in s since uC turned on
-        double lastTime;
+        void syncFromFilter();
 
         // State variables (all in inertial frame)
         Vector<3> position;     // in m from launch position
         Vector<3> velocity;     // in m/s
         Vector<3> acceleration; // in m/s^2
+        double positionZVariance = 0.0; // KF covariance diagonal term P(2,2)
+        double velocityZVariance = 0.0; // KF covariance diagonal term P(5,5)
         Quaternion orientation; // body-to-earth rotation
         Vector<2> coordinates;  // in lat, lon
         double heading;         // in degrees
+        double currentTimeSeconds = 0.0;
         Vector<3> origin;       // in lat, lon, alt
 
         // Kalman Filter for position/velocity/acceleration estimation

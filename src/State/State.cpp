@@ -19,12 +19,9 @@ namespace astra
             LOGE("State requires an AHRS orientation filter! Cannot create State without orientation filter.");
         }
 
-        lastTime = 0;
-        currentTime = 0;
         this->filter = filter;
         this->orientationFilter = orientationFilter;
 
-        addColumn("%0.3f", &currentTime, "Time (s)");
         addColumn("%0.3f", &position.x(), "PX (m)");
         addColumn("%0.3f", &position.y(), "PY (m)");
         addColumn("%0.3f", &position.z(), "PZ (m)");
@@ -34,6 +31,8 @@ namespace astra
         addColumn("%0.3f", &acceleration.x(), "AX (m/s/s)");
         addColumn("%0.3f", &acceleration.y(), "AY (m/s/s)");
         addColumn("%0.3f", &acceleration.z(), "AZ (m/s/s)");
+        addColumn("%0.3f", &positionZVariance, "PZ Var (m^2)");
+        addColumn("%0.3f", &velocityZVariance, "VZ Var (m^2/s^2)");
         autoUpdate = false; // disable DataLogger from updating this class
     }
 
@@ -59,6 +58,7 @@ namespace astra
 
         // Initialize Kalman filter
         filter->initialize();
+        syncFromFilter();
 
         LOGI("State initialized. Ready for data.");
         initialized = true;
@@ -87,6 +87,11 @@ namespace astra
         }
     }
 
+    void State::setCurrentTime(double timeSeconds)
+    {
+        currentTimeSeconds = timeSeconds;
+    }
+
     void State::predict(double dt)
     {
         if (!filter || !orientationFilter)
@@ -110,16 +115,7 @@ namespace astra
         Matrix controlInput(3, 1, controlData);
         filter->predict(dt, controlInput);
 
-        // Extract predicted state: [px, py, pz, vx, vy, vz]
-        Matrix state = filter->getState();
-
-        // Update state variables from prediction
-        position.x() = state(0, 0);
-        position.y() = state(1, 0);
-        position.z() = state(2, 0);
-        velocity.x() = state(3, 0);
-        velocity.y() = state(4, 0);
-        velocity.z() = state(5, 0);
+        syncFromFilter();
     }
 
     void State::updateGPSMeasurement(const Vector<3> &gpsPos, const Vector<3> &gpsVel)
@@ -156,16 +152,7 @@ namespace astra
         // GPS update - horizontal position
         filter->updateGPS(px, py);
 
-        // Extract updated state: [px, py, pz, vx, vy, vz]
-        Matrix state = filter->getState();
-
-        // Update state variables from measurement update
-        position.x() = state(0, 0);
-        position.y() = state(1, 0);
-        position.z() = state(2, 0);
-        velocity.x() = state(3, 0);
-        velocity.y() = state(4, 0);
-        velocity.z() = state(5, 0);
+        syncFromFilter();
     }
 
     void State::updateBaroMeasurement(double baroAlt)
@@ -186,27 +173,41 @@ namespace astra
         // Baro update - vertical position
         filter->updateBaro(pz);
 
-        // Extract updated state: [px, py, pz, vx, vy, vz]
-        Matrix state = filter->getState();
-
-        // Update state variables from measurement update
-        position.x() = state(0, 0);
-        position.y() = state(1, 0);
-        position.z() = state(2, 0);
-        velocity.x() = state(3, 0);
-        velocity.y() = state(4, 0);
-        velocity.z() = state(5, 0);
+        syncFromFilter();
     }
 
 #pragma region Update Functions
 
-    int State::update(double newTime)
+    int State::update()
     {
-        if (newTime == -1)
-            newTime = millis() / 1000.0;
-
-        currentTime = newTime;
+        syncFromFilter();
         return 0;
+    }
+
+    void State::syncFromFilter()
+    {
+        if (!filter)
+        {
+            return;
+        }
+
+        Matrix state = filter->getState();
+        if (state.getRows() >= 6 && state.getCols() >= 1)
+        {
+            position.x() = state(0, 0);
+            position.y() = state(1, 0);
+            position.z() = state(2, 0);
+            velocity.x() = state(3, 0);
+            velocity.y() = state(4, 0);
+            velocity.z() = state(5, 0);
+        }
+
+        Matrix covariance = filter->getCovariance();
+        if (covariance.getRows() >= 6 && covariance.getCols() >= 6)
+        {
+            positionZVariance = covariance(2, 2);
+            velocityZVariance = covariance(5, 5);
+        }
     }
 
     void State::updateOrientation(const Vector<3> &gyro, const Vector<3> &accel, double dt)

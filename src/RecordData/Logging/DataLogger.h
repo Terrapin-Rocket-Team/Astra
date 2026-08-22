@@ -16,7 +16,6 @@ namespace astra
         uint8_t _countReporters = 0;
         DataReporter *_reporterRegistry[MAX_REPORTERS];
         bool _ok = false;
-        static DataLogger _global;
 
     public:
         DataLogger();
