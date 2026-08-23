@@ -68,6 +68,11 @@ Astra is the reusable bottom layer of the current flight-software stack:
   the shared setup, test, and simulation CLI.
 - [SRAD-Avionics](https://github.com/Terrapin-Rocket-Team/SRAD-Avionics) owns the
   board-specific firmware and end-to-end integration procedure.
+- [Airbrake](https://github.com/Terrapin-Rocket-Team/Airbrake) contains the
+  Astra-Rocket-based airbrake application and its closed-loop simulation.
+- Start with the canonical
+  [install-to-HITL workflow](https://github.com/Terrapin-Rocket-Team/SRAD-Avionics/blob/main/docs/software-stack.md)
+  when setting up or handing off the complete stack.
 
 Keep Astra API details here. Do not copy them into downstream documentation;
 downstream guides should link back to the relevant Astra page.
