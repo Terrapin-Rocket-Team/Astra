@@ -219,13 +219,13 @@ namespace astra
 
         for (int i = 0; i < n; ++i)
         {
-            double maxVal = std::abs(A[i * n + i]);
+            double maxVal = (std::abs)(A[i * n + i]);
             int maxRow = i;
             for (int k = i + 1; k < n; ++k)
             {
-                if (std::abs(A[k * n + i]) > maxVal)
+                if ((std::abs)(A[k * n + i]) > maxVal)
                 {
-                    maxVal = std::abs(A[k * n + i]);
+                    maxVal = (std::abs)(A[k * n + i]);
                     maxRow = k;
                 }
             }
