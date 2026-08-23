@@ -27,8 +27,10 @@ astra-support sim list --project .
 astra-support sim run --project . --mode sitl --source physics
 ```
 
-The runner builds the native target, starts it, feeds lock-step simulation data,
-and writes the simulation log. The equivalent compatibility shortcut is:
+The runner builds the native target when its executable is missing, starts it,
+feeds lock-step simulation data, and writes the simulation log. It reuses an
+existing executable; pass `--build` after source or configuration changes. The
+equivalent compatibility shortcut is:
 
 ```bash
 astra-support sitl -C . -s physics

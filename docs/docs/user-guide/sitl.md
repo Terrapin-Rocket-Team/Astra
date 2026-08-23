@@ -14,9 +14,10 @@ astra-support sim list --project .
 astra-support sim run --project . --mode sitl --source physics
 ```
 
-The runner builds the `native` PlatformIO environment, starts the resulting
-flight-software process, supplies simulated sensor packets, and records the
-session. The compatibility shortcut is:
+The runner builds the `native` PlatformIO environment when its executable is
+missing, starts the flight-software process, supplies simulated sensor packets,
+and records the session. It reuses an existing executable; pass `--build` after
+source or configuration changes. The compatibility shortcut is:
 
 ```bash
 astra-support sitl -C . -s physics
