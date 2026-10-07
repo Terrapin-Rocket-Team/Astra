@@ -44,8 +44,8 @@ Enable the simulated sensor set and select its input stream through
 `AstraConfig`:
 
 ```cpp
-AstraConfig config = AstraConfig()
-    .withHITL()
+AstraConfig config;
+config.withHITL()
     .withHITLInterface(&Serial);
 ```
 
@@ -53,6 +53,11 @@ Astra owns the `HITL/` listener and parser when using the full system. The
 application loop only calls `sys.update()`. Use `HITLParser` and
 `HITLSensorBuffer` directly only when building a lower-level integration without
 `Astra`.
+
+Configure the named object directly: copying a configured temporary would free
+its owned HITL sensors when the temporary is destroyed. When using Astra-Support,
+call `sys.update(0.0)` once after successful initialization so the firmware can
+answer `HITL/READY?` before the simulator starts sending sensor packets.
 
 ---
 

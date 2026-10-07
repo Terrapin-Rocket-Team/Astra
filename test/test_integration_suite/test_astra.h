@@ -1211,6 +1211,7 @@ void test_gps_fix_led_without_fix() {
 void test_hitl_baro_origin_set_once_from_first_packet() {
     local_setUp();
     state = new RecordingState();
+    HITLSensorBuffer::instance().baro_valid = false;
 
     AstraConfig config;
     config.withState(state)
@@ -1221,6 +1222,11 @@ void test_hitl_baro_origin_set_once_from_first_packet() {
     TEST_ASSERT_EQUAL(0, errors);
 
     RecordingState* rec = static_cast<RecordingState*>(state);
+    TEST_ASSERT_EQUAL(0, rec->baroOriginSetCount);
+
+    // The example primes HITL READY before receiving any sensor packets.
+    // This timed update must leave the baseline for the first valid baro read.
+    TEST_ASSERT_TRUE(astra->update(0.0));
     TEST_ASSERT_EQUAL(0, rec->baroOriginSetCount);
 
     Serial.simulateInput("HITL/0.11,1.0,2.0,3.0,0.1,0.2,0.3,10.0,20.0,30.0,900.0,15.0,37.0,-122.0,100.0,1,8,45.0\n");

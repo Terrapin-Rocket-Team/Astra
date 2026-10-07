@@ -427,7 +427,7 @@ bool Astra::update(double timeSeconds)
         !hitlBaselineEstablished && config->state)
     {
         Barometer *baroSource = config->sensorManager.getBaroSource();
-        if (baroSource && baroSource->isInitialized())
+        if (baroSource && baroSource->isInitialized() && baroSource->isHealthy())
         {
             double baroAlt = config->sensorManager.getBarometricAltitude();
             config->state->setBaroOrigin(baroAlt);

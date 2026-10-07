@@ -23,13 +23,9 @@ ILogSink *telemSinks[] = {&telemLog};
 PrintLog eventLog(Serial, true);
 ILogSink *eventSinks[] = {&eventLog};
 
-// Astra system configuration
-AstraConfig config = AstraConfig()
-                         .withHITL()
-                         .withState(&hitlState)
-                         .withDataLogs(telemSinks, 1)
-                         .withEventLogs(eventSinks, 1)
-                         .withBBPin(LED_BUILTIN);
+// Configure this object in setup(): it owns the HITL sensors and must not be
+// copied from a temporary whose destructor would delete those sensors.
+AstraConfig config;
 
 Astra sys(&config);
 
@@ -43,6 +39,12 @@ void setup()
 
     // Wait for serial connection (helpful for USB serial)
     delay(1000);
+
+    config.withHITL()
+        .withState(&hitlState)
+        .withDataLogs(telemSinks, 1)
+        .withEventLogs(eventSinks, 1)
+        .withBBPin(LED_BUILTIN);
 
     LOGI("===========================================");
     LOGI(" Plug-and-play HITL Example");
@@ -60,6 +62,9 @@ void setup()
     else
     {
         LOGI("Astra system initialized");
+        // Astra-Support waits for HITL READY before sending sensor packets.
+        // One timed update enables that response; loop() then only pumps Serial.
+        sys.update(0.0);
     }
     LOGI("Ready! Waiting for HITL data...");
 }
