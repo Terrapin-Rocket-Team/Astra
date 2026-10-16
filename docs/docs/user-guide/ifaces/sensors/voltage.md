@@ -32,5 +32,5 @@ int raw = vbat.getRawValue();
 ## Notes
 
 - ADC resolution is platform-specific
-- The default reference voltage is chosen by build flags (`ENV_TEENSY`, `ENV_STM`, `ENV_ESP`)
+- The default reference voltage is chosen by build flags (`ENV_TEENSY`, `ENV_STM`)
 

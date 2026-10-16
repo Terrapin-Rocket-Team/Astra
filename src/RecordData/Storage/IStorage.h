@@ -18,9 +18,6 @@ namespace astra
         EMMC,           // eMMC via STM32EMMC
         SD_CARD,        // SD card via STM32SD
         INTERNAL_FLASH, // Onboard flash (future)
-#elif defined(ENV_ESP)
-        SD_CARD,        // SD card (SDMMC 4-bit via ESP-IDF)
-        INTERNAL_FLASH, // Onboard flash (future)
 #elif defined(ENV_TEENSY)
         SD_CARD,        // SD card (SDIO via SdFat)
         INTERNAL_FLASH, // Onboard flash (future)
