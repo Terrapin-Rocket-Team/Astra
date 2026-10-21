@@ -211,3 +211,13 @@ Attitude blocks are unchanged from the current attitude filter, plus the thrust 
 
 - Team airbrake wind tunnel test report — TBD
 - Team static fire data — TBD
+
+## Psuedocode
+
+### Predict step
+
+1. **Save the starting estimate and inputs:** Copy the current corrected state estimate and covariance into `x_prev` and `P_prev`, and obtain `dt` plus the thrust, mass, airbrake position, gyro, wind, and atmosphere inputs for this interval.
+2. **Evaluate the Jacobian:** Calculate `F = partial(x_dot)/partial(x)` at `x_prev` using the current inputs, then form the discrete transition `Phi = I + F * dt` for a sufficiently small time step. If attitude uses an error-state covariance, form this transition in the same error coordinates as that covariance.
+3. **Predict the state:** Integrate the full nonlinear thrust, drag, gravity, and gyro-driven attitude dynamics from `x_prev` over `dt`, using RK4 or sub-stepped Euler, to obtain `x_pred`. Normalize the predicted quaternion; the mean prediction comes from the nonlinear model rather than `Phi * x_prev`.
+4. **Predict the covariance:** Construct the discrete process-noise covariance `Q_d` for this interval, including the phase-dependent uncertainty described above, and calculate `P_pred = Phi * P_prev * Phi.transpose() + Q_d`. If propagation is sub-stepped, repeat the Jacobian, transition, and covariance calculations at each sub-step using its elapsed time.
+5. **Keep the predicted result:** Store `x_pred` and `P_pred` as the prior estimate and covariance for the measurement-update step. The temporary transformed state `z` used in the derivation is not needed in the implementation.
