@@ -14,7 +14,7 @@ Astra is the Terrapin Rocket Team's modular flight software library for embedded
 - **Drop-in sensor stack**: IMU, GPS, barometer, magnetometer, voltage, and HITL sensors
 - **State estimation**: Orientation (Mahony AHRS) + position/velocity (Kalman filter)
 - **Unified logging**: CSV telemetry (`DataLogger`) and event logs (`EventLogger`)
-- **Multi-platform**: STM32, Teensy, ESP32, plus native SITL builds
+- **Multi-platform**: STM32, Teensy, plus native SITL builds
 - **Testing & simulation**: HITL parser, SerialMessageRouter, SITL example
 
 ---

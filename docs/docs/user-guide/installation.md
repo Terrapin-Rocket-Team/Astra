@@ -12,7 +12,7 @@ This guide assumes you are using PlatformIO with the Arduino framework.
 
 - Git
 - PlatformIO Core, or VS Code with the PlatformIO extension
-- A supported board (Teensy, STM32, ESP32)
+- A supported board (Teensy, STM32)
 - Basic C++ familiarity
 
 For native SITL builds, install a C++ compiler as well. The team-supported
@@ -47,17 +47,6 @@ lib_deps =
   https://github.com/stm32duino/FatFs.git
 build_flags =
   -D ENV_STM
-```
-
-```ini title="platformio.ini"
-[env:esp32]
-platform = espressif32
-board = esp32-s3-devkitm-1
-framework = arduino
-lib_deps =
-  https://github.com/Terrapin-Rocket-Team/Astra.git
-build_flags =
-  -D ENV_ESP
 ```
 
 !!! tip

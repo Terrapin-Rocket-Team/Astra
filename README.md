@@ -7,7 +7,7 @@ Astra is a modular flight software library for embedded systems. It provides sen
 - Multi-sensor support (IMU, baro, GPS, mag, voltage, HITL)
 - State estimation (Mahony AHRS + Kalman filter)
 - Unified logging (CSV telemetry + event logs)
-- Multi-platform support (STM32, Teensy, ESP32, native SITL)
+- Multi-platform support (STM32, Teensy, native SITL)
 
 ## Quick Start (v0.2+)
 
@@ -66,7 +66,6 @@ project examples and these required build flags:
 
 - `ENV_TEENSY`
 - `ENV_STM`
-- `ENV_ESP`
 - `NATIVE=1` (SITL)
 
 ## Docs
@@ -89,6 +88,6 @@ The supported handoff check is:
 astra-support test --project . --clean --no-progress
 ```
 
-It builds the Teensy 4.1, STM32H723, ESP32-S3, and native environments and runs
+It builds the Teensy 4.1, STM32H723, and native environments and runs
 the native Unity test suites. Hardware upload and HITL tests require the
 corresponding device and are not part of this command.

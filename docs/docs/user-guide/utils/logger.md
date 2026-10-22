@@ -111,7 +111,6 @@ The storage backend enum is platform-specific:
 | Platform | StorageBackend values |
 |---------|------------------------|
 | STM32   | `EMMC`, `SD_CARD` |
-| ESP32   | `SD_CARD` |
 | Teensy | `SD_CARD` |
 | Native | `NONE` |
 

@@ -115,8 +115,7 @@
     "platforms": [
         "teensy",
         "native",
-        "ststm32",
-        "espressif32"
+        "ststm32"
     ],
     "build": {
         "libCompatMode": "strict",
