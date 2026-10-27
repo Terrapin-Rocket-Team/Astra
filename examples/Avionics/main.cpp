@@ -17,6 +17,7 @@ const int BUZZER_PIN = 33;
 const int STATUS_LED = 25;       // Status LED for init diagnostics
 const int GPS_FIX_LED = 26;      // GPS fix indicator LED
 
+// If on ststm32@20.0.0 or later, rename HardwareSerial to Uart
 #ifdef STM32
 HardwareSerial Serial1(PA10, PA9);
 #endif
