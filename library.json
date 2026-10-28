@@ -95,28 +95,13 @@
             "platforms": [
                 "native"
             ]
-        },
-        {
-            "name": "STM32EMMC",
-            "version": "https://github.com/DrewBrandt/STM32EMMC.git",
-            "platforms": [
-                "ststm32"
-            ]
-        },
-        {
-            "name": "FatFs",
-            "version": "https://github.com/stm32duino/FatFs.git",
-            "platforms": [
-                "ststm32"
-            ]
         }
     ],
     "frameworks": "*",
     "platforms": [
         "teensy",
         "native",
-        "ststm32",
-        "espressif32"
+        "ststm32"
     ],
     "build": {
         "libCompatMode": "strict",
