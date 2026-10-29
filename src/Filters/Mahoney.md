@@ -36,18 +36,6 @@ Quaternion orientation = orientationFilter.getQuaternion();
 Vector<3> earthAccel = orientationFilter.getEarthAcceleration(accel);
 ```
 
-### Tuning Parameters
-
-- **Kp** (Proportional gain): How quickly to correct orientation errors
-  - Higher = faster correction, more sensitive to noise
-  - Typical: 0.1 - 2.0
-  - Rocket default: 0.1 (slower correction during high-G)
-
-- **Ki** (Integral gain): Gyro bias correction over time
-  - Higher = faster bias removal, can introduce drift
-  - Typical: 0.0 - 0.01
-  - Rocket default: 0.0005
-
 ### Magnetometer Usage
 
 **When to use mag:**
@@ -260,3 +248,78 @@ if (abs(accel.magnitude() - 9.81) < 1.0) {
     filter.update(gyro, dt);  // Gyro-only
 }
 ```
+## Filter Tuning
+
+### Tuning Parameters
+
+- **Kp** (Proportional gain): How quickly to correct orientation errors
+  - Higher = faster correction, more sensitive to noise
+  - Lower = Relies too much on gyroscope, can accumulate drift
+  - Typical: 0.1 - 2.0
+  - Current Rocket default: 0.1 (slower correction during high-G)
+
+- **Ki** (Integral gain): Gyro bias correction over time
+  - Higher = faster bias removal, can introduce drift
+  - Lower = Gyroscope bias won't be accurately tracked
+  - Typical: 0.0 - 0.01
+  - Current Rocket default: 0.0005
+
+### Bench Testing
+#### Overview
+ Tune $K_p$ and $K_i$ individually. Set $K_i = 0$ initially. Increase $K_p$ until the filter is responsive to changes in orientation but not noisy. Then, slowly increase $K_i$ until the filter is able to correct for gyro bias. The avionics bay should be fully assembled before tuning filters, especially if the magnetometer is being used. The magnotemeter, as mentioned before, is sensitive to magnetic interference from components.
+
+
+#### Procedures
+Near hover/pad equilibrium, the small angle linearized dynamics of this Mahony implementation behave as a standard second order system
+
+ $$
+s^2 + K_p s + K_i = 0 \rightarrow \omega_n = \sqrt{K_i}, \quad \zeta = \frac{K_p}{2 \sqrt{K_i}}
+ $$
+ With $K_i = 0$ Keep the IMU motionless at a known orientation, and deliberately introduce a 10 degree tilt error to the filter. Compare a few values of $K_p$ such as $K_p = \{0.1, 0.5, 1.0, 2.0\}$. For small tilt errors, $\tilde\theta(t)\approx\tilde\theta_0e^{-K_pt}$. The time to reduce an error from 10 degrees to 1 is given by $\tau_{10 \rightarrow 1} = \frac{\ln 10}{K_p}$. Measure the recovery time and stationary noise, and choose the **lowest** gain that meets the recovery requirement while keeping noise/disturbance to acceptable levels.
+
+ To avoid oscillatory overshoot when recovering from disturbances, aim for a critically damped to slightly overdamped response ($\zeta∈[1.0,2.0]$).
+ $$
+K_i = \left(\frac{K_p}{2\zeta}\right)^2
+ $$
+
+
+ Inject a synthetic gyro bias of +0.02 rad/s (1.15˚/s) into the raw gyro vector before passing it to update(). Verify that `_biasX/Y/Z` converges to +0.02 rad/s within 15–20 seconds with zero steady-state tilt error
+
+### Monte Carlo
+
+A Monte Carlo validation requires a 6DOF truth trajectory pared with a stochastic IMU error model. Reference truth can be generated from OpenRocket trajectories spanning Pad Standy -> Boost -> Coast -> Apogee. 
+
+Run $N = 500, 1000$ trials and randomize the following parameters:
+
+| Parameter Category | Parameter | Distribution | Dispersion Range (3σ or Bounds) | What It Stress-Tests in `Mahony.h` |
+| :--- | :--- | :--- | :--- | :--- |
+| **Gyroscope** | Turn-on Bias (b_g0) | Uniform / Normal | ±0.035 rad/s (±2 deg/s) | Whether Pad Standby `Ki` converges `_biasX/Y/Z` before T-0. |
+| **Gyroscope** | Angle Random Walk (White Noise) | Normal (per step) | σ_g = 0.005 to 0.015 rad/s/√Hz | Dead-reckoning drift during 3-DOF Boost/Coast (`update(gyro, dt)`). |
+| **Gyroscope** | G-Sensitivity (Linear Accel Bias) | Normal | ±0.001 rad/s/g | High-G motor burn inducing unmodeled roll/pitch drift. |
+| **Accelerometer** | Pad Rail Wind Vibration | Colored/Sine Noise | 2–8 Hz, amplitude ±0.15g | Whether Pad Standby `Kp` is too high (tracking wind sway as tilt). |
+| **Accelerometer** | Boost Vibro-Acoustic Noise | Normal (during burn) | σ_a = 0.5 to 2.0g RMS | False launch triggers or premature re-entry into 6-DOF mode. |
+| **Magnetometer** | Residual Hard/Soft Iron Error | Uniform | ±5% scale, ±10° heading offset | Sensitivity of `magWeight` to launch-rail magnetic distortion. |
+| **Flight Dynamics** | Roll Rate during Boost (ω_z) | Uniform | 0.5 to 5.0 rev/s (3 to 31 rad/s) | First-order Euler integration error in `integrateQuaternion()`. |
+| **Flight Software** | Pad Dwell Time (T_pad) | Uniform | 15 s to 120 s | Minimum pad wait time needed for `_biasX/Y/Z` to settle. |
+| **Flight Software** | Loop Δt Jitter | Normal (clipped) | Δt_nom ± 20% (with occasional 2× spike) | Robustness of Euler step and PI accumulator to RTOS/loop jitter. |
+
+Evaluate four specific metrics using quaternion error $\bold{q}_{err} = \bold{q}_{true}^* \otimes \bold{q}_{est}$. 
+- Pre launch bias estimation error (T-0.1s)
+    $$e_{\text{bias}} = ||\bold{b}_\text{est}(T_0) - \bold{b}_{\text{g,true}}(T_0)||_2$$
+    Ensure $e_\text{bias} < 0.00015 \text{ rad/s}$. Any residual bias error will integrates linearly into attitude drift over time.
+- Liftoff Attitude Error (T + 0.05s)
+    $$\theta_{\text{err}} = 2 \arccos(|\text{clamp}(q_\text{err}, -1, 1)|)$$
+    Target < 1.0˚.
+
+- Apogee Tilt Error
+    $$\theta_{\text{apogee}} = 2 \arccos(|\text{clamp}(q_\text{err,apogee}, -1, 1)|)$$
+    Target < 3.0˚.
+- Inertial Vertical Velocity Error at Apogee
+    $$v_{z, err}(T_\text{apogee}) = \left| \int_{T_{0}}^{T_\text{apogee}}\hat{a}_\text{earth,z}(t) dt - v_{z, \text{true}}(T_\text{apogee}) \right|$$
+
+### HIL playback
+
+ After tuning, run the Mahony AHRS through existing IMU flight logs to verify performance
+ - Plot `_biasX`, `_biasY` and `_biasZ` (will need to create a getter function to expose the gyro bias) as a function of time during the pre-launch window and confirm they flatten out before T-0
+ - Inspect `getEarthAcceleration(accel).z()` at liftoff. Verify that switching to `update(gyro, dt)` at $∥a∥>1.3g$ prevents any pitch/roll spike during motor burn.
+ - Integrate `getEarthAcceleration(accel)` during boost and coast to compare vertical velocity against your barometric altimeter's derivative. If tilt drift during the 3-DOF coast phase is excessive, increase the Pad Standby $K_i$ slightly so the pre-launch gyro bias estimate is tighter before liftoff
