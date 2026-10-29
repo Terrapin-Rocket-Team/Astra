@@ -272,15 +272,17 @@ if (abs(accel.magnitude() - 9.81) < 1.0) {
 #### Procedures
 Near hover/pad equilibrium, the small angle linearized dynamics of this Mahony implementation behave as a standard second order system
 
- $$
+$$
 s^2 + K_p s + K_i = 0 \rightarrow \omega_n = \sqrt{K_i}, \quad \zeta = \frac{K_p}{2 \sqrt{K_i}}
- $$
- With $K_i = 0$ Keep the IMU motionless at a known orientation, and deliberately introduce a 10 degree tilt error to the filter. Compare a few values of $K_p$ such as $K_p = \{0.1, 0.5, 1.0, 2.0\}$. For small tilt errors, $\tilde\theta(t)\approx\tilde\theta_0e^{-K_pt}$. The time to reduce an error from 10 degrees to 1 is given by $\tau_{10 \rightarrow 1} = \frac{\ln 10}{K_p}$. Measure the recovery time and stationary noise, and choose the **lowest** gain that meets the recovery requirement while keeping noise/disturbance to acceptable levels.
+$$
 
- To avoid oscillatory overshoot when recovering from disturbances, aim for a critically damped to slightly overdamped response ($\zeta∈[1.0,2.0]$).
- $$
+With $K_i = 0$ Keep the IMU motionless at a known orientation, and deliberately introduce a 10 degree tilt error to the filter. Compare a few values of $K_p$ such as $K_p = \{0.1, 0.5, 1.0, 2.0\}$. For small tilt errors, $\tilde\theta(t)\approx\tilde\theta_0e^{-K_pt}$. The time to reduce an error from 10 degrees to 1 is given by $\tau_{10 \rightarrow 1} = \frac{\ln 10}{K_p}$. Measure the recovery time and stationary noise, and choose the **lowest** gain that meets the recovery requirement while keeping noise/disturbance to acceptable levels.
+
+To avoid oscillatory overshoot when recovering from disturbances, aim for a critically damped to slightly overdamped response ($\zeta∈[1.0,2.0]$).
+
+$$
 K_i = \left(\frac{K_p}{2\zeta}\right)^2
- $$
+$$
 
 
  Inject a synthetic gyro bias of +0.02 rad/s (1.15˚/s) into the raw gyro vector before passing it to update(). Verify that `_biasX/Y/Z` converges to +0.02 rad/s within 15–20 seconds with zero steady-state tilt error
@@ -299,23 +301,34 @@ Run $N = 500, 1000$ trials and randomize the following parameters:
 | **Accelerometer** | Pad Rail Wind Vibration | Colored/Sine Noise | 2–8 Hz, amplitude ±0.15g | Whether Pad Standby `Kp` is too high (tracking wind sway as tilt). |
 | **Accelerometer** | Boost Vibro-Acoustic Noise | Normal (during burn) | σ_a = 0.5 to 2.0g RMS | False launch triggers or premature re-entry into 6-DOF mode. |
 | **Magnetometer** | Residual Hard/Soft Iron Error | Uniform | ±5% scale, ±10° heading offset | Sensitivity of `magWeight` to launch-rail magnetic distortion. |
-| **Flight Dynamics** | Roll Rate during Boost (ω_z) | Uniform | 0.5 to 5.0 rev/s (3 to 31 rad/s) | First-order Euler integration error in `integrateQuaternion()`. |
+| **Flight Dynamics** | Roll Rate during Boost ($ω_z$) | Uniform | 0.5 to 5.0 rev/s (3 to 31 rad/s) | First-order Euler integration error in `integrateQuaternion()`. |
 | **Flight Software** | Pad Dwell Time (T_pad) | Uniform | 15 s to 120 s | Minimum pad wait time needed for `_biasX/Y/Z` to settle. |
 | **Flight Software** | Loop Δt Jitter | Normal (clipped) | Δt_nom ± 20% (with occasional 2× spike) | Robustness of Euler step and PI accumulator to RTOS/loop jitter. |
 
 Evaluate four specific metrics using quaternion error $\bold{q}_{err} = \bold{q}_{true}^* \otimes \bold{q}_{est}$. 
-- Pre launch bias estimation error (T-0.1s)
-    $$e_{\text{bias}} = ||\bold{b}_\text{est}(T_0) - \bold{b}_{\text{g,true}}(T_0)||_2$$
-    Ensure $e_\text{bias} < 0.00015 \text{ rad/s}$. Any residual bias error will integrates linearly into attitude drift over time.
-- Liftoff Attitude Error (T + 0.05s)
-    $$\theta_{\text{err}} = 2 \arccos(|\text{clamp}(q_\text{err}, -1, 1)|)$$
-    Target < 1.0˚.
 
-- Apogee Tilt Error
-    $$\theta_{\text{apogee}} = 2 \arccos(|\text{clamp}(q_\text{err,apogee}, -1, 1)|)$$
-    Target < 3.0˚.
-- Inertial Vertical Velocity Error at Apogee
-    $$v_{z, err}(T_\text{apogee}) = \left| \int_{T_{0}}^{T_\text{apogee}}\hat{a}_\text{earth,z}(t) dt - v_{z, \text{true}}(T_\text{apogee}) \right|$$
+**Pre launch bias estimation error (T-0.1s)**
+$$
+e_{\text{bias}} = ||\bold{b}_\text{est}(T_0) - \bold{b}_{\text{g,true}}(T_0)||_2
+$$
+Ensure $e_\text{bias} < 0.00015 \text{ rad/s}$. Any residual bias error will integrates linearly into attitude drift over time.
+
+**Liftoff Attitude Error (T + 0.05s)**
+$$
+\theta_{\text{err}} = 2 \arccos(|\text{clamp}(q_\text{err}, -1, 1)|)
+$$
+Target < 1.0˚.
+
+**Apogee Tilt Error**
+$$
+\theta_{\text{apogee}} = 2 \arccos(|\text{clamp}(q_\text{err,apogee}, -1, 1)|)
+$$
+Target < 3.0˚.
+
+**Inertial Vertical Velocity Error at Apogee**
+$$
+v_{z, err}(T_\text{apogee}) = \left| \int_{T_{0}}^{T_\text{apogee}}\hat{a}_\text{earth,z}(t) dt - v_{z, \text{true}}(T_\text{apogee}) \right|
+$$
 
 ### HIL playback
 
