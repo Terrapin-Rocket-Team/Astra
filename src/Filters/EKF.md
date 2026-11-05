@@ -491,3 +491,5 @@ $$
 
 Then use the SAME discrete measurement update (steps 9–16).
 Do not apply both covariance prediction methods over the same interval.
+
+Precomputing a nominal trajectory and its interval STMs can reduce onboard computation, but requires storage and synchronization with the reference flight. For our nonlinear model, the stored STMs describe small deviations around that reference and may become inaccurate after substantial state or input changes. Onboard numerical integration evaluates the full nonlinear model from the latest corrected state and available inputs, accommodating changes in braking and estimated drag. It requires repeated model evaluations and temporary buffers, and the integration timestep must be validated against accuracy and loop-time requirements. Precomputation is not inherently less accurate: exact transitions work for known LTV dynamics, while practical accuracy depends on numerical and linearization errors.
