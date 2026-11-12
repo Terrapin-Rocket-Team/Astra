@@ -266,26 +266,38 @@ if (abs(accel.magnitude() - 9.81) < 1.0) {
 
 ### Bench Testing
 #### Overview
- Tune $K_p$ and $K_i$ individually. Set $K_i = 0$ initially. Increase $K_p$ until the filter is responsive to changes in orientation but not noisy. Then, slowly increase $K_i$ until the filter is able to correct for gyro bias. The avionics bay should be fully assembled before tuning filters, especially if the magnetometer is being used. The magnotemeter, as mentioned before, is sensitive to magnetic interference from components.
+ Analytically calculate $K_p$ and $K_i$ using the characteristic equation below for each state of flight and then validate them. The avionics bay should be fully assembled before tuning filters, especially if the magnetometer is being used. The magnotemeter, as mentioned before, is sensitive to magnetic interference from components.
 
+ Gains will change depending on the phase of flight. 
+ - For Pad Standby, the sensors will pick up oscillations caused by the wind and other ground forces
+ - During boost and coasting phases, gains can just be set to $K_p = 0$ and $K_i = 0$ as the accelormeter will measure a massive acceleration spike during boosting and it will not be able to measure gravity during coast as the rocket is in freefall.
 
-#### Procedures
-Near hover/pad equilibrium, the small angle linearized dynamics of this Mahony implementation behave as a standard second order system
+To avoid oscillatory overshoot when recovering from disturbances, aim for a critically damped to slightly overdamped response ($\zeta∈[1.0,2.0]$).
+
+#### Characteristic Equation
+The small angle linearized dynamics of this Mahony implementation behave as a standard second order system
 
 $$
 s^2 + K_p s + K_i = 0 \rightarrow \omega_n = \sqrt{K_i}, \quad \zeta = \frac{K_p}{2 \sqrt{K_i}}
 $$
 
-With $K_i = 0$ Keep the IMU motionless at a known orientation, and deliberately introduce a 10 degree tilt error to the filter. Compare a few values of $K_p$ such as $K_p = \{0.1, 0.5, 1.0, 2.0\}$. For small tilt errors, $\tilde\theta(t)\approx\tilde\theta_0e^{-K_pt}$. The time to reduce an error from 10 degrees to 1 is given by $\tau_{10 \rightarrow 1} = \frac{\ln 10}{K_p}$. Measure the recovery time and stationary noise, and choose the **lowest** gain that meets the recovery requirement while keeping noise/disturbance to acceptable levels.
-
-To avoid oscillatory overshoot when recovering from disturbances, aim for a critically damped to slightly overdamped response ($\zeta∈[1.0,2.0]$).
-
 $$
-K_i = \left(\frac{K_p}{2\zeta}\right)^2
+K_i = \left(\frac{K_p}{2\zeta}\right)^2, \quad \tau_{\text{bias}} = \frac{K_p}{K_i}
 $$
 
+For **Pad Standby**, the rocket is affected by wind gusts and rail sway, it will be vibrating with a frequency of around $f = 2-3Hz$. The filter should tune out this frequency. Set $K_p = 0.5$ rad/s.
 
- Inject a synthetic gyro bias of +0.02 rad/s (1.15˚/s) into the raw gyro vector before passing it to update(). Verify that `_biasX/Y/Z` converges to +0.02 rad/s within 15–20 seconds with zero steady-state tilt error
+As mentioned earlier, aim for an overdamped response to avoid overshoot. Choosing a $\zeta = 1.75$ will give a $K_i = 0.02$ rad/s. To learn the gyro bias, the filter will take $\tau_{\text{bias}} = 25$ seconds, and to reach 90-95% convergence ($2.3\tau - 3\tau$) it will take approximately 55 to 75 seconds. 
+
+In the **boost and coast phases**, as mentioned earlier, $K_p = 0$ and $K_i = 0$. The accelerometer will measure the specific force, since other forces now act on the rocket.
+
+$$
+\mathbf{a} = \frac{F_\text{thrust} + F_\text{drag}}{m}
+$$
+
+The rocket should not use input from the accelerometer in these phases.
+
+In the **Drogue/Parachute Descent** phase, the characteristic equation applies again, since gravity is the only significant force. The system can be modeled as a pendulum with a natural frequency $\omega_n$, this should be found using physical properties of the rocket and the parachute. On average, we can expect a frequency of 0.25Hz. Find Kp using $K_p = \omega_n / N$, where N is the ratio of the rocket's maximum parachute swing angle to the maximium attitude error that can be tolerated, an average value for N is ~13. Assuming that, Kp can be estimated to $K_p = 0.12$ rad/s. And then $K_i = 0.008$, because $\zeta > 2$, it should be extremely overdamped.  
 
 ### Monte Carlo
 
@@ -308,24 +320,30 @@ Run $N = 500, 1000$ trials and randomize the following parameters:
 Evaluate four specific metrics using quaternion error $\bold{q}_{err} = \bold{q}_{true}^* \otimes \bold{q}_{est}$. 
 
 **Pre launch bias estimation error (T-0.1s)**
+
 $$
 e_{\text{bias}} = ||\bold{b}_\text{est}(T_0) - \bold{b}_{\text{g,true}}(T_0)||_2
 $$
+
 Ensure $e_\text{bias} < 0.00015 \text{ rad/s}$. Any residual bias error will integrates linearly into attitude drift over time.
 
 **Liftoff Attitude Error (T + 0.05s)**
+
 $$
 \theta_{\text{err}} = 2 \arccos(|\text{clamp}(q_\text{err}, -1, 1)|)
 $$
 Target < 1.0˚.
 
 **Apogee Tilt Error**
+
 $$
 \theta_{\text{apogee}} = 2 \arccos(|\text{clamp}(q_\text{err,apogee}, -1, 1)|)
 $$
+
 Target < 3.0˚.
 
 **Inertial Vertical Velocity Error at Apogee**
+
 $$
 v_{z, err}(T_\text{apogee}) = \left| \int_{T_{0}}^{T_\text{apogee}}\hat{a}_\text{earth,z}(t) dt - v_{z, \text{true}}(T_\text{apogee}) \right|
 $$
