@@ -491,3 +491,33 @@ $$
 
 Then use the SAME discrete measurement update (steps 9–16).
 Do not apply both covariance prediction methods over the same interval.
+
+Precomputing a nominal trajectory and its interval STMs can reduce onboard computation, but requires storage and synchronization with the reference flight. For our nonlinear model, the stored STMs describe small deviations around that reference and may become inaccurate after substantial state or input changes. Onboard numerical integration evaluates the full nonlinear model from the latest corrected state and available inputs, accommodating changes in braking and estimated drag. It requires repeated model evaluations and temporary buffers, and the integration timestep must be validated against accuracy and loop-time requirements. Precomputation is not inherently less accurate: exact transitions work for known LTV dynamics, while practical accuracy depends on numerical and linearization errors.
+
+## Discrete-Time EKF Option
+
+A discrete-time EKF can replace prediction steps 6–8 once we discretize our continuous dynamics over $\Delta t$. First construct a nonlinear next-state function $f_{d,k}$ from the continuous rate equations with zero process noise; this function may perform numerical integration such as RK4. In Euclidean state coordinates, prediction becomes:
+
+$$
+\begin{aligned}
+\hat{x}_{k+1}^{-} &= f_{d,k}(\hat{x}_k^{+},u_k), \\
+F_k &= \left.\frac{\partial f_{d,k}}{\partial x}\right|_{\hat{x}_k^{+},u_k}, \\
+P_{k+1}^{-} &= F_k P_k^{+} F_k^{\top} + Q_{d,k}.
+\end{aligned}
+$$
+
+Accelerometer readings enter the measurement update to help correct $c$, the multiplier on the body $C_D$ table, rather than driving state propagation. Lookup tables supply model values; position, velocity, and attitude still need to be advanced over time. One simple discretization holds the physics-computed acceleration $\mathbf{a}_k$ constant over $\Delta t$ and uses $\mathbf{p}_{k+1}^{-}=\mathbf{p}_k^{+}+\mathbf{v}_k^{+}\Delta t+\tfrac12\mathbf{a}_k\Delta t^2$ and $\mathbf{v}_{k+1}^{-}=\mathbf{v}_k^{+}+\mathbf{a}_k\Delta t$, while attitude advances using gyro rates; RK4 can instead integrate the full nonlinear rates. The random-walk state's predicted mean stays $\hat{c}_{k+1}^{-}=\hat{c}_k^{+}$, with drift uncertainty accumulated through process noise.
+
+The textbook's Section 1.4 gives the discretization rules for a linear model $\dot{x}=Ax+Bu$: hold $A$, $B$, and $u$ constant over the interval, then use:
+
+$$
+\begin{aligned}
+F &= e^{A\Delta t}, \\
+G &= \int_0^{\Delta t} e^{A\tau}B\,d\tau, \\
+x_{k+1} &= Fx_k+Gu_k.
+\end{aligned}
+$$
+
+These expressions are exact for those constant quantities; freezing time-varying quantities gives an approximation. The shortcut $G=A^{-1}(F-I)B$ requires invertible $A$, while the integral remains valid for singular $A$.
+
+For our nonlinear rocket, applying these matrix rules to the dynamics Jacobian gives a local error transition; the full state still comes from $f_{d,k}$. The Taylor expansion in the discrete EKF derivation supplies $F_k$ after choosing $f_{d,k}$; it does not itself construct the next-state function. Discretize process noise too: obtain $Q_{d,k}$ from the accumulated-noise integral in study-note Section 6, rather than substituting $Q_c$ unchanged. Reuse measurement-update steps 9–16 and the quaternion error conventions above, deriving $F_k$ in the same error coordinates as $P$.
