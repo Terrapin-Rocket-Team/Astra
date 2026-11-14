@@ -2,6 +2,7 @@
 
 #include "test_mahony.h"
 #include "test_kalman_filter.h"
+#include "test_extended_kalman_filter.h"
 #include "test_mounting_transform.h"
 
 void setUp(void)
@@ -20,6 +21,7 @@ int main(int argc, char **argv)
 
     test_mahony::run_test_mahony_tests();
     test_kalman_filter::run_test_kalman_filter_tests();
+    test_extended_kalman_filter::run_test_extended_kalman_filter_tests();
     test_mounting_transform::run_test_mounting_transform_tests();
 
     UNITY_END();

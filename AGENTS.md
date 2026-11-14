@@ -10,8 +10,8 @@ replacement for the source.
 
 - Created: **2026-10-06** (America/New_York).
 - Created by: Divyansh Srivastava
-- Last updated: **2026-10-06**.
-- Last updated by: Divyansh Srivastava, assisted by OpenAI Codex (AI agent).
+- Last updated: **2026-11-13**.
+- Last updated by: OpenAI Codex (AI agent).
 - Initial review: library version **0.2.1**, repository commit **9664ffe**.
 
 **Every change to this file must update `Last updated` and `Last updated by`, and
@@ -26,6 +26,7 @@ affected sections and record that update in the same change.
 | --- | --- | --- |
 | 2026-10-06 | Divyansh Srivastava | Created the repository guide after reviewing code, examples, build configuration, tests, and documentation. |
 | 2026-10-06 | Divyansh Srivastava, assisted by OpenAI Codex (AI agent) | Reviewed the guide against implementation; clarified sensor health, telemetry timing/flags, and hardware versus simulation data flow. |
+| 2026-11-13 | OpenAI Codex (AI agent) | Documented the experimental EKF scaffold, its numx automatic-differentiation Jacobian helper, callback/error-coordinate requirements, and numx build configuration. |
 
 ## What Astra is and how it reaches the flight computer
 
@@ -71,7 +72,7 @@ APIs here and mission-specific changes in the appropriate downstream project.
 | [src/Sensors/HW](src/Sensors/HW) | Hardware wrappers for BMI088/BNO055 IMUs; ADXL375/H3LIS331DL accelerometers; BMP390/DPS368/LPS22DF/MS5611 barometers; LIS3MDL/MLX90393/MMC5603NJ magnetometers; MAX_M10S/SAM_M10Q GPS. |
 | [src/Sensors/HITL](src/Sensors/HITL) | Simulated typed sensors and the shared `HITLSensorBuffer`; the same interfaces feed the estimator in simulation. |
 | [src/State](src/State) | Math-based `State` estimator and ready-to-use `DefaultState`. |
-| [src/Filters](src/Filters) | `Mahony.h` attitude estimator; `LinearKalmanFilter` abstraction; `DefaultKalmanFilter` position/velocity model. |
+| [src/Filters](src/Filters) | `Mahony.h` attitude estimator; `LinearKalmanFilter` abstraction; `DefaultKalmanFilter` position/velocity model; experimental `ExtendedKalmanFilter` scaffold and numx Jacobian helper. |
 | [src/Math](src/Math) | Fixed-size `Vector<N>`, `Quaternion`, and dynamically allocated `Matrix` with copy/move support and matrix operations. Preserve embedded third-party license notices. |
 | [src/RecordData](src/RecordData) | `DataReporter`/`SimpleDataReporter`, `DataLogger`, `EventLogger`, `ILogSink` implementations, storage interfaces/backends, and active `Retrieval/FileReader.h`. |
 | [src/Communication](src/Communication) | `SerialMessageRouter`: buffered text routing across Arduino `Stream` interfaces. |
@@ -239,6 +240,15 @@ in the downstream mission layer. For a custom Kalman model, implement the
 `LinearKalmanFilter` matrix methods and keep State's six-value layout assumptions
 in mind.
 
+`ExtendedKalmanFilter` is an experimental scaffold, not connected to `State`.
+Its constructor and `CalculateJacobian()` are implemented; `Init`, `Predict`,
+`Update`, and `UpdateEKF` remain declarations. The Jacobian helper uses numx dual
+numbers and requires a callback written with `numx_dual_*` operations. Its
+optional context holds fixed inputs/time; it returns a status and leaves the
+output matrix unchanged on failure. Dimensions follow the callback, so quaternion
+models must supply the chosen attitude-error coordinates before using the result
+with `P`. numx defaults to float precision even though the output is `MatrixXd`.
+
 ## Telemetry, event logs, storage, and commands
 
 `DataReporter` columns hold pointers to live values plus printf formats/labels;
@@ -364,7 +374,10 @@ to avoid PlatformIO archive/cache contention.
 
 Hardware drivers depend on external sensor libraries listed in both manifests.
 Many versions are unpinned; explicit references include MS5611 `#0.4.1`,
-ArduinoEigen `^0.3.2`, and Astra-Support `#main`. Avoid platform-only includes
+ArduinoEigen `^0.3.2`, numx `^0.1.0`, and Astra-Support `#main`. numx C headers
+need C linkage when included by the C++ EKF. The Teensy environment uses soft
+library compatibility checks because numx's platform metadata omits Teensy;
+framework checks remain enabled. Avoid platform-only includes
 leaking into native paths; preserve the platform guards around storage and
 hardware code. `get_version.py` derives `ASTRA_VERSION` from the manifest's major
 and minor version plus a seven-character Git hash.
