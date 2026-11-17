@@ -492,7 +492,42 @@ $$
 Then use the SAME discrete measurement update (steps 9–16).
 Do not apply both covariance prediction methods over the same interval.
 
-Precomputing a nominal trajectory and its interval STMs can reduce onboard computation, but requires storage and synchronization with the reference flight. For our nonlinear model, the stored STMs describe small deviations around that reference and may become inaccurate after substantial state or input changes. Onboard numerical integration evaluates the full nonlinear model from the latest corrected state and available inputs, accommodating changes in braking and estimated drag. It requires repeated model evaluations and temporary buffers, and the integration timestep must be validated against accuracy and loop-time requirements. Precomputation is not inherently less accurate: exact transitions work for known LTV dynamics, while practical accuracy depends on numerical and linearization errors.
+## Ground-Precomputed STMs vs. Onboard Prediction
+
+For our nonlinear rocket, ground precomputation would store interval STMs $\bar{\Phi}_k$ and matching process covariances $\bar{Q}_{d,k}$ along a simulated reference trajectory $\bar{x}(t)$. This reduces onboard computation but requires storage and alignment with the actual prediction interval and flight phase. Each stored STM describes local errors around that reference, rather than a universal transition for every possible flight.
+
+**If we precompute only the covariance transitions, the nonlinear state prediction still runs onboard:**
+
+| EKF calculation | Ground-precomputed covariance transitions | Our onboard direct-integration approach |
+| --- | --- | --- |
+| State prediction | Integrate $\dot{\hat{x}}=f(\hat{x},u,0,t)$ from the latest corrected estimate. | Integrate the same nonlinear equations from the latest corrected estimate. |
+| Covariance prediction | Use $P_{k+1}^{-}=\bar{\Phi}_k P_k^{+}\bar{\Phi}_k^{\top}+\bar{Q}_{d,k}$. | Integrate $\dot{P}=AP+PA^{\top}+LQ_cL^{\top}$, evaluating $A$ and $L$ along the predicted trajectory. |
+| Measurement correction | Use the same correction equations, but the stored transitions determine the predicted $P$ entering the gain calculation. | Use the same correction equations with the integrated $P$. |
+
+Thus, storing an STM alone does not eliminate integration of our nonlinear state equations. To replace that state integration too, we would also need the reference states and a local prediction of deviations. With the reference input schedule and Euclidean state components, this gives:
+
+$$
+\begin{aligned}
+\delta\hat{x}_k^{+} &= \hat{x}_k^{+}-\bar{x}_k, \\
+\hat{x}_{k+1}^{-} &\approx \bar{x}_{k+1}+\bar{\Phi}_k\,\delta\hat{x}_k^{+}.
+\end{aligned}
+$$
+
+Actual input changes, such as a different airbrake deployment, need an additional input-sensitivity contribution or fresh nonlinear prediction. For attitude, use the quaternion error and composition rules above; the error STM cannot directly multiply the full nominal quaternion state. This reference-based state prediction neglects higher-order nonlinear effects as the estimate moves away from the reference.
+
+**Example of why the stored transition can become inaccurate:** during straight upward coast with no wind or airbrakes, hold density, mass, and the body drag coefficient locally constant and define $\beta=\rho C_D A_{\text{ref}}/(2m)$. Then:
+
+$$
+\dot{v}=-g-\beta c v^2,
+\qquad
+A_{vv}=\frac{\partial\dot{v}}{\partial v}=-2\beta c v.
+$$
+
+For $\beta=0.001\,\mathrm{m}^{-1}$ and $c=1$, a reference speed of $100\,\mathrm{m/s}$ gives $A_{vv}=-0.2\,\mathrm{s}^{-1}$, whereas a current estimated speed of $200\,\mathrm{m/s}$ gives $A_{vv}=-0.4\,\mathrm{s}^{-1}$. The same force law therefore produces different local error dynamics at different states. An accelerometer correction to $c$, changes in Mach or altitude, and different brake commands can also move our flight away from the precomputed linearization.
+
+**How the estimates can diverge:** an inaccurate transition or noise accumulation can make $P^{-}$ too small or too large. Since $P^{-}$ enters the innovation covariance and Kalman gain, underestimated uncertainty can weaken useful measurement corrections, while overestimated uncertainty can overweight noisy readings. Those different corrections change the next starting state, so estimates can separate even when both methods still integrate the nonlinear mean onboard. Replacing the mean prediction with the fixed-reference approximation adds another source of prediction error. Repeated errors can produce growing state error or a covariance that understates the actual error; divergence is possible, not inevitable. The sensor covariance $R$ is still selected for each update and is not propagated by the STM.
+
+Our onboard approach follows the latest corrected state, including the current estimate of $c$, but still needs accurate physics, suitable noise tuning, and an integration timestep that meets accuracy and loop-time requirements. It also requires repeated model/Jacobian evaluations and temporary buffers. Precomputation is not inherently less accurate: for a genuinely known LTV system, exact interval STMs remain valid across initial-state changes; the additional concern here is linearizing our nonlinear rocket around a different reference flight.
 
 ## Discrete-Time EKF Option
 
