@@ -60,6 +60,29 @@ public:
                                    const Eigen::VectorXd &input, int outputSize,
                                    Eigen::MatrixXd &jacobian, void *context = nullptr);
 
+    /**
+     * Mappings for the 11-component [p_ENU, v_ENU, q_wxyz, c] nominal state.
+     * Error order: [dp_ENU(3), dv_ENU(3), dtheta_body(3), dc].
+     * Use right-local attitude errors: q_true = q_est * Exp(dtheta_body).
+     * These helpers do not resize or initialize the filter state/covariance.
+     */
+    /** Relative barometric altitude in metres: H selects the Up position error. */
+    static Eigen::Matrix<double, 1, 10> BarometerJacobian();
+
+    /** Local GPS [East, North] position in metres, matching State's current use. */
+    static Eigen::Matrix<double, 2, 10> GPSHorizontalJacobian();
+
+    /**
+     * Differentiate a sensor model h(x) on the 11-component nominal state and
+     * convert its Jacobian to the 10-component right-local error coordinates.
+     * The callback must use numx dual operations, as in CalculateJacobian.
+     * nominalState's quaternion (indices 6..9, w first) must have unit length.
+     * Returns an outputSize-by-10 H; H is unchanged on failure.
+     */
+    numx_status_t CalculateNavigationMeasurementJacobian(
+        JacobianFunction measurementModel, const Eigen::VectorXd &nominalState,
+        int outputSize, Eigen::MatrixXd &measurementJacobian, void *context = nullptr);
+
 protected:
     // Sized and initialized by the model; nominal and error-state sizes may differ.
     Eigen::VectorXd X; // Nominal state vector
@@ -76,6 +99,8 @@ private:
     DualVector jacobianInput;
     DualVector jacobianOutput;
     Eigen::MatrixXd jacobianResult;
+    Eigen::MatrixXd nominalMeasurementJacobian;
+    Eigen::MatrixXd errorMeasurementJacobian;
 };
 
 } // namespace astra

@@ -58,8 +58,8 @@ State state(&kf, &ahrs);
 
 ## ExtendedKalmanFilter Jacobian Helper
 
-`ExtendedKalmanFilter` is an experimental scaffold. Its constructor and
-`CalculateJacobian()` are implemented; `Init()`, `Predict()`, `Update()`, and
+`ExtendedKalmanFilter` is an experimental scaffold. Its constructor, Jacobian
+helper, and measurement-mapping helpers are implemented; `Init()`, `Predict()`, `Update()`, and
 `UpdateEKF()` are declarations awaiting implementation. It is not connected to
 `State` or `DefaultState`.
 
@@ -106,6 +106,38 @@ the callback must express the model in the chosen attitude-error coordinates
 before its Jacobian can be used with the covariance. Lookup-table interpolation
 must also carry the appropriate derivatives; converting a dual input to a plain
 number discards that derivative path.
+
+### Sensor Measurement Mappings
+
+The navigation helpers use nominal state `[p_ENU(3), v_ENU(3), q_wxyz(4), c]`
+and error state `[dp_ENU(3), dv_ENU(3), dtheta_body(3), dc]`. Attitude errors
+are right-local: `q_true = q_est * Exp(dtheta_body)`. Their measurement
+Jacobians have **10 columns**, matching the error covariance.
+
+| Sensor data | Measurement mapping |
+| --- | --- |
+| Relative barometric altitude, metres | `BarometerJacobian()` returns a 1-by-10 H selecting Up position (column 2). |
+| GPS East/North position, metres | `GPSHorizontalJacobian()` returns a 2-by-10 H selecting columns 0 and 1, matching current `State` fusion. Convert latitude/longitude first. |
+| Body-frame accelerometer specific force | A nonlinear measurement model is required; the proposed free-flight model predicts body-frame non-gravitational acceleration from the forces. Use the navigation Jacobian helper with that model. |
+| Body-frame gyro angular velocity | Prediction input; there is no gyro measurement selector for this state, which contains no angular-velocity state. |
+| Magnetometer | Currently used by the optional Mahony path. A future direct EKF vector update needs a calibrated body-vector model and a navigation-frame magnetic-field reference. |
+
+```cpp
+auto H_baro = astra::ExtendedKalmanFilter::BarometerJacobian();
+auto H_gps = astra::ExtendedKalmanFilter::GPSHorizontalJacobian();
+```
+
+For nonlinear sensor models, call
+`CalculateNavigationMeasurementJacobian(model, nominalState, outputSize, H, context)`.
+The callback evaluates a noise-free sensor prediction on the **11-component
+nominal state**, using numx dual operations. The helper differentiates it and
+maps the quaternion's four nominal components onto the three attitude-error
+components, returning an `outputSize`-by-10 H. The nominal quaternion must be
+unit length. Invalid states or callback failures leave H unchanged.
+
+This conversion is for measurement Jacobians; continuous error-dynamics
+Jacobians require their own derivation. These helpers do not initialize or wire
+the filter into `State`, enable new sensor fusion, or choose numerical Q/R values.
 
 ---
 

@@ -10,7 +10,7 @@ replacement for the source.
 
 - Created: **2026-10-06** (America/New_York).
 - Created by: Divyansh Srivastava
-- Last updated: **2026-11-13**.
+- Last updated: **2026-11-17**.
 - Last updated by: OpenAI Codex (AI agent).
 - Initial review: library version **0.2.1**, repository commit **9664ffe**.
 
@@ -27,6 +27,7 @@ affected sections and record that update in the same change.
 | 2026-10-06 | Divyansh Srivastava | Created the repository guide after reviewing code, examples, build configuration, tests, and documentation. |
 | 2026-10-06 | Divyansh Srivastava, assisted by OpenAI Codex (AI agent) | Reviewed the guide against implementation; clarified sensor health, telemetry timing/flags, and hardware versus simulation data flow. |
 | 2026-11-13 | OpenAI Codex (AI agent) | Documented the experimental EKF scaffold, its numx automatic-differentiation Jacobian helper, callback/error-coordinate requirements, and numx build configuration. |
+| 2026-11-17 | OpenAI Codex (AI agent) | Documented fixed GPS/barometer measurement Jacobians and conversion of nonlinear sensor Jacobians from the 11-component nominal state to 10 right-local error coordinates. |
 
 ## What Astra is and how it reaches the flight computer
 
@@ -241,13 +242,23 @@ in the downstream mission layer. For a custom Kalman model, implement the
 in mind.
 
 `ExtendedKalmanFilter` is an experimental scaffold, not connected to `State`.
-Its constructor and `CalculateJacobian()` are implemented; `Init`, `Predict`,
-`Update`, and `UpdateEKF` remain declarations. The Jacobian helper uses numx dual
+Its constructor, Jacobian helper, and measurement-mapping helpers are implemented;
+`Init`, `Predict`, `Update`, and `UpdateEKF` remain declarations. The Jacobian helper uses numx dual
 numbers and requires a callback written with `numx_dual_*` operations. Its
 optional context holds fixed inputs/time; it returns a status and leaves the
 output matrix unchanged on failure. Dimensions follow the callback, so quaternion
 models must supply the chosen attitude-error coordinates before using the result
 with `P`. numx defaults to float precision even though the output is `MatrixXd`.
+
+The navigation measurement helpers assume nominal `[p_ENU, v_ENU, q_wxyz, c]`
+(11 components) and errors `[dp_ENU, dv_ENU, dtheta_body, dc]` (10 components),
+with right-local quaternion errors. Baro and GPS helpers select relative Up
+position and horizontal East/North position respectively. For nonlinear sensor
+callbacks, `CalculateNavigationMeasurementJacobian` differentiates the nominal
+model and maps its quaternion columns into attitude-error columns. This is a
+measurement mapping, not a continuous dynamics-Jacobian conversion. Gyro remains
+a prediction input; accelerometer and any future direct magnetometer updates
+need their nonlinear measurement models. No process-noise mapping is supplied.
 
 ## Telemetry, event logs, storage, and commands
 
