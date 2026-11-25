@@ -11,6 +11,105 @@ ExtendedKalmanFilter::ExtendedKalmanFilter(int measurementSize, int controlSize,
 {
 }
 
+numx_status_t ExtendedKalmanFilter::EvaluateJacobian(
+    JacobianEvaluator evaluator, const Eigen::VectorXd &nominalState,
+    int outputSize, int errorSize, Eigen::MatrixXd &jacobian, void *context)
+{
+    return EvaluateJacobianWithScratch(evaluator, nominalState, outputSize,
+                                      errorSize, jacobian, context,
+                                      evaluatedJacobian);
+}
+
+numx_status_t ExtendedKalmanFilter::EvaluateJacobianWithScratch(
+    JacobianEvaluator evaluator, const Eigen::VectorXd &nominalState,
+    int outputSize, int errorSize, Eigen::MatrixXd &jacobian, void *context,
+    Eigen::MatrixXd &scratch)
+{
+    if (evaluator == nullptr) {
+        return NUMX_ERR_NULL_PTR;
+    }
+    if (nominalState.size() == 0 || outputSize <= 0 || errorSize <= 0 ||
+        !nominalState.allFinite()) {
+        return NUMX_ERR_INVALID_ARG;
+    }
+
+    scratch.resize(outputSize, errorSize);
+    scratch.setConstant(std::numeric_limits<double>::quiet_NaN());
+    const numx_status_t status = evaluator(nominalState, scratch, context);
+    if (status != NUMX_OK) {
+        return status;
+    }
+    if (scratch.rows() != outputSize || scratch.cols() != errorSize ||
+        !scratch.allFinite()) {
+        return NUMX_ERR_INVALID_ARG;
+    }
+
+    jacobian = scratch;
+    return NUMX_OK;
+}
+
+numx_status_t ExtendedKalmanFilter::SetDynamicsJacobianEvaluator(
+    JacobianEvaluator evaluator, int errorSize, void *context)
+{
+    if (evaluator == nullptr) {
+        return NUMX_ERR_NULL_PTR;
+    }
+    if (errorSize <= 0 || stateSize <= 0) {
+        return NUMX_ERR_INVALID_ARG;
+    }
+
+    A.resize(errorSize, errorSize);
+    A.setConstant(std::numeric_limits<double>::quiet_NaN());
+    dynamicsJacobianCandidate.resize(errorSize, errorSize);
+    dynamicsJacobianEvaluator = evaluator;
+    dynamicsJacobianContext = context;
+    dynamicsErrorSize = errorSize;
+    return NUMX_OK;
+}
+
+numx_status_t ExtendedKalmanFilter::SetMeasurementJacobianEvaluator(
+    JacobianEvaluator evaluator, int errorSize, void *context)
+{
+    if (evaluator == nullptr) {
+        return NUMX_ERR_NULL_PTR;
+    }
+    if (errorSize <= 0 || stateSize <= 0 || measurementSize <= 0) {
+        return NUMX_ERR_INVALID_ARG;
+    }
+
+    H.resize(measurementSize, errorSize);
+    H.setConstant(std::numeric_limits<double>::quiet_NaN());
+    measurementJacobianCandidate.resize(measurementSize, errorSize);
+    measurementJacobianEvaluator = evaluator;
+    measurementJacobianContext = context;
+    measurementErrorSize = errorSize;
+    return NUMX_OK;
+}
+
+numx_status_t ExtendedKalmanFilter::UpdateDynamicsJacobian(
+    const Eigen::VectorXd &nominalState)
+{
+    if (nominalState.size() != stateSize) {
+        return NUMX_ERR_INVALID_ARG;
+    }
+    return EvaluateJacobianWithScratch(dynamicsJacobianEvaluator, nominalState,
+                                      dynamicsErrorSize, dynamicsErrorSize, A,
+                                      dynamicsJacobianContext,
+                                      dynamicsJacobianCandidate);
+}
+
+numx_status_t ExtendedKalmanFilter::UpdateMeasurementJacobian(
+    const Eigen::VectorXd &nominalState)
+{
+    if (nominalState.size() != stateSize) {
+        return NUMX_ERR_INVALID_ARG;
+    }
+    return EvaluateJacobianWithScratch(measurementJacobianEvaluator, nominalState,
+                                      measurementSize, measurementErrorSize, H,
+                                      measurementJacobianContext,
+                                      measurementJacobianCandidate);
+}
+
 //Function used to calculate the Jacobian given a jacobianfuncion that needs to be converted,
 // An input, an outputsize to check, and a context. The jacobianFunction is a function pointer that 
 //is used later as it returns a status enum type from the numx library; used to aclculate each column

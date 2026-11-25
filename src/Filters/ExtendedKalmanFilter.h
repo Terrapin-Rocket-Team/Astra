@@ -14,6 +14,9 @@ public:
     using DualVector = Eigen::Matrix<numx_dual_t, Eigen::Dynamic, 1>;
     using JacobianFunction = numx_status_t (*)(const DualVector &input,
                                              DualVector &output, void *context);
+    using JacobianEvaluator = numx_status_t (*)(const Eigen::VectorXd &nominalState,
+                                              Eigen::MatrixXd &jacobian,
+                                              void *context);
 
     int measurementSize;
     int controlSize;
@@ -44,6 +47,45 @@ public:
      * @param z The new measurement.
      */
     void UpdateEKF(const Eigen::VectorXd &z);
+
+    //function to evaluate teh jacobian numerically at that specific
+    //nominal state that we currently are at
+    numx_status_t EvaluateJacobian(JacobianEvaluator evaluator,
+                                  const Eigen::VectorXd &nominalState,
+                                  int outputSize, int errorSize,
+                                  Eigen::MatrixXd &jacobian,
+                                  void *context = nullptr);
+
+    /**
+     * Store an evaluator for the continuous error-dynamics Jacobian A.
+     * A has errorSize rows and columns; stateSize is the nominal state size.
+     * The callback and borrowed context must remain valid while configured.
+     * Configuration does not run the callback; A contains NaNs until updated.
+     * Invalid configuration leaves the evaluator and A unchanged.
+     */
+    numx_status_t SetDynamicsJacobianEvaluator(JacobianEvaluator evaluator,
+                                             int errorSize,
+                                             void *context = nullptr);
+
+    /**
+     * Store an evaluator for the measurement Jacobian H in error coordinates.
+     * H has measurementSize rows and errorSize columns. Context is borrowed.
+     * Configuration does not run the callback; H contains NaNs until updated.
+     * Invalid configuration leaves the evaluator and H unchanged.
+     */
+    numx_status_t SetMeasurementJacobianEvaluator(JacobianEvaluator evaluator,
+                                                int errorSize,
+                                                void *context = nullptr);
+
+    /** Update persistent A from a stateSize-component nominal state. */
+    numx_status_t UpdateDynamicsJacobian(const Eigen::VectorXd &nominalState);
+
+    /** Update persistent H from a stateSize-component nominal state. */
+    numx_status_t UpdateMeasurementJacobian(const Eigen::VectorXd &nominalState);
+
+    /** Latest evaluated matrix; check the update status before using it. */
+    const Eigen::MatrixXd &GetDynamicsJacobian() const { return A; }
+    const Eigen::MatrixXd &GetMeasurementJacobian() const { return H; }
 
     /**
      * Calculate J(i,j) = d function_i / d input_j using numx forward-mode AD.
@@ -96,6 +138,20 @@ protected:
     Eigen::MatrixXd K; // Kalman gain
 
 private:
+    static numx_status_t EvaluateJacobianWithScratch(
+        JacobianEvaluator evaluator, const Eigen::VectorXd &nominalState,
+        int outputSize, int errorSize, Eigen::MatrixXd &jacobian,
+        void *context, Eigen::MatrixXd &scratch);
+
+    JacobianEvaluator dynamicsJacobianEvaluator = nullptr; //symbolic jacobian of A
+    JacobianEvaluator measurementJacobianEvaluator = nullptr; //symbolic jacobian of H
+    void *dynamicsJacobianContext = nullptr;
+    void *measurementJacobianContext = nullptr;
+    int dynamicsErrorSize = 0;
+    int measurementErrorSize = 0;
+    Eigen::MatrixXd evaluatedJacobian;
+    Eigen::MatrixXd dynamicsJacobianCandidate;
+    Eigen::MatrixXd measurementJacobianCandidate;
     DualVector jacobianInput;
     DualVector jacobianOutput;
     Eigen::MatrixXd jacobianResult;

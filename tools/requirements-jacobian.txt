@@ -1,0 +1,2 @@
+# Host-only symbolic code generation; firmware does not depend on Python/SymPy.
+sympy==1.14.0

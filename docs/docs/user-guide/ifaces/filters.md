@@ -58,10 +58,100 @@ State state(&kf, &ahrs);
 
 ## ExtendedKalmanFilter Jacobian Helper
 
-`ExtendedKalmanFilter` is an experimental scaffold. Its constructor, Jacobian
-helper, and measurement-mapping helpers are implemented; `Init()`, `Predict()`, `Update()`, and
+`ExtendedKalmanFilter` is an experimental scaffold. Its constructor, analytic
+Jacobian evaluators, AD helper, and measurement-mapping helpers are implemented;
+`Init()`, `Predict()`, `Update()`, and
 `UpdateEKF()` are declarations awaiting implementation. It is not connected to
 `State` or `DefaultState`.
+
+### Persistent Analytic Jacobians
+
+Derive the Jacobian formulas before building firmware, then evaluate those
+formulas at the current nominal state during flight. The filter stores the
+compiled evaluator and the numerical matrix separately: the evaluator stays
+registered, while each successful update refreshes the existing `A` or `H` field.
+
+`SetDynamicsJacobianEvaluator(evaluator, errorSize, context)` registers the
+dynamics evaluator once. `UpdateDynamicsJacobian(nominalState)` evaluates it, and
+`GetDynamicsJacobian()` returns a const reference to the saved `A`. The matching
+measurement methods are `SetMeasurementJacobianEvaluator`,
+`UpdateMeasurementJacobian`, and `GetMeasurementJacobian`; their matrix has
+`measurementSize` rows. These methods only maintain Jacobians; the scaffold's
+prediction and correction methods remain unimplemented.
+
+The evaluator has this signature and uses ordinary `double` arithmetic:
+
+```cpp
+numx_status_t evaluator(const Eigen::VectorXd& nominalState,
+                        Eigen::MatrixXd& jacobian, void* context);
+```
+
+It fills every entry of the supplied matrix, including zeros, without changing
+its size. Return `NUMX_OK` on success or a numx error code on failure. The filter
+calls it once per update, validates the result, and preserves the last successful
+matrix if evaluation fails. Scratch storage is reused when dimensions stay the
+same. Registration initializes the saved matrix with NaNs; use it only after a
+successful update. Check the returned status on every call.
+
+The constructor's `stateSize` is the **nominal input size**. The separately
+configured `errorSize` is the covariance coordinate count: navigation uses 11
+nominal components and 10 error components. Keep the constructor dimension fields
+unchanged while evaluators are registered. Dynamics evaluators must directly
+return the continuous **error-dynamics** Jacobian; differentiating four independent
+quaternion components does not produce the required attitude-error dynamics.
+Measurement evaluators must likewise return `H` in error coordinates. Derive
+those error-coordinate models before generating their evaluators.
+
+Context pointers are borrowed and must stay valid while registered. Update their
+time, controls, atmosphere, table slopes, and other changing parameters before
+evaluation. Treating a state-dependent lookup value as an independent constant
+omits its state derivative; include the interpolation law or its derivative in
+the model when that sensitivity is required.
+
+For a checked evaluation into a caller-owned matrix, use
+`EvaluateJacobian(evaluator, input, outputSize, errorSize, J, context)`.
+
+#### Derive Formulas Offline
+
+The optional host tool `tools/generate_ekf_jacobian.py` separates symbolic
+derivation from evaluation. `derive_jacobian(model, state_symbols)` computes the
+symbolic derivatives with SymPy; `generate_jacobian_header(...)` writes their C++
+evaluator. Symbolic algebra runs when regenerating the header, and the compiled
+firmware evaluates its formulas using plain numbers.
+
+From the repository root:
+
+```sh
+python -m pip install -r tools/requirements-jacobian.txt
+```
+
+Import `derive_jacobian` and `generate_jacobian_header` from
+`tools.generate_ekf_jacobian` in your host-side model script. Supply symbolic
+equations and their independent variables to `derive_jacobian`, then pass the
+resulting matrix and its nominal input symbols to `generate_jacobian_header`.
+Write the returned header text to your application's source tree and compile it
+into firmware. Its generated callback can be registered once and evaluated
+throughout flight:
+
+```cpp
+// During configuration, using your generated evaluator and parameter context:
+if (filter.SetDynamicsJacobianEvaluator(dynamicsJacobian, 10, &physics) != NUMX_OK)
+    return;
+
+// During propagation, using the current 11-component nominal state:
+if (filter.UpdateDynamicsJacobian(nominalState) != NUMX_OK) return;
+const Eigen::MatrixXd& A = filter.GetDynamicsJacobian();
+```
+
+Keep the configured filter and its context alive throughout use. Regenerate and
+rebuild the header when the equations change. SymPy is an optional development
+dependency; firmware builds from generated headers do not need it. The full
+flight dynamics, attitude-error model, and sensor models still need implementation.
+
+### Automatic Differentiation Helper
+
+The existing AD path remains available for prototyping and checking analytic
+evaluators against their original models.
 
 `CalculateJacobian()` uses numx forward-mode automatic differentiation to return
 an output-by-input matrix, with entry `J(i,j)` equal to the partial derivative

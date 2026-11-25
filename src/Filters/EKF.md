@@ -35,6 +35,14 @@ The current filter drives propagation directly with accelerometer readings, hold
 
 The attitude and velocity states we are already adding let drag act along the actual air-relative velocity vector instead of assuming vertical flight.
 
+**Body-frame convention:** body **+Z** follows the rocket's longitudinal axis,
+pointing from the motor toward the nose, and is the positive thrust direction.
+Body X and Y are transverse axes completing a right-handed frame. Sensor mounting
+transforms and body-frame gyro/accelerometer values must use this convention.
+The quaternion rotates body-frame vectors into the navigation frame. In local
+ENU, navigation +Z is Up; when the rocket is upright, body +Z points Up as well.
+As the rocket tilts, its body axes rotate relative to ENU.
+
 ### 3.2 Inputs
 
 | Input | Source |
@@ -70,16 +78,30 @@ Equations of motion:
 $$
 \begin{aligned}
 \dot{\mathbf{p}} &= \mathbf{v} \\
-\dot{\mathbf{v}} &= \mathbf{g} + \frac{T(t)}{m(t)}\,\hat{\mathbf{x}}_b - \frac{\rho(h)}{2\,m(t)}\,D\,\|\mathbf{v}_r\|\,\mathbf{v}_r \\
+\dot{\mathbf{v}} &= \mathbf{g} + \frac{T(t)}{m(t)}\,\hat{\mathbf{z}}_b - \frac{\rho(h)}{2\,m(t)}\,D\,\|\mathbf{v}_r\|\,\mathbf{v}_r \\
 \dot{c} &= w_c
 \end{aligned}
 $$
 
-$\hat{\mathbf{x}}_b$ is the unit vector along the rocket's body axis, expressed in the navigation frame. Rotate the body-frame unit vector through the body-to-navigation rotation $R(q)$:
+$\hat{\mathbf{z}}_b$ is the unit vector along the rocket's positive body Z-axis,
+expressed in the navigation frame. Rotate the body-frame unit vector through the
+body-to-navigation rotation $R(q)$:
 
 $$
-\hat{\mathbf{x}}_b = R(q)\mathbf{e}_x,
-\qquad \mathbf{e}_x = \begin{bmatrix}1 & 0 & 0\end{bmatrix}^{\top}.
+\hat{\mathbf{z}}_b = R(q)\mathbf{e}_z,
+\qquad \mathbf{e}_z = \begin{bmatrix}0 & 0 & 1\end{bmatrix}^{\top}.
+$$
+
+For the normalized, scalar-first Hamilton quaternion
+$q=(q_w,q_x,q_y,q_z)$, this is the third column of $R(q)$:
+
+$$
+\hat{\mathbf{z}}_b =
+\begin{bmatrix}
+2(q_xq_z+q_wq_y) \\
+2(q_yq_z-q_wq_x) \\
+1-2(q_x^2+q_y^2)
+\end{bmatrix}.
 $$
 
 This gives thrust a direction. The motor pushes along the airframe, and the airframe isn't necessarily pointed straight up or along the velocity vector. Use the same navigation frame for $\mathbf{p}$, $\mathbf{v}$, $\mathbf{w}$, and $\mathbf{g}$. Altitude $h$ increases upward, so it increases with the vertical position in ENU and decreases with it in NED.
@@ -114,7 +136,7 @@ The same free-flight equations cover boost and coast; only the inputs change. Ph
 **Accelerometer (specific force, body frame).** An accelerometer measures non-gravitational forces only:
 
 $$
-\mathbf{f}_{\text{meas}} = R(q)^{\top} \left[ \frac{T(t)}{m(t)}\,\hat{\mathbf{x}}_b - \frac{\rho}{2m}\,D\,\|\mathbf{v}_r\|\,\mathbf{v}_r \right] + \mathbf{b}_a + \mathbf{n}_a
+\mathbf{f}_{\text{meas}} = R(q)^{\top} \left[ \frac{T(t)}{m(t)}\,\hat{\mathbf{z}}_b - \frac{\rho}{2m}\,D\,\|\mathbf{v}_r\|\,\mathbf{v}_r \right] + \mathbf{b}_a + \mathbf{n}_a
 $$
 
 During coast this is a direct measurement of drag, so it gives direct information about $c$. This is the key structural change: the accelerometer stops driving propagation and starts correcting the physics model.
@@ -158,7 +180,24 @@ $$
 
 At zero air-relative speed, set $\mathbf{a}_d$ and the displayed drag Jacobian blocks to zero using their continuous limits, rather than dividing by $\|\mathbf{v}_r\| = 0$.
 
-Attitude blocks must use the same three-component attitude-error coordinates as the covariance, including the thrust term's dependence on attitude through $\hat{\mathbf{x}}_b$ during boost.
+Attitude blocks must use the same three-component attitude-error coordinates as the covariance, including the thrust term's dependence on attitude through $\hat{\mathbf{z}}_b$ during boost.
+
+**Derive once, evaluate during flight:** derive the Jacobian expressions before
+building firmware, then compile their evaluator into the application. Register
+that evaluator once with `SetDynamicsJacobianEvaluator` and call
+`UpdateDynamicsJacobian(nominalState)` during propagation. The filter retains the
+numerical `A` field, available through `GetDynamicsJacobian()`, and refreshes its
+values at the current predicted state and inputs. The matching measurement
+methods retain `H`. The formulas stay compiled; their numerical values change
+throughout flight. The callback must already use the covariance's error
+coordinates, and a failed evaluation leaves the last successful matrix intact.
+Check every returned status before using that matrix.
+
+`tools/generate_ekf_jacobian.py` provides offline symbolic derivation with SymPy
+from supplied model equations. It does not implement the full rocket dynamics or
+derive the quaternion error dynamics. See the
+[filter guide](../../docs/docs/user-guide/ifaces/filters.md#persistent-analytic-jacobians)
+for the registration and generation workflow.
 
 **Second pass:** include $\partial C_D/\partial M$ from the table slopes, including the altitude dependence of Mach through $a(h)$, if transonic performance shows the frozen-coefficient Jacobian is insufficient.
 

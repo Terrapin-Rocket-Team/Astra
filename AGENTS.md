@@ -10,7 +10,7 @@ replacement for the source.
 
 - Created: **2026-10-06** (America/New_York).
 - Created by: Divyansh Srivastava
-- Last updated: **2026-11-17**.
+- Last updated: **2026-11-25**.
 - Last updated by: OpenAI Codex (AI agent).
 - Initial review: library version **0.2.1**, repository commit **9664ffe**.
 
@@ -28,6 +28,9 @@ affected sections and record that update in the same change.
 | 2026-10-06 | Divyansh Srivastava, assisted by OpenAI Codex (AI agent) | Reviewed the guide against implementation; clarified sensor health, telemetry timing/flags, and hardware versus simulation data flow. |
 | 2026-11-13 | OpenAI Codex (AI agent) | Documented the experimental EKF scaffold, its numx automatic-differentiation Jacobian helper, callback/error-coordinate requirements, and numx build configuration. |
 | 2026-11-17 | OpenAI Codex (AI agent) | Documented fixed GPS/barometer measurement Jacobians and conversion of nonlinear sensor Jacobians from the 11-component nominal state to 10 right-local error coordinates. |
+| 2026-11-25 | OpenAI Codex (AI agent) | Documented persistent analytic dynamics/measurement Jacobian evaluators and offline SymPy derivation, including the generated upward-coast example and separate nominal/error dimensions. |
+| 2026-11-25 | OpenAI Codex (AI agent) | Removed the added Jacobian tests and generated coast demonstration at the user's request; retained the evaluator implementation and reusable symbolic-generation tool. |
+| 2026-11-25 | OpenAI Codex (AI agent) | Updated the physics proposal to use body +Z along the rocket's longitudinal axis toward the nose; documented the matching thrust rotation and sensor-frame convention. |
 
 ## What Astra is and how it reaches the flight computer
 
@@ -242,13 +245,33 @@ in the downstream mission layer. For a custom Kalman model, implement the
 in mind.
 
 `ExtendedKalmanFilter` is an experimental scaffold, not connected to `State`.
-Its constructor, Jacobian helper, and measurement-mapping helpers are implemented;
+Its constructor, analytic Jacobian evaluators, AD helper, and measurement-mapping helpers are implemented;
 `Init`, `Predict`, `Update`, and `UpdateEKF` remain declarations. The Jacobian helper uses numx dual
 numbers and requires a callback written with `numx_dual_*` operations. Its
 optional context holds fixed inputs/time; it returns a status and leaves the
 output matrix unchanged on failure. Dimensions follow the callback, so quaternion
 models must supply the chosen attitude-error coordinates before using the result
 with `P`. numx defaults to float precision even though the output is `MatrixXd`.
+
+For prederived formulas, register a plain-double callback once with
+`SetDynamicsJacobianEvaluator` or `SetMeasurementJacobianEvaluator`, specifying
+the error dimension separately from the constructor's nominal `stateSize`.
+`UpdateDynamicsJacobian` and `UpdateMeasurementJacobian` evaluate the registered
+formulas at the supplied nominal state and save the numerical results in `A` and
+`H`; const-reference getters expose those fields. Configuration fills the matrix
+with NaNs until its first successful update. Updates validate shape, completeness,
+and finite values and leave the previous matrix unchanged on failure. Context
+pointers are borrowed and must outlive use; refresh time/controls/parameters before
+evaluation. `EvaluateJacobian` provides the same checked evaluation into a caller's
+matrix. These callbacks must already return derivatives in the covariance's error
+coordinates, including the continuous attitude-error dynamics for `A`.
+
+`tools/generate_ekf_jacobian.py` derives Euclidean Jacobian expressions offline with
+SymPy and emits a compiled C++ evaluator. Its optional host dependencies are in
+`tools/requirements-jacobian.txt`; firmware does not run symbolic algebra.
+Supply the model's symbolic equations to derive the appropriate Jacobian and
+regenerate its evaluator whenever those source equations change. The full rocket
+dynamics and quaternion error dynamics are not implemented by this tool.
 
 The navigation measurement helpers assume nominal `[p_ENU, v_ENU, q_wxyz, c]`
 (11 components) and errors `[dp_ENU, dv_ENU, dtheta_body, dc]` (10 components),
@@ -259,6 +282,12 @@ model and maps its quaternion columns into attitude-error columns. This is a
 measurement mapping, not a continuous dynamics-Jacobian conversion. Gyro remains
 a prediction input; accelerometer and any future direct magnetometer updates
 need their nonlinear measurement models. No process-noise mapping is supplied.
+
+The experimental physics proposal in `src/Filters/EKF.md` defines body +Z along
+the rocket's longitudinal axis toward the nose. Its thrust direction in the
+navigation frame is `R(q) * [0, 0, 1]`, the third column of the body-to-navigation
+rotation. Body X/Y are transverse, and sensor mounting transforms must supply
+body-frame values consistent with this proposed convention.
 
 ## Telemetry, event logs, storage, and commands
 
